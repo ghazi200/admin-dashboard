@@ -1,0 +1,258 @@
+/* ========= Auth / Login Unified Styling ========= */
+.auth-no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.loginPage {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+    Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  color: #111827;
+}
+/* Background */
+.loginBg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* ✅ THIS is the fix */
+  background:
+    radial-gradient(900px 500px at 20% 10%, rgba(99,102,241,0.18), transparent 60%),
+    radial-gradient(900px 500px at 80% 20%, rgba(16,185,129,0.12), transparent 55%),
+    radial-gradient(900px 700px at 50% 90%, rgba(59,130,246,0.10), transparent 60%),
+    linear-gradient(180deg, #0b1220 0%, #0b1220 35%, #0a1020 100%);
+}
+
+
+/* Centering shell */
+.loginShell {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 28px 16px;
+}
+
+.loginCard {
+  width: 100%;
+  max-width: 460px;
+  background: rgba(255,255,255,0.94);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 16px;
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.35),
+    0 1px 0 rgba(255,255,255,0.6) inset;
+  padding: 22px 20px;
+}
+
+.loginHeader {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* Brand mark */
+.brandMark {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4f46e5 0%, #22c55e 100%);
+  box-shadow: 0 10px 18px rgba(79,70,229,0.25);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.brandMark span {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.88);
+  transform: rotate(12deg);
+}
+
+.loginTitle {
+  font-size: 20px;
+  line-height: 1.2;
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.loginSubtitle {
+  margin: 4px 0 0;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+/* Role badge */
+.roleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  width: fit-content;
+  border: 1px solid rgba(17,24,39,0.10);
+  background: rgba(17,24,39,0.04);
+  color: #111827;
+}
+
+.roleBadge.admin {
+  background: rgba(79,70,229,0.10);
+  border-color: rgba(79,70,229,0.18);
+  color: #312e81;
+}
+
+/* Alert */
+.loginAlert {
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  gap: 10px;
+  align-items: start;
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.20);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0 12px;
+}
+
+.loginAlertDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+  margin-top: 6px;
+}
+
+.loginAlertText strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  color: #7f1d1d;
+}
+
+.loginAlertText span {
+  display: block;
+  font-size: 12px;
+  color: #7f1d1d;
+  margin-top: 2px;
+}
+
+/* Form */
+.loginForm {
+  display: grid;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.input {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(17,24,39,0.14);
+  background: rgba(255,255,255,0.95);
+  outline: none;
+  font-size: 14px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.input:focus {
+  border-color: rgba(79,70,229,0.45);
+  box-shadow: 0 0 0 4px rgba(79,70,229,0.12);
+}
+
+.input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Buttons */
+.btnPrimaryFull {
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+  color: white;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.btnPrimaryFull:hover {
+  filter: brightness(1.02);
+}
+
+.btnPrimaryFull:active {
+  transform: translateY(1px);
+}
+
+.btnPrimaryFull:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Footer */
+.loginFooter {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hint {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.hint code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  background: rgba(17,24,39,0.06);
+  border: 1px solid rgba(17,24,39,0.10);
+  padding: 2px 6px;
+  border-radius: 8px;
+  color: #111827;
+}
+
+/* Bottom note */
+.loginBottomNote {
+  margin-top: 14px;
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
+  text-align: center;
+}
+.loginShell { z-index: 2; }
+.loginCard { z-index: 3; }
+
+
+
+/* ✅ Click-safe guarantee (prevents invisible overlays from blocking inputs) */
+.loginBg,
+.loginBg * {
+  pointer-events: none !important;
+}
+
+.loginShell,
+.loginShell * {
+  pointer-events: auto;
+}

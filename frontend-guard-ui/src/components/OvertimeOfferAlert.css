@@ -1,0 +1,208 @@
+/* OvertimeOfferAlert.css */
+.overtime-offer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overtime-offer-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.overtime-offer-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-radius: 16px 16px 0 0;
+}
+
+.overtime-offer-header h3 {
+  margin: 0;
+  flex: 1;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.overtime-offer-icon {
+  font-size: 24px;
+}
+
+.overtime-offer-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.overtime-offer-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.overtime-offer-content {
+  padding: 24px;
+}
+
+.overtime-offer-intro {
+  font-size: 16px;
+  color: #374151;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.overtime-offer-intro strong {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.overtime-offer-details {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.overtime-offer-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.overtime-offer-detail:last-child {
+  border-bottom: none;
+}
+
+.overtime-offer-detail .label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.overtime-offer-detail .value {
+  font-size: 16px;
+  color: #111827;
+  font-weight: 600;
+}
+
+.overtime-offer-reason {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.overtime-offer-reason .label {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.overtime-offer-reason .value {
+  display: block;
+  font-size: 14px;
+  color: #374151;
+  font-style: italic;
+}
+
+.overtime-offer-expiry {
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #92400e;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.overtime-offer-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.overtime-offer-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.overtime-offer-btn.decline {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.overtime-offer-btn.decline:hover {
+  background: #e5e7eb;
+}
+
+.overtime-offer-btn.accept {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.overtime-offer-btn.accept:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+@media (max-width: 640px) {
+  .overtime-offer-modal {
+    width: 95%;
+    max-height: 85vh;
+  }
+
+  .overtime-offer-header {
+    padding: 16px 20px;
+  }
+
+  .overtime-offer-header h3 {
+    font-size: 18px;
+  }
+
+  .overtime-offer-content {
+    padding: 20px;
+  }
+
+  .overtime-offer-actions {
+    flex-direction: column;
+  }
+}

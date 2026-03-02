@@ -1,0 +1,168 @@
+/* OvertimeStatus.css */
+.overtime-status {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.overtime-status.approaching {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.overtime-status.warning {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: rgba(251, 191, 36, 0.6);
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.overtime-status.overtime {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.6);
+  animation: pulse-critical 1s ease-in-out infinite;
+}
+
+.overtime-status-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  color: #1e40af;
+}
+
+.overtime-status.warning .overtime-status-header,
+.overtime-status.approaching .overtime-status-header {
+  color: #92400e;
+}
+
+.overtime-status.overtime .overtime-status-header {
+  color: #991b1b;
+}
+
+.overtime-status-icon {
+  font-size: 20px;
+}
+
+.overtime-status-title {
+  font-size: 16px;
+}
+
+.overtime-status-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.overtime-status-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.overtime-status-stat.projected {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.overtime-status-label {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.overtime-status-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e40af;
+  font-variant-numeric: tabular-nums;
+}
+
+.overtime-status.warning .overtime-status-value,
+.overtime-status.approaching .overtime-status-value {
+  color: #92400e;
+}
+
+.overtime-status.overtime .overtime-status-value {
+  color: #991b1b;
+}
+
+.overtime-status-alerts {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.overtime-status-alert {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.overtime-status-alert.info {
+  background: rgba(59, 130, 246, 0.15);
+  color: #1e40af;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.overtime-status-alert.warning {
+  background: rgba(251, 191, 36, 0.2);
+  color: #92400e;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.overtime-status-alert.critical {
+  background: rgba(239, 68, 68, 0.2);
+  color: #991b1b;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  font-weight: 600;
+}
+
+.overtime-status-info {
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(251, 191, 36, 0);
+  }
+}
+
+@keyframes pulse-critical {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+}
+
+@media (max-width: 640px) {
+  .overtime-status {
+    padding: 12px;
+    margin: 8px 0;
+  }
+
+  .overtime-status-header {
+    font-size: 14px;
+  }
+
+  .overtime-status-value {
+    font-size: 16px;
+  }
+}

@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Report Builder - Visual Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #3b82f6;
+            margin-bottom: 30px;
+            font-size: 32px;
+        }
+
+        .mockup-section {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #334155;
+        }
+
+        .mockup-section h2 {
+            color: #60a5fa;
+            margin-bottom: 20px;
+            font-size: 24px;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 10px;
+        }
+
+        /* Report Builder Interface */
+        .report-builder {
+            display: grid;
+            grid-template-columns: 250px 1fr 300px;
+            gap: 20px;
+            height: 700px;
+        }
+
+        .widget-sidebar {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .widget-sidebar h3 {
+            color: #60a5fa;
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .widget-item {
+            background: #1e293b;
+            border: 2px dashed #475569;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: grab;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .widget-item:hover {
+            border-color: #3b82f6;
+            background: #1e3a8a;
+            transform: translateX(5px);
+        }
+
+        .widget-item:active {
+            cursor: grabbing;
+        }
+
+        .widget-icon {
+            font-size: 20px;
+        }
+
+        .canvas-area {
+            background: #0f172a;
+            border: 2px dashed #334155;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .canvas-area.has-content {
+            border-color: #3b82f6;
+            border-style: solid;
+        }
+
+        .canvas-header {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .canvas-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e2e8f0;
+        }
+
+        .drop-zone {
+            min-height: 100px;
+            border: 2px dashed #475569;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+            color: #64748b;
+            transition: all 0.3s;
+        }
+
+        .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            color: #60a5fa;
+        }
+
+        .widget-preview {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .widget-preview:hover {
+            border-color: #3b82f6;
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .widget-title {
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .widget-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-icon {
+            background: #334155;
+            border: none;
+            color: #e2e8f0;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: #3b82f6;
+        }
+
+        .chart-preview {
+            height: 200px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+        }
+
+        .table-preview {
+            background: #0f172a;
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            padding: 8px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .table-header {
+            font-weight: 600;
+            color: #60a5fa;
+        }
+
+        .kpi-preview {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .kpi-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #475569;
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #3b82f6;
+            margin-bottom: 5px;
+        }
+
+        .kpi-label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
+
+        .properties-panel {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .properties-panel h3 {
+            color: #60a5fa;
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .property-group {
+            margin-bottom: 20px;
+        }
+
+        .property-label {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .property-input {
+            width: 100%;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .property-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        /* Template Gallery */
+        .template-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .template-card {
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .template-card:hover {
+            border-color: #3b82f6;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
+        }
+
+        .template-preview {
+            height: 150px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 48px;
+        }
+
+        .template-title {
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 5px;
+        }
+
+        .template-desc {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        /* Scheduling Interface */
+        .scheduling-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .form-select, .form-input {
+            width: 100%;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 10px;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .form-select:focus, .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+
+        .export-options {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            background: #1e293b;
+            border: 2px solid #334155;
+            color: #e2e8f0;
+            padding: 15px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .export-btn:hover {
+            border-color: #3b82f6;
+            background: #1e3a8a;
+            transform: translateY(-2px);
+        }
+
+        .export-icon {
+            font-size: 20px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state-text {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .empty-state-hint {
+            font-size: 12px;
+            color: #475569;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Custom Report Builder - Visual Mockup</h1>
+
+        <!-- Report Builder Interface -->
+        <div class="mockup-section">
+            <h2>1. Drag-and-Drop Report Builder</h2>
+            <div class="report-builder">
+                <!-- Widget Sidebar -->
+                <div class="widget-sidebar">
+                    <h3>📦 Widgets</h3>
+                    <div class="widget-item">
+                        <span class="widget-icon">📊</span>
+                        <span>Bar Chart</span>
+                    </div>
+                    <div class="widget-item">
+                        <span class="widget-icon">📈</span>
+                        <span>Line Chart</span>
+                    </div>
+                    <div class="widget-item">
+                        <span class="widget-icon">🥧</span>
+                        <span>Pie Chart</span>
+                    </div>
+                    <div class="widget-item">
+                        <span class="widget-icon">📋</span>
+                        <span>Data Table</span>
+                    </div>
+                    <div class="widget-item">
+                        <span class="widget-icon">🎯</span>
+                        <span>KPI Cards</span>
+                    </div>
+                    <div class="widget-item">
+                        <span class="widget-icon">📝</span>
+                        <span>Text Section</span>
+                    </div>
+                    <div class="widget-item">
+                        <span class="widget-icon">🖼️</span>
+                        <span>Image</span>
+                    </div>
+                    <div class="widget-item">
+                        <span class="widget-icon">🔍</span>
+                        <span>Filter</span>
+                    </div>
+                </div>
+
+                <!-- Canvas Area -->
+                <div class="canvas-area has-content">
+                    <div class="canvas-header">
+                        <div class="canvas-title">Weekly Operations Report</div>
+                        <div>
+                            <button class="btn-icon">💾</button>
+                            <button class="btn-icon">👁️</button>
+                            <button class="btn-icon">⚙️</button>
+                        </div>
+                    </div>
+
+                    <!-- KPI Widget -->
+                    <div class="widget-preview">
+                        <div class="widget-header">
+                            <div class="widget-title">📊 Key Performance Indicators</div>
+                            <div class="widget-actions">
+                                <button class="btn-icon">✏️</button>
+                                <button class="btn-icon">🗑️</button>
+                            </div>
+                        </div>
+                        <div class="kpi-preview">
+                            <div class="kpi-card">
+                                <div class="kpi-value">94%</div>
+                                <div class="kpi-label">Coverage Rate</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-value">12</div>
+                                <div class="kpi-label">Open Shifts</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-value">$45K</div>
+                                <div class="kpi-label">Labor Costs</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart Widget -->
+                    <div class="widget-preview">
+                        <div class="widget-header">
+                            <div class="widget-title">📈 Callout Rate by Location</div>
+                            <div class="widget-actions">
+                                <button class="btn-icon">✏️</button>
+                                <button class="btn-icon">🗑️</button>
+                            </div>
+                        </div>
+                        <div class="chart-preview">
+                            📊 Bar Chart: Callout Rate by Location
+                        </div>
+                    </div>
+
+                    <!-- Table Widget -->
+                    <div class="widget-preview">
+                        <div class="widget-header">
+                            <div class="widget-title">📋 High-Risk Shifts (Next 7 Days)</div>
+                            <div class="widget-actions">
+                                <button class="btn-icon">✏️</button>
+                                <button class="btn-icon">🗑️</button>
+                            </div>
+                        </div>
+                        <div class="table-preview">
+                            <div class="table-row table-header">
+                                <div>Date</div>
+                                <div>Location</div>
+                                <div>Risk Score</div>
+                            </div>
+                            <div class="table-row">
+                                <div>2024-01-25</div>
+                                <div>Downtown Office</div>
+                                <div>85% ⚠️</div>
+                            </div>
+                            <div class="table-row">
+                                <div>2024-01-26</div>
+                                <div>Warehouse</div>
+                                <div>72% ⚠️</div>
+                            </div>
+                            <div class="table-row">
+                                <div>2024-01-27</div>
+                                <div>Retail Store</div>
+                                <div>68% ⚠️</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Properties Panel -->
+                <div class="properties-panel">
+                    <h3>⚙️ Properties</h3>
+                    <div class="property-group">
+                        <div class="property-label">Widget Type</div>
+                        <input type="text" class="property-input" value="Bar Chart" readonly>
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Data Source</div>
+                        <select class="property-input">
+                            <option>Callout Rate by Location</option>
+                            <option>Guard Performance</option>
+                            <option>Shift Coverage</option>
+                        </select>
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Date Range</div>
+                        <select class="property-input">
+                            <option>Last 7 Days</option>
+                            <option>Last 30 Days</option>
+                            <option>Custom Range</option>
+                        </select>
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Chart Style</div>
+                        <select class="property-input">
+                            <option>Bar Chart</option>
+                            <option>Line Chart</option>
+                            <option>Area Chart</option>
+                        </select>
+                    </div>
+                    <div class="property-group">
+                        <div class="property-label">Title</div>
+                        <input type="text" class="property-input" value="Callout Rate by Location">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Template Gallery -->
+        <div class="mockup-section">
+            <h2>2. Pre-Built Report Templates</h2>
+            <div class="template-gallery">
+                <div class="template-card">
+                    <div class="template-preview">📊</div>
+                    <div class="template-title">Executive Summary</div>
+                    <div class="template-desc">High-level KPIs for leadership</div>
+                </div>
+                <div class="template-card">
+                    <div class="template-preview">👥</div>
+                    <div class="template-title">Guard Performance</div>
+                    <div class="template-desc">Individual guard metrics</div>
+                </div>
+                <div class="template-card">
+                    <div class="template-preview">📍</div>
+                    <div class="template-title">Site Performance</div>
+                    <div class="template-desc">Location-specific analytics</div>
+                </div>
+                <div class="template-card">
+                    <div class="template-preview">💰</div>
+                    <div class="template-title">Cost Analysis</div>
+                    <div class="template-desc">Labor costs, overtime trends</div>
+                </div>
+                <div class="template-card">
+                    <div class="template-preview">⚠️</div>
+                    <div class="template-title">Risk Assessment</div>
+                    <div class="template-desc">Callout risks, coverage gaps</div>
+                </div>
+                <div class="template-card">
+                    <div class="template-preview">📅</div>
+                    <div class="template-title">Schedule Compliance</div>
+                    <div class="template-desc">Shift coverage, assignments</div>
+                </div>
+                <div class="template-card">
+                    <div class="template-preview">🎯</div>
+                    <div class="template-title">Client Reporting</div>
+                    <div class="template-desc">Professional client-facing reports</div>
+                </div>
+                <div class="template-card">
+                    <div class="template-preview">📈</div>
+                    <div class="template-title">Weekly Operations</div>
+                    <div class="template-desc">Comprehensive weekly overview</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scheduling Interface -->
+        <div class="mockup-section">
+            <h2>3. Scheduled Automated Reports</h2>
+            <div class="scheduling-form">
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">Report Template</label>
+                        <select class="form-select">
+                            <option>Weekly Operations Report</option>
+                            <option>Executive Summary</option>
+                            <option>Client Performance Report</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Schedule Frequency</label>
+                        <select class="form-select">
+                            <option>Daily</option>
+                            <option>Weekly</option>
+                            <option>Monthly</option>
+                            <option>Custom</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Day of Week (if weekly)</label>
+                        <select class="form-select">
+                            <option>Monday</option>
+                            <option>Tuesday</option>
+                            <option>Wednesday</option>
+                            <option>Thursday</option>
+                            <option>Friday</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Time</label>
+                        <input type="time" class="form-input" value="09:00">
+                    </div>
+                </div>
+                <div>
+                    <div class="form-group">
+                        <label class="form-label">Email Recipients</label>
+                        <input type="text" class="form-input" placeholder="email1@company.com, email2@company.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email Subject</label>
+                        <input type="text" class="form-input" value="Weekly Operations Report - Week of [Date]">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Export Format</label>
+                        <select class="form-select">
+                            <option>PDF</option>
+                            <option>Excel</option>
+                            <option>PDF + Excel</option>
+                            <option>CSV</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email Message</label>
+                        <textarea class="form-input" rows="4" placeholder="Custom message to include in email...">Please find attached the weekly operations report for your review.</textarea>
+                    </div>
+                    <button class="btn-primary" style="width: 100%; margin-top: 10px;">💾 Save Schedule</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Options -->
+        <div class="mockup-section">
+            <h2>4. Multi-Format Export Options</h2>
+            <div class="export-options">
+                <div class="export-btn">
+                    <span class="export-icon">📄</span>
+                    <span>Export as PDF</span>
+                </div>
+                <div class="export-btn">
+                    <span class="export-icon">📊</span>
+                    <span>Export as Excel</span>
+                </div>
+                <div class="export-btn">
+                    <span class="export-icon">📋</span>
+                    <span>Export as CSV</span>
+                </div>
+                <div class="export-btn">
+                    <span class="export-icon">🌐</span>
+                    <span>Export as HTML</span>
+                </div>
+                <div class="export-btn">
+                    <span class="export-icon">🔗</span>
+                    <span>Generate Shareable Link</span>
+                </div>
+                <div class="export-btn">
+                    <span class="export-icon">📧</span>
+                    <span>Email Report</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sharing Interface -->
+        <div class="mockup-section">
+            <h2>5. Report Sharing & Collaboration</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h3 style="color: #60a5fa; margin-bottom: 15px;">Share Report</h3>
+                    <div class="form-group">
+                        <label class="form-label">Share With</label>
+                        <input type="text" class="form-input" placeholder="Enter email addresses...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Permission Level</label>
+                        <select class="form-select">
+                            <option>View Only</option>
+                            <option>Can Comment</option>
+                            <option>Can Edit</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Message (Optional)</label>
+                        <textarea class="form-input" rows="3" placeholder="Add a message..."></textarea>
+                    </div>
+                    <button class="btn-primary">📤 Share Report</button>
+                </div>
+                <div>
+                    <h3 style="color: #60a5fa; margin-bottom: 15px;">Shareable Link</h3>
+                    <div class="form-group">
+                        <label class="form-label">Link Settings</label>
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: flex; align-items: center; gap: 10px; color: #e2e8f0; margin-bottom: 10px;">
+                                <input type="checkbox" checked> Password Protected
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; color: #e2e8f0; margin-bottom: 10px;">
+                                <input type="checkbox"> Set Expiration Date
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 10px; color: #e2e8f0;">
+                                <input type="checkbox" checked> Track Views
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Generated Link</label>
+                        <input type="text" class="form-input" value="https://reports.abe-guard-ai.com/r/abc123xyz" readonly>
+                    </div>
+                    <button class="btn-primary" style="width: 100%;">📋 Copy Link</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

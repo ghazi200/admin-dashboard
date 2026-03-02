@@ -1,0 +1,291 @@
+/* Shift Alerts Component Styles */
+
+.shift-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.alerts-loading,
+.alerts-error {
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.alerts-loading {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.alerts-error {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* Alert Banner */
+.alert-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 4px solid;
+  backdrop-filter: blur(10px);
+}
+
+.alert-banner-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.alert-banner-content {
+  flex: 1;
+}
+
+.alert-banner-title {
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.alert-banner-message {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.5;
+}
+
+.alert-banner-time {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Alert Cards */
+.alert-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.alert-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.alert-icon {
+  font-size: 20px;
+}
+
+.alert-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.95);
+  flex: 1;
+}
+
+.alert-badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+}
+
+.alert-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Weather Alert */
+.weather-condition {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+}
+
+.weather-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.warning-item {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 6px 8px;
+  background: rgba(245, 158, 11, 0.15);
+  border-radius: 6px;
+}
+
+.weather-recommendation {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 6px;
+}
+
+/* Traffic Alert */
+.route-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.time-label {
+  color: rgba(255, 255, 255, 0.7);
+  min-width: 100px;
+}
+
+.time-value {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 700;
+}
+
+.delay-badge {
+  margin-left: 8px;
+  padding: 2px 6px;
+  background: rgba(245, 158, 11, 0.2);
+  border-radius: 4px;
+  font-size: 11px;
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.traffic-issues {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.issue-item {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 6px 8px;
+  background: rgba(245, 158, 11, 0.15);
+  border-radius: 6px;
+}
+
+.traffic-recommendation {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 6px;
+}
+
+/* Transit Alert */
+.transit-option {
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 8px;
+}
+
+.transit-option.best-option {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.transit-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.transit-mode-icon {
+  font-size: 18px;
+}
+
+.transit-route {
+  font-weight: 700;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.95);
+  flex: 1;
+}
+
+.best-badge {
+  padding: 2px 6px;
+  background: rgba(59, 130, 246, 0.3);
+  border-radius: 4px;
+  font-size: 11px;
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.transit-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.transit-time {
+  font-weight: 600;
+}
+
+.transit-walk {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+}
+
+.transit-transfers {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.transit-delay {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.transit-status {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+/* Comparison Alert */
+.comparison-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.best-mode {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.comparison-reason {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.comparison-recommendation {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 6px;
+}

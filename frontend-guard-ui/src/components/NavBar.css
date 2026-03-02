@@ -1,0 +1,131 @@
+/* Hamburger and dropdown - ensure they always load with NavBar */
+.nav {
+  overflow: visible;
+  flex-wrap: nowrap;
+}
+
+.nav .navLeft {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.nav .navHamburger {
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 50;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.nav .navHamburger:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.nav .navHamburgerBar {
+  display: block !important;
+  width: 20px;
+  height: 2px;
+  background: #e2e8f0;
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+.nav .navDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  min-width: 240px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 10px;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav .navDropdown .navItem {
+  display: flex;
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+/* Mobile: ensure hamburger is always visible and tappable */
+@media (max-width: 900px) {
+  .nav .navLeft {
+    flex-shrink: 0;
+    min-width: 56px;
+  }
+  .nav .navHamburger {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+  .nav .navHamburgerBar {
+    width: 22px;
+    height: 2.5px;
+  }
+  .nav .brand {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Very small screens (e.g. Android WebView narrow layout) */
+@media (max-width: 480px) {
+  .nav {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .nav .navHamburger {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* When in Capacitor (native app) or mobile viewport: force hamburger visible */
+.nav.nav--mobile .navLeft {
+  flex-shrink: 0;
+  min-width: 56px;
+}
+.nav.nav--mobile .navHamburger {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  flex-shrink: 0;
+}

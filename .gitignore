@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Build output
+build/
+dist/
+
+# Logs and debug
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+
+# IDE
+.idea
+.vscode/
+
+# Vercel
+.vercel
+
+# Optional: uncomment if you don't want to commit native app builds
+# ios/
+# android/

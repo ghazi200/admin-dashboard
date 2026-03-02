@@ -1,0 +1,8 @@
+{
+  "appId": "com.abe.admindashboard",
+  "appName": "Admin Dashboard",
+  "webDir": "build",
+  "server": {
+    "androidScheme": "https"
+  }
+}

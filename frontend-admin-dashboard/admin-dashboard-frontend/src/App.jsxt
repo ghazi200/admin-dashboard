@@ -1,0 +1,18 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Dashboard from "./Dashboard";
+import Guards from "./pages/Guards";
+import Shifts from "./pages/Shifts";
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/guards" element={<Guards />} />
+        <Route path="/shifts" element={<Shifts />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;

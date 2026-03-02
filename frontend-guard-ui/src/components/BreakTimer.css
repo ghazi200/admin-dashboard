@@ -1,0 +1,231 @@
+/* BreakTimer.css */
+.break-timer {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.break-timer.warning {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.5);
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.break-timer.critical {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+  animation: pulse-critical 1s ease-in-out infinite;
+}
+
+.break-timer.over-limit {
+  background: rgba(220, 38, 38, 0.2);
+  border-color: rgba(220, 38, 38, 0.7);
+  animation: pulse-critical 0.8s ease-in-out infinite;
+}
+
+.break-timer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  font-size: 16px;
+  color: #1e40af;
+}
+
+.break-timer.warning .break-timer-header {
+  color: #92400e;
+}
+
+.break-timer.critical .break-timer-header,
+.break-timer.over-limit .break-timer-header {
+  color: #991b1b;
+}
+
+.break-timer-icon {
+  font-size: 20px;
+}
+
+.break-timer-title {
+  font-size: 16px;
+}
+
+.break-timer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.break-timer-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.break-timer.warning .break-timer-stat {
+  border-bottom-color: rgba(251, 191, 36, 0.2);
+}
+
+.break-timer.critical .break-timer-stat,
+.break-timer.over-limit .break-timer-stat {
+  border-bottom-color: rgba(239, 68, 68, 0.2);
+}
+
+.break-timer-label {
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.break-timer-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e40af;
+  font-variant-numeric: tabular-nums;
+  font-family: "SF Mono", "Monaco", "Cascadia Code", "Roboto Mono", monospace;
+}
+
+.break-timer.warning .break-timer-value {
+  color: #92400e;
+}
+
+.break-timer.critical .break-timer-value,
+.break-timer.over-limit .break-timer-value {
+  color: #991b1b;
+}
+
+.break-timer-value.over-limit {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+.break-timer-progress {
+  width: 100%;
+  height: 8px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 4px 0;
+}
+
+.break-timer.warning .break-timer-progress {
+  background: rgba(251, 191, 36, 0.2);
+}
+
+.break-timer.critical .break-timer-progress,
+.break-timer.over-limit .break-timer-progress {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.break-timer-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.break-timer.warning .break-timer-progress-bar {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+.break-timer.critical .break-timer-progress-bar,
+.break-timer.over-limit .break-timer-progress-bar {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.break-timer-alert {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.break-timer-alert.warning {
+  background: rgba(251, 191, 36, 0.2);
+  color: #92400e;
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.break-timer-alert.critical {
+  background: rgba(239, 68, 68, 0.2);
+  color: #991b1b;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  font-weight: 600;
+}
+
+.break-timer-alert.over-limit {
+  background: rgba(220, 38, 38, 0.25);
+  color: #7f1d1d;
+  border: 1px solid rgba(220, 38, 38, 0.5);
+  font-weight: 700;
+}
+
+.break-timer-info {
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.break-timer.warning .break-timer-info {
+  color: #a16207;
+}
+
+.break-timer.critical .break-timer-info,
+.break-timer.over-limit .break-timer-info {
+  color: #991b1b;
+}
+
+/* Animations */
+@keyframes pulse-warning {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(251, 191, 36, 0);
+  }
+}
+
+@keyframes pulse-critical {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .break-timer {
+    padding: 12px;
+    margin: 8px 0;
+  }
+
+  .break-timer-header {
+    font-size: 14px;
+  }
+
+  .break-timer-value {
+    font-size: 16px;
+  }
+
+  .break-timer-label {
+    font-size: 12px;
+  }
+
+  .break-timer-alert {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+}

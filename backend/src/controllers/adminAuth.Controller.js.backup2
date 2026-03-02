@@ -1,0 +1,166 @@
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+
+/**
+ * POST /api/admin/register
+ * Body: { name, email, password, role? }
+ */
+exports.register = async (req, res) => {
+  try {
+    const { Admin } = req.app.locals.models;
+
+    const name = (req.body.name || "Admin").trim();
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+
+    // Optional: allow creating supervisors from register (you can lock this down later)
+    const role = req.body.role && ["admin", "supervisor"].includes(req.body.role)
+      ? req.body.role
+      : "admin";
+
+    // Baseline permissions for supervisors (admin bypasses permissions anyway)
+    const permissions =
+      role === "supervisor"
+        ? ["dashboard:read", "guards:read", "shifts:read"]
+        : [];
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ message: "Valid email is required" });
+    }
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    const existing = await Admin.findOne({ where: { email } });
+    if (existing) {
+      return res.status(409).json({ message: "Email already registered" });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+
+    const admin = await Admin.create({
+      name,
+      email,
+      password: hash,
+      role,
+      permissions,
+    });
+    console.log("JWT_SECRET seen by auth controller:", process.env.JWT_SECRET);
+
+    const token = jwt.sign(
+      { adminId: admin.id, role: admin.role, permissions: admin.permissions || [] },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      token,
+      admin: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions || [],
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({ message: "Register failed", error: e.message });
+  }
+};
+
+/**
+ * POST /api/admin/login
+ * Body: { email, password }
+ */
+exports.login = async (req, res) => {
+  try {
+    const { Admin } = req.app.locals.models;
+
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const admin = await Admin.findOne({ where: { email } });
+    if (!admin) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    const ok = await bcrypt.compare(password, admin.password);
+    if (!ok) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+  const secretHash = crypto
+  .createHash("sha256")
+  .update(process.env.JWT_SECRET || "")
+  .digest("hex");
+
+console.log("login JWT_SECRET sha256:", secretHash);
+
+    // Get tenant_id - ensure we have the latest data
+    // Reload admin to ensure we have tenant_id (in case of stale model instance)
+    const adminWithTenant = await Admin.findByPk(admin.id);
+    const tenantId = adminWithTenant?.tenant_id || admin.tenant_id || null;
+    
+    console.log("🔍 Login - Admin object tenant_id:", admin.tenant_id);
+    console.log("🔍 Login - Admin reloaded tenant_id:", adminWithTenant?.tenant_id);
+    console.log("🔍 Login - Final tenant_id:", tenantId);
+
+    // ✅ Multi-tenant: Include tenant_id in JWT token
+    const tokenPayload = { 
+      adminId: admin.id, 
+      role: admin.role, 
+      permissions: admin.permissions || [],
+    };
+    
+    if (tenantId) {
+      tokenPayload.tenant_id = tenantId;
+    }
+    
+    const token = jwt.sign(
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      token,
+      admin: {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions || [],
+      },
+    });
+  } catch (e) {
+    return res.status(500).json({ message: "Login failed", error: e.message });
+  }
+};
+
+/**
+ * GET /api/admin/me
+ */
+exports.me = async (req, res) => {
+  try {
+    const { Admin } = req.app.locals.models;
+
+    if (!req.admin?.id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const admin = await Admin.findByPk(req.admin.id, {
+      attributes: ["id", "name", "email", "role", "permissions"],
+    });
+
+    if (!admin) {
+      return res.status(401).json({ message: "Admin not found" });
+    }
+
+    return res.json(admin);
+  } catch (e) {
+    return res.status(500).json({ message: "Failed to fetch admin", error: e.message });
+  }
+};

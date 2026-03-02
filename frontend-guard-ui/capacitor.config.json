@@ -1,0 +1,8 @@
+{
+  "appId": "com.abe.guardui",
+  "appName": "Guard UI",
+  "webDir": "build",
+  "server": {
+    "androidScheme": "http"
+  }
+}

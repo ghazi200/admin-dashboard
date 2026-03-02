@@ -1,0 +1,51 @@
+========================================
+PUSH THIS PROJECT TO GITHUB
+========================================
+Open this file in TextEdit or any editor (no need to open Cursor).
+Copy each block into Terminal and run. Replace YOUR_USERNAME with your GitHub username.
+
+----------------------------------------
+STEP 1: Go to project folder
+----------------------------------------
+
+cd /Users/ghaziabdullah/admin-dashboard
+
+----------------------------------------
+STEP 2: Add all files and create first commit (if needed)
+----------------------------------------
+
+git add .
+git status
+git commit -m "Initial commit: admin dashboard, guard backend, frontends"
+
+(If it says "nothing to commit", you already have a commit — skip to Step 3.)
+
+----------------------------------------
+STEP 3: Set main branch and add GitHub remote
+----------------------------------------
+
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/admin-dashboard.git
+
+(If it says "remote origin already exists", run instead:
+ git remote set-url origin https://github.com/YOUR_USERNAME/admin-dashboard.git
+)
+
+----------------------------------------
+STEP 4: Push to GitHub
+----------------------------------------
+
+git push -u origin main
+
+(Use your GitHub username and a Personal Access Token as password when asked.
+ Create token at: GitHub.com → Settings → Developer settings → Personal access tokens)
+
+========================================
+BEFORE YOU RUN THESE:
+1. Restart your Mac (to fix "fork" error).
+2. Create a new repo on GitHub: https://github.com/new
+   Name it: admin-dashboard (or any name — use that name in the URL above).
+   Leave it empty (no README).
+3. Open Terminal (Cmd+Space → type Terminal).
+4. Do NOT open Cursor until after the push works.
+========================================

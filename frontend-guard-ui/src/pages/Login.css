@@ -1,0 +1,412 @@
+@import "../styles/auth.css";
+
+/* paste your Admin Login.css mapping styles here */
+/* src/pages/Login.css */
+/* Guard Login: maps component classNames to shared auth theme */
+
+/* AI AGENT 24 Animated Header – darker for better visibility */
+.aiAgentHeader {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px 0;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 20px;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.aiAgentText {
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 900;
+  margin: 0;
+  letter-spacing: 0.1em;
+  color: #dc2626;
+  -webkit-text-fill-color: #dc2626;
+  animation: aiAgentPulse 2s ease-in-out infinite;
+  text-shadow:
+    -2px -2px 0 #000,
+    2px -2px 0 #000,
+    -2px 2px 0 #000,
+    2px 2px 0 #000,
+    0 0 0 3px #000,
+    0 2px 4px rgba(0, 0, 0, 0.9),
+    0 4px 8px rgba(0, 0, 0, 0.7);
+  position: relative;
+  filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.5));
+  -webkit-text-stroke: 2px #000;
+  paint-order: stroke fill;
+}
+
+.aiAgentLetter {
+  display: inline-block;
+  animation: aiAgentBounce 1.5s ease-in-out infinite;
+  color: #dc2626;
+  -webkit-text-fill-color: #dc2626;
+  text-shadow:
+    -2px -2px 0 #000,
+    2px -2px 0 #000,
+    -2px 2px 0 #000,
+    2px 2px 0 #000,
+    0 0 0 2px #000,
+    0 2px 4px rgba(0, 0, 0, 1),
+    0 4px 8px rgba(0, 0, 0, 0.8);
+  filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.4));
+  -webkit-text-stroke: 2px #000;
+}
+
+.aiAgentSpace {
+  display: inline-block;
+  width: 0.3em;
+}
+
+@keyframes aiAgentGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes aiAgentPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes aiAgentBounce {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(-2deg);
+  }
+  75% {
+    transform: translateY(-5px) rotate(2deg);
+  }
+}
+
+/* Page background */
+.loginPage {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 48px 18px;
+  color: var(--text);
+  background:
+    radial-gradient(900px 420px at 18% 40%, rgba(124, 58, 237, 0.14), transparent 55%),
+    radial-gradient(900px 520px at 72% 22%, rgba(59, 130, 246, 0.12), transparent 58%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-2));
+}
+
+/* Your component includes loginBg; we don’t need it visually */
+.loginBg {
+  display: none;
+}
+
+.loginShell {
+  width: min(1040px, 100%);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1fr;
+}
+
+/* Card */
+.loginCard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow);
+  padding: 22px;
+  backdrop-filter: blur(10px);
+}
+
+.loginHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Brand mark + animated logo sheen */
+.brandMark {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+  box-shadow: 0 10px 26px rgba(124, 58, 237, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+
+.brandMark span {
+  position: absolute;
+  inset: -80%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: rotate(25deg);
+  animation: authSheen 2.6s linear infinite;
+}
+
+.loginTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.loginSubtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+/* Role badge */
+.roleBadge {
+  margin: 10px 0 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.roleBadge.admin::before,
+.roleBadge.supervisor::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+}
+
+/* Error alert */
+.loginAlert {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 180, 180, 0.35);
+  color: #ffb4b4;
+}
+
+.loginAlertDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #ff6b6b;
+  margin-top: 4px;
+}
+
+.loginAlertText strong {
+  display: block;
+  font-size: 12px;
+  color: #ffd1d1;
+}
+
+.loginAlertText span {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 200, 200, 0.9);
+}
+
+/* Form */
+.loginForm {
+  margin-top: 14px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.fieldControl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--input);
+  border: 1px solid var(--input-border);
+}
+
+.fieldControl:focus-within {
+  border-color: rgba(124, 58, 237, 0.55);
+  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12);
+}
+
+.fieldIcon {
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 800;
+}
+
+.fieldInput {
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  width: 100%;
+}
+
+/* Make textarea match inputs */
+textarea.fieldInput {
+  line-height: 1.35;
+  padding: 0;
+}
+
+/* Password toggle */
+.pwToggle {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Button */
+.loginBtn {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  cursor: pointer;
+  color: white;
+  font-weight: 800;
+  background: linear-gradient(90deg, var(--brand-1), var(--brand-2));
+  box-shadow: 0 12px 30px rgba(124, 58, 237, 0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.loginBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  animation: authSpin 0.9s linear infinite;
+}
+
+/* Footer */
+.loginFooter {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.loginFooter .dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Meta strip */
+.loginMeta {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.linkBtn {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 800;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+.linkBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.linkBtn:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* URL action row: ensure buttons are tappable and not covered */
+.loginUrlActions {
+  position: relative;
+  z-index: 1;
+}
+.loginUrlActions .linkBtn {
+  flex-shrink: 0;
+}
+.loginEmulatorBtn {
+  background: rgba(124, 58, 237, 0.25);
+  border: 1px solid rgba(124, 58, 237, 0.4);
+}
+.loginEmulatorBtn:hover {
+  background: rgba(124, 58, 237, 0.35);
+}
+.loginEmulatorBtn:active {
+  background: rgba(124, 58, 237, 0.45);
+}
+
+/* Helpful: avoid global CSS fighting inputs/buttons on login only */
+.loginPage input,
+.loginPage button,
+.loginPage textarea {
+  font-family: inherit;
+}
+
+/* Ensure inputs are always focusable and editable (auth-no-select must not block them) */
+.loginPage input,
+.loginPage textarea {
+  user-select: text;
+  pointer-events: auto;
+}
+.loginPage.auth-no-select {
+  user-select: none;
+}
+.loginPage.auth-no-select input,
+.loginPage.auth-no-select textarea {
+  user-select: text;
+  pointer-events: auto;
+}
