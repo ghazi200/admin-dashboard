@@ -10,7 +10,12 @@ const fs = require('fs');
 const { Sequelize } = require('sequelize');
 const { Pool } = require('pg');
 
-const CORRECT_DB_NAMES = ['abe_guard', 'abe-guard'];
+const CORRECT_DB_NAMES = ['abe_guard', 'abe-guard', 'railway'];
+function isCorrectDb(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return CORRECT_DB_NAMES.includes(name) || lower === 'railway';
+}
 const WRONG_DB_NAMES = ['ghaziabdullah'];
 
 /**
@@ -43,7 +48,7 @@ async function verifyDatabase(sequelize) {
     const [result] = await sequelize.query('SELECT current_database() as db_name');
     const dbName = result[0].db_name;
     
-    if (CORRECT_DB_NAMES.includes(dbName)) {
+    if (isCorrectDb(dbName)) {
       return { valid: true, dbName };
     } else if (WRONG_DB_NAMES.includes(dbName)) {
       return { valid: false, dbName, error: `Connected to wrong database: ${dbName} (should be abe_guard)` };
@@ -98,7 +103,7 @@ async function createPoolConnection() {
   const result = await pool.query('SELECT current_database() as db_name');
   const dbName = result.rows[0].db_name;
   
-  if (CORRECT_DB_NAMES.includes(dbName)) {
+  if (isCorrectDb(dbName)) {
     return pool;
   } else if (WRONG_DB_NAMES.includes(dbName)) {
     await pool.end();

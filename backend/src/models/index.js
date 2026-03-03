@@ -43,18 +43,23 @@ const sequelize = isTest
         }
       );
 
-// ✅ Require correct database (abe_guard) — exit if wrong
-const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard"];
+// ✅ Require correct database (abe_guard or Railway default) — exit if wrong
+const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard", "railway"];
+function isAllowedDb(name) {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return REQUIRED_DB_NAMES.includes(name) || lower === "railway";
+}
 if (!isTest && sequelize.getDialect() === "postgres") {
   (async () => {
     try {
       await sequelize.authenticate();
       const [dbInfo] = await sequelize.query("SELECT current_database() as db_name");
       const dbName = dbInfo[0]?.db_name;
-      if (!dbName || !REQUIRED_DB_NAMES.includes(dbName)) {
-        console.error("❌ ERROR: Wrong database. Must use abe_guard.");
+      if (!dbName || !isAllowedDb(dbName)) {
+        console.error("❌ ERROR: Wrong database. Must use abe_guard (or railway on Railway).");
         console.error(`   Current: ${dbName || "(unknown)"}`);
-        console.error("   Set DATABASE_URL in backend/.env to postgresql://.../abe_guard");
+        console.error("   Set DATABASE_URL in backend/.env to postgresql://.../abe_guard or .../railway");
         process.exit(1);
       }
       if (process.env.DEBUG_STARTUP) console.log(`✅ Verified: Connected to correct database (${dbName})`);

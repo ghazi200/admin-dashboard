@@ -31,6 +31,17 @@ if (process.env.NODE_ENV === "production") {
     logger.error("JWT_SECRET is required in production and must be at least 16 characters");
     process.exit(1);
   }
+  if (!process.env.DATABASE_URL || !process.env.DATABASE_URL.includes("://")) {
+    logger.error("DATABASE_URL is required in production. In Railway: add variable DATABASE_URL = ${{ Postgres.DATABASE_URL }} (or paste the URL from your PostgreSQL service).");
+    process.exit(1);
+  }
+  try {
+    const u = process.env.DATABASE_URL;
+    const host = u && (u.split("@")[1] || "").split("/")[0];
+    logger.info({ hasDatabaseUrl: true, host: host || "(redacted)" }, "Production DATABASE_URL is set");
+  } catch (_) {
+    logger.info("Production DATABASE_URL is set");
+  }
 }
 
 const express = require("express");
@@ -44,7 +55,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Correct database for all features (admin, guards, messaging)
-const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard"];
+const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard", "railway"];
+function isAllowedDb(name) {
+  if (!name) return false;
+  return REQUIRED_DB_NAMES.includes(name) || name.toLowerCase() === "railway";
+}
 
 // Log which DB config points to (from DATABASE_URL or DB_NAME) — only if DEBUG_STARTUP
 if (process.env.DEBUG_STARTUP) {
@@ -465,8 +480,8 @@ function withTimeout(promise, ms, label) {
         logger.error("Could not read current database name");
         process.exit(1);
       }
-      if (!REQUIRED_DB_NAMES.includes(dbName)) {
-        logger.error({ dbName }, "Wrong database. Backend (and messaging) must use abe_guard. Set DATABASE_URL in backend/.env to postgresql://.../abe_guard and restart");
+      if (!isAllowedDb(dbName)) {
+        logger.error({ dbName }, "Wrong database. Backend must use abe_guard or railway. Set DATABASE_URL to postgresql://.../abe_guard or .../railway and restart");
         process.exit(1);
       }
       logger.info({ dbName }, "Database ready (messaging and all APIs use this)");
@@ -529,9 +544,13 @@ function withTimeout(promise, ms, label) {
       })();
     });
   } catch (e) {
-    logger.error({ err: e?.message || e }, "Startup failed");
-    if (e?.message?.includes("timed out")) {
-      logger.error("Database may be unreachable or slow. Check PostgreSQL and backend/.env (DATABASE_URL)");
+    const msg = e?.message || String(e);
+    logger.error({ err: msg, stack: e?.stack }, "Startup failed");
+    if (msg.includes("timed out")) {
+      logger.error("Database may be unreachable or slow. Check PostgreSQL and DATABASE_URL.");
+    }
+    if (msg.includes("ECONNREFUSED") || msg.includes("connect")) {
+      logger.error("Cannot connect to database. Check DATABASE_URL in Railway Variables (use the URL from your Postgres service).");
     }
     process.exit(1);
   }
