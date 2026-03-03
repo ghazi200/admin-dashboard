@@ -8,7 +8,7 @@
  * - Context-aware insights
  */
 
-const { createChatClient, isChatAvailable, getChatModel } = require("../../../../abe-guard-ai/backend/src/utils/aiClient");
+const { createChatClient, isChatAvailable, getChatModel } = require("../utils/aiClient");
 
 // Initialize AI client (DeepSeek preferred, OpenAI fallback)
 const aiConfig = isChatAvailable() ? createChatClient() : null;
