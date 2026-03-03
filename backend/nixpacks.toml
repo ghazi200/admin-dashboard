@@ -1,0 +1,12 @@
+# Railway uses Nixpacks; ensure we're in backend/ and use Node 18+
+[phases.setup]
+nixPkgs = ["nodejs_18"]
+
+[phases.install]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "npm start"

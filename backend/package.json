@@ -2,7 +2,7 @@
   "name": "admin-dashboard-backend",
   "version": "1.0.0",
   "description": "Admin dashboard backend for ABE Guard AI",
-  "main": " server.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",

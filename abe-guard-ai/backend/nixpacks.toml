@@ -1,0 +1,12 @@
+# Railway uses Nixpacks for guard backend
+[phases.setup]
+nixPkgs = ["nodejs_18"]
+
+[phases.install]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "npm start"

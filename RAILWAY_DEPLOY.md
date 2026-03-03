@@ -34,16 +34,16 @@ Deploy the **Admin backend** and **Guard backend** as two Railway services. Rail
 3. Set **Root Directory** (or **Source**):  
    **`backend`**  
    (so Railway runs from the `backend/` folder).
-4. **Variables** – add (or use “Raw Editor” and paste; replace placeholders):
+4. **Variables** – add these (use Railway’s reference for `DATABASE_URL` so both backends use the same Postgres):
 
    | Variable | Value | Required |
    |----------|--------|----------|
    | `NODE_ENV` | `production` | Yes |
-   | `DATABASE_URL` | (paste from PostgreSQL service; see step 2) | Yes |
+   | `DATABASE_URL` | `${{ Postgres.DATABASE_URL }}` | Yes |
    | `JWT_SECRET` | At least 16 random characters (same as Guard) | Yes |
    | `CORS_ORIGINS` | `https://admin-dashboard-frontend-flax.vercel.app,https://admin-dashboard-frontend-techworldstarzllcs-projects.vercel.app,https://frontend-guard-ui.vercel.app` | Yes |
 
-   **Optional:** Reference the PostgreSQL `DATABASE_URL` from the DB service (Railway can link services so the variable is shared).
+   Use **exactly** `${{ Postgres.DATABASE_URL }}` for `DATABASE_URL` (replace `Postgres` with your PostgreSQL service name if different).
 
 5. Railway sets `PORT` automatically; the app uses `process.env.PORT || 5000`.
 6. **Deploy:** Railway will build and deploy. Under **Settings** → **Networking** (or **Deployments**), click **Generate Domain** to get a public URL, e.g. `https://admin-dashboard-backend-production-xxxx.up.railway.app`. **Copy this URL** — this is your **Admin backend URL** for Vercel.
@@ -57,12 +57,12 @@ Deploy the **Admin backend** and **Guard backend** as two Railway services. Rail
 3. Set **Root Directory**:  
    **`abe-guard-ai/backend`**  
    (so Railway runs from the guard backend folder).
-4. **Variables** – add:
+4. **Variables** – add (same `DATABASE_URL` reference as Admin):
 
    | Variable | Value | Required |
    |----------|--------|----------|
    | `NODE_ENV` | `production` | Yes |
-   | `DATABASE_URL` | Same as Admin (same PostgreSQL URL) | Yes |
+   | `DATABASE_URL` | `${{ Postgres.DATABASE_URL }}` | Yes |
    | `JWT_SECRET` | **Same value as Admin backend** | Yes |
    | `CORS_ORIGINS` | `https://admin-dashboard-frontend-flax.vercel.app,https://admin-dashboard-frontend-techworldstarzllcs-projects.vercel.app,https://frontend-guard-ui.vercel.app` | Yes |
 

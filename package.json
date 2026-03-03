@@ -1,15 +1,12 @@
 {
-  "dependencies": {
-    "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.3",
-    "express-validator": "^7.3.1",
-    "jsonwebtoken": "^9.0.3",
-    "sequelize": "^6.37.7",
-    "sequelize-cli": "^6.6.3",
-    "socket.io-client": "^4.8.3"
+  "name": "admin-dashboard-monorepo",
+  "private": true,
+  "description": "Root for Railway; Admin backend runs from backend/",
+  "scripts": {
+    "start": "cd backend && node server.js",
+    "install": "cd backend && npm install"
   },
-  "devDependencies": {
-    "jest": "^30.2.0",
-    "supertest": "^7.1.4"
+  "engines": {
+    "node": ">=18"
   }
 }
