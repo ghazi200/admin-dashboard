@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
       },
 
       guardId: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.UUID,
         allowNull: false,
       },
 
