@@ -76,7 +76,7 @@ const Admin = require("./Admin")(sequelize, DataTypes);
 const Guard = require("./Guard")(sequelize, DataTypes);
 const Shift = require("./Shift")(sequelize, DataTypes);
 const CallOut = require("./CallOut")(sequelize, DataTypes);
-const ContactPreference = require("./ContactPreference")(sequelize, DataTypes);
+// ContactPreference: not loaded here. Table created by raw SQL in server.js (no FK). Test model in src/test/fixtures/ContactPreference.model.js
 const AvailabilityLog = require("./AvailabilityLog")(sequelize, DataTypes);
 
 // ✅ Notifications
@@ -126,8 +126,6 @@ const Staff = require("./Staff")(sequelize, DataTypes);
 Guard.hasMany(Shift, { foreignKey: "guard_id", as: "shifts" });
 Guard.hasMany(CallOut, { foreignKey: "guard_id" });
 CallOut.belongsTo(Guard, { foreignKey: "guard_id" });
-Guard.hasMany(ContactPreference, { foreignKey: "guardId" });
-
 // ✅ AvailabilityLog association
 Guard.hasMany(AvailabilityLog, { foreignKey: "guardId" });
 AvailabilityLog.belongsTo(Guard, { foreignKey: "guardId" });
@@ -207,7 +205,6 @@ module.exports = {
   Guard,
   Shift,
   CallOut,
-  ContactPreference,
   AvailabilityLog,
 
   // ✅ export these

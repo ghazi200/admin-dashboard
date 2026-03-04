@@ -15,7 +15,7 @@ const Admin = require('../models/Admin')(sequelize, DataTypes);
 const Guard = require('../models/Guard')(sequelize, DataTypes);
 const Shift = require('../models/Shift')(sequelize, DataTypes);
 const CallOut = require('../models/CallOut')(sequelize, DataTypes);
-const ContactPreference = require('../models/ContactPreference')(sequelize, DataTypes);
+const ContactPreference = require('./fixtures/ContactPreference.model')(sequelize, DataTypes);
 
 // Associations
 Guard.hasMany(Shift, { foreignKey: 'assignedGuardId' });

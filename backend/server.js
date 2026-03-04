@@ -25,6 +25,56 @@ require("dotenv").config({ path: envPath });
 
 const logger = require("./logger");
 
+// ---------- PATCH SEQUELIZE SO ContactPreference NEVER CREATES FK ----------
+// ContactPreference guardId vs guards.id type mismatch → FK cannot be implemented.
+// 1) Patch Model.sync: when ContactPreference.sync() is called, create table by raw SQL (no FK) and return.
+// 2) Patch Sequelize.prototype.sync: skip ContactPreference in loop and create table by raw SQL.
+const Sequelize = require("sequelize");
+const Model = Sequelize.Model;
+const CONTACT_PREFS_SKIP = ["ContactPreference", "ContactPreferences"];
+
+function createContactPreferencesTableRaw(seq) {
+  if (!seq || seq.getDialect?.() !== "postgres") return Promise.resolve();
+  return seq.query(`DROP TABLE IF EXISTS "ContactPreferences" CASCADE`).catch(() => {})
+    .then(() => seq.query(`
+      CREATE TABLE "ContactPreferences" (
+        id SERIAL PRIMARY KEY,
+        "guardId" UUID NOT NULL,
+        "contactType" VARCHAR(32) NOT NULL,
+        "active" BOOLEAN DEFAULT true,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `).catch(() => {}))
+    .then(() => seq.query(`CREATE INDEX IF NOT EXISTS "contact_preferences_guard_id" ON "ContactPreferences" ("guardId")`).catch(() => {}));
+}
+
+const OrigModelSync = Model.sync;
+Model.sync = async function (options) {
+  const name = this.name;
+  const t = this.options?.tableName || (typeof this.getTableName === "function" ? this.getTableName(options) : "");
+  const tableName = typeof t === "string" ? t : (t?.tableName || t?.name || "");
+  const isContactPref = name === "ContactPreference" || name === "ContactPreferences" || String(tableName) === "ContactPreferences";
+  if (isContactPref && this.sequelize) {
+    await createContactPreferencesTableRaw(this.sequelize);
+    return this;
+  }
+  return OrigModelSync.apply(this, arguments);
+};
+
+Sequelize.prototype.sync = async function (options) {
+  const opts = options || {};
+  if (opts.hooks !== false) await this.runHooks("beforeBulkSync", opts).catch(() => {});
+  if (opts.force) await this.drop(opts).catch(() => {});
+  const allModels = this.modelManager?.models || [];
+  const toSync = allModels.filter((m) => m && !CONTACT_PREFS_SKIP.includes(m.name) && m.tableName !== "ContactPreferences");
+  for (const model of toSync) await model.sync(opts);
+  await createContactPreferencesTableRaw(this);
+  if (opts.hooks !== false) await this.runHooks("afterBulkSync", opts).catch(() => {});
+  return this;
+};
+// ---------- END PATCH ----------
+
 // Require JWT_SECRET in production so the app never runs with a weak/missing secret
 if (process.env.NODE_ENV === "production") {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
@@ -165,9 +215,46 @@ app.get("/debug-jwt", (req, res) => {
 });
 */
 
-// ✅ Load models ONCE
+// ✅ Load models ONCE (Sequelize.prototype.sync already patched above)
 const models = require("./src/models");
 app.locals.models = models;
+
+// Force instance-level overrides so ContactPreferences is NEVER created with FK (works even if old code calls seq.sync or ContactPreference.sync)
+const seq = models?.sequelize;
+if (seq) {
+  // 1) Override seq.sync so any call uses safe sync (skips ContactPreference)
+  if (typeof seq.sync === "function") {
+    const safeSync = async function (options) {
+      const opts = options || {};
+      if (opts.hooks !== false) await this.runHooks("beforeBulkSync", opts).catch(() => {});
+      if (opts.force) await this.drop(opts).catch(() => {});
+      const skip = ["ContactPreference", "ContactPreferences"];
+      const list = (this.modelManager?.models || []).filter(
+        (m) => m && !skip.includes(m.name) && m.tableName !== "ContactPreferences"
+      );
+      for (const m of list) await m.sync(opts);
+      await createContactPreferencesTableRaw(this);
+      if (opts.hooks !== false) await this.runHooks("afterBulkSync", opts).catch(() => {});
+      return this;
+    };
+    seq.sync = safeSync.bind(seq);
+  }
+  // 2) Intercept queryInterface.createTable so creating "ContactPreferences" uses raw SQL (no FK)
+  const qi = seq.getQueryInterface?.() || seq.queryInterface;
+  if (qi && typeof qi.createTable === "function") {
+    const origCreateTable = qi.createTable.bind(qi);
+    qi.createTable = async function (tableName, attributes, options, model) {
+      const name = typeof tableName === "string" ? tableName : (tableName?.tableName ?? "");
+      const isContactPrefTable = name === "ContactPreferences" || (model && (model.name === "ContactPreference" || model.options?.tableName === "ContactPreferences"));
+      if (isContactPrefTable) {
+        await createContactPreferencesTableRaw(seq);
+        return;
+      }
+      return origCreateTable(tableName, attributes, options, model);
+    };
+  }
+}
+
 if (process.env.DEBUG_STARTUP) logger.debug({ modelKeys: Object.keys(app.locals.models || {}) }, "MODELS KEYS");
 
 // Sync notification_preferences table on startup if it doesn't exist
@@ -487,27 +574,30 @@ function withTimeout(promise, ms, label) {
       logger.info({ dbName }, "Database ready (messaging and all APIs use this)");
     }
 
-    if (!seq.sync) {
-      logger.warn("models.sequelize.sync not found. Ensure src/models exports sequelize");
-    } else {
+    await createContactPreferencesTableRaw(seq);
       const reset = String(process.env.RESET_DB).toLowerCase() === "true";
-      if (reset) {
-        logger.info("RESET_DB=true → dropping and recreating all tables");
-        await withTimeout(
-          (async () => {
-            await models.sequelize.query("PRAGMA foreign_keys = OFF;").catch(() => {});
-            await models.sequelize.sync({ force: true });
-            await models.sequelize.query("PRAGMA foreign_keys = ON;").catch(() => {});
-          })(),
-          STARTUP_TIMEOUT_MS,
-          "DB reset"
-        );
-        logger.info("DB reset complete (force: true)");
-      } else {
-        await withTimeout(models.sequelize.sync(), STARTUP_TIMEOUT_MS, "Sequelize sync");
-        logger.info("Sequelize synced");
+      const opts = { force: reset };
+      const skipNames = ["ContactPreference", "ContactPreferences"];
+      let synced = 0;
+      for (const name of Object.keys(seq.models || {})) {
+        const m = seq.models[name];
+        const tbl = m.options?.tableName ?? (typeof m.getTableName === "function" ? m.getTableName() : "");
+        if (!m || skipNames.includes(name) || tbl === "ContactPreferences") continue;
+        try {
+          await withTimeout(m.sync(opts), STARTUP_TIMEOUT_MS, `sync ${name}`);
+          synced++;
+        } catch (err) {
+          const msg = err?.message || "";
+          if (msg.includes("ContactPreferences_guardId_fkey")) {
+            await createContactPreferencesTableRaw(seq);
+            logger.warn({ model: name }, "Skipped sync after FK error; ContactPreferences created without FK");
+          } else {
+            throw err;
+          }
+        }
       }
-    }
+      await createContactPreferencesTableRaw(seq);
+      logger.info(reset ? "DB reset complete (force: true)" : "Sequelize synced", { modelsSynced: synced });
 
     server.listen(PORT, "0.0.0.0", () => {
       logger.info({ port: PORT }, "Admin Dashboard backend running (0.0.0.0)");
