@@ -577,12 +577,21 @@ function withTimeout(promise, ms, label) {
     await createContactPreferencesTableRaw(seq);
       const reset = String(process.env.RESET_DB).toLowerCase() === "true";
       const opts = { force: reset };
-      const skipNames = ["ContactPreference", "ContactPreferences"];
+      // Ensure tenants table exists first (other models may reference it)
+      const Tenant = models?.Tenant;
+      if (Tenant) {
+        try {
+          await withTimeout(Tenant.sync(opts), STARTUP_TIMEOUT_MS, "sync Tenant");
+        } catch (err) {
+          logger.warn({ err: err?.message }, "Tenant.sync failed (continuing)");
+        }
+      }
+      const skipNames = ["ContactPreference", "ContactPreferences", "Tenant"];
       let synced = 0;
       for (const name of Object.keys(seq.models || {})) {
         const m = seq.models[name];
         const tbl = m.options?.tableName ?? (typeof m.getTableName === "function" ? m.getTableName() : "");
-        if (!m || skipNames.includes(name) || tbl === "ContactPreferences") continue;
+        if (!m || skipNames.includes(name) || tbl === "ContactPreferences" || tbl === "tenants") continue;
         try {
           await withTimeout(m.sync(opts), STARTUP_TIMEOUT_MS, `sync ${name}`);
           synced++;
