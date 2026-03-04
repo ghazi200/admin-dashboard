@@ -196,6 +196,10 @@ app.use((req, res, next) => {
 // ✅ Static file serving for uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Root and health first so backend URL always responds (no "Cannot GET /")
+app.get("/", (req, res) => res.json({ service: "admin-dashboard-backend", status: "OK", health: "/health", ready: "/health/ready" }));
+app.get("/health", (req, res) => res.json({ status: "OK" }));
+
 /* 🔎 debug route (optional)
 app.get("/debug-jwt", (req, res) => {
   const hdr = req.headers.authorization || "";
@@ -415,9 +419,6 @@ app.use("/api", (req, res, next) => {
   (req.log || logger).warn({ method: req.method, url: req.originalUrl }, "Unmatched API path [404]");
   res.status(404).json({ error: "Not Found", path: req.originalUrl });
 });
-
-// Liveness: process is up (no DB check)
-app.get("/health", (req, res) => res.json({ status: "OK" }));
 
 // Readiness: DB connected — use for load balancer / k8s readiness probe
 const READINESS_TIMEOUT_MS = 5000;
