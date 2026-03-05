@@ -104,6 +104,10 @@ const rateLimit = require("express-rate-limit");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Root and health registered first so GET / never 404s (Railway/load balancer)
+app.get("/", (req, res) => res.json({ service: "admin-dashboard-backend", status: "OK", health: "/health", ready: "/health/ready" }));
+app.get("/health", (req, res) => res.json({ status: "OK" }));
+
 // Correct database for all features (admin, guards, messaging)
 const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard", "railway"];
 function isAllowedDb(name) {
@@ -195,10 +199,6 @@ app.use((req, res, next) => {
 
 // ✅ Static file serving for uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Root and health first so backend URL always responds (no "Cannot GET /")
-app.get("/", (req, res) => res.json({ service: "admin-dashboard-backend", status: "OK", health: "/health", ready: "/health/ready" }));
-app.get("/health", (req, res) => res.json({ status: "OK" }));
 
 /* 🔎 debug route (optional)
 app.get("/debug-jwt", (req, res) => {
@@ -412,6 +412,9 @@ app.use("/api/messages/upload", messageUploadRoutes);
 
 const adminShiftSwapRoutes = require("./src/routes/adminShiftSwap.routes");
 app.use("/api/admin/shift-swaps", adminShiftSwapRoutes);
+
+// Backend check: proves this URL is the Node API (not frontend)
+app.get("/api/backend-ping", (req, res) => res.json({ ok: true, service: "admin-dashboard-backend" }));
 
 // 404 for any /api request that didn't match (helps debug proxy vs backend 404)
 app.use("/api", (req, res, next) => {
