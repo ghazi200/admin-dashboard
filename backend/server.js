@@ -153,6 +153,11 @@ app.use(
         return callback(null, true);
       }
       if (corsOrigins.includes(origin)) return callback(null, true);
+      // Allow any Vercel deployment (*.vercel.app)
+      try {
+        const u = new URL(origin);
+        if (u.hostname.endsWith(".vercel.app")) return callback(null, true);
+      } catch (_) {}
       if (origin.startsWith("http://10.0.2.2") || origin.startsWith("http://localhost") || origin.startsWith("capacitor://") || origin.startsWith("file://")) {
         return callback(null, true);
       }
