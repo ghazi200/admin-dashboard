@@ -301,7 +301,19 @@ if (process.env.DEBUG_STARTUP) logger.debug({ modelKeys: Object.keys(app.locals.
 const devSeedRoutes = require("./src/routes/devSeed.routes");
 app.use("/api/dev", devSeedRoutes);
 
-// Admin auth first so /api/admin/login and /api/admin/register are always matched
+// Explicit POST /api/admin/login and /api/admin/register (tried first so they always match)
+const adminAuthController = require("./src/controllers/adminAuth.Controller");
+const { loginValidators, handleLoginValidation } = require("./src/middleware/validateLogin");
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || "10", 10),
+  message: { message: "Too many login attempts; try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.post("/api/admin/login", loginRateLimit, loginValidators, handleLoginValidation, adminAuthController.login);
+app.post("/api/admin/register", adminAuthController.register);
+
 const adminAuthRoutes = require("./src/routes/adminAuth.routes");
 app.use("/api/admin", adminAuthRoutes);
 
