@@ -438,19 +438,32 @@ app.use("/api/admin/shift-swaps", adminShiftSwapRoutes);
 // Backend check: proves this URL is the Node API (not frontend)
 app.get("/api/backend-ping", (req, res) => res.json({ ok: true, service: "admin-dashboard-backend" }));
 
-// 404 for any /api request that didn't match — fallback: handle login/register here if route was missed
+// Debug: see exactly what path/method the server receives (proves deploy is latest)
+app.get("/api/admin/login-debug", (req, res) => {
+  res.json({
+    message: "login-endpoint-active",
+    path: req.originalUrl,
+    method: req.method,
+    pathNoQuery: (req.originalUrl || "").split("?")[0],
+  });
+});
+
+// Catch ALL /api requests first — if path looks like login/register, handle it here (before 404)
 app.use("/api", (req, res, next) => {
   if (res.headersSent) return next();
-  const pathOnly = (req.originalUrl || req.url || "").split("?")[0].replace(/\/+$/, "");
-  if (req.method === "POST" && (pathOnly === "/api/admin/login" || pathOnly === "/api/admin/register")) {
+  const raw = (req.originalUrl || req.url || "").split("?")[0] || "";
+  const pathOnly = raw.replace(/\/+$/, "");
+  const isLogin = pathOnly === "/api/admin/login" || pathOnly === "admin/login" || pathOnly === "/admin/login" || pathOnly.endsWith("/admin/login");
+  const isRegister = pathOnly === "/api/admin/register" || pathOnly === "admin/register" || pathOnly === "/admin/register" || pathOnly.endsWith("/admin/register");
+  if (req.method === "POST" && (isLogin || isRegister)) {
     const adminAuthController = require("./src/controllers/adminAuth.Controller");
-    if (pathOnly === "/api/admin/login") {
+    if (isLogin) {
       return adminAuthController.login(req, res);
     }
     return adminAuthController.register(req, res);
   }
   (req.log || logger).warn({ method: req.method, url: req.originalUrl }, "Unmatched API path [404]");
-  res.status(404).json({ error: "Not Found", path: req.originalUrl });
+  res.status(404).json({ error: "Not Found", path: req.originalUrl, _v: "2" });
 });
 
 // Readiness: DB connected — use for load balancer / k8s readiness probe
