@@ -132,6 +132,10 @@ const corsOrigins = [
   "capacitor://localhost", // Capacitor iOS
   "http://localhost",      // Capacitor Android
   "https://localhost",
+  // Vercel admin dashboard frontends (always allow so login works even if CORS_ORIGINS env is wrong)
+  "https://admin-dashboard-frontend-flax.vercel.app",
+  "https://admin-dashboard-frontend-techworldstarzllcs-projects.vercel.app",
+  "https://frontend-guard-ui.vercel.app",
 ];
 [process.env.CORS_ORIGINS, process.env.GUARD_APP_URL, process.env.ADMIN_APP_URL]
   .filter(Boolean)
