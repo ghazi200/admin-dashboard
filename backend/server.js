@@ -438,9 +438,17 @@ app.use("/api/admin/shift-swaps", adminShiftSwapRoutes);
 // Backend check: proves this URL is the Node API (not frontend)
 app.get("/api/backend-ping", (req, res) => res.json({ ok: true, service: "admin-dashboard-backend" }));
 
-// 404 for any /api request that didn't match (helps debug proxy vs backend 404)
+// 404 for any /api request that didn't match — fallback: handle login/register here if route was missed
 app.use("/api", (req, res, next) => {
   if (res.headersSent) return next();
+  const pathOnly = (req.originalUrl || req.url || "").split("?")[0].replace(/\/+$/, "");
+  if (req.method === "POST" && (pathOnly === "/api/admin/login" || pathOnly === "/api/admin/register")) {
+    const adminAuthController = require("./src/controllers/adminAuth.Controller");
+    if (pathOnly === "/api/admin/login") {
+      return adminAuthController.login(req, res);
+    }
+    return adminAuthController.register(req, res);
+  }
   (req.log || logger).warn({ method: req.method, url: req.originalUrl }, "Unmatched API path [404]");
   res.status(404).json({ error: "Not Found", path: req.originalUrl });
 });
