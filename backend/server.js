@@ -301,6 +301,10 @@ if (process.env.DEBUG_STARTUP) logger.debug({ modelKeys: Object.keys(app.locals.
 const devSeedRoutes = require("./src/routes/devSeed.routes");
 app.use("/api/dev", devSeedRoutes);
 
+// Admin auth first so /api/admin/login and /api/admin/register are always matched
+const adminAuthRoutes = require("./src/routes/adminAuth.routes");
+app.use("/api/admin", adminAuthRoutes);
+
 const adminShiftsRoutes = require("./src/routes/adminShifts.routes");
 app.use("/api/admin/shifts", adminShiftsRoutes);
 
@@ -337,9 +341,6 @@ app.delete("/api/admin/messages/conversations/:conversationId/messages/:messageI
   }, MESSAGE_DELETE_TIMEOUT_MS);
   adminMessagesRoutes(req, res, done);
 });
-
-const adminAuthRoutes = require("./src/routes/adminAuth.routes");
-app.use("/api/admin", adminAuthRoutes);
 
 const adminDashboardRoutes = require("./src/routes/adminDashboard.routes");
 app.use("/api/admin/dashboard", adminDashboardRoutes);
