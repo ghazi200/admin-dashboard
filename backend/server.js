@@ -301,7 +301,7 @@ if (process.env.DEBUG_STARTUP) logger.debug({ modelKeys: Object.keys(app.locals.
 const devSeedRoutes = require("./src/routes/devSeed.routes");
 app.use("/api/dev", devSeedRoutes);
 
-// Explicit POST /api/admin/login and /api/admin/register (tried first so they always match)
+// Login/register: app.all catches every method so OPTIONS gets 204 and POST gets login (no 404)
 const adminAuthController = require("./src/controllers/adminAuth.Controller");
 const { loginValidators, handleLoginValidation } = require("./src/middleware/validateLogin");
 const loginRateLimit = rateLimit({
@@ -311,8 +311,38 @@ const loginRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.post("/api/admin/login", loginRateLimit, loginValidators, handleLoginValidation, adminAuthController.login);
-app.post("/api/admin/register", adminAuthController.register);
+
+app.all("/api/admin/login", (req, res, next) => {
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed", path: req.originalUrl });
+  }
+  loginRateLimit(req, res, (err) => {
+    if (err) return next(err);
+    let i = 0;
+    const runValidator = () => {
+      if (i >= loginValidators.length) {
+        return handleLoginValidation(req, res, (err2) => {
+          if (err2) return next(err2);
+          adminAuthController.login(req, res);
+        });
+      }
+      loginValidators[i++](req, res, (err2) => {
+        if (err2) return next(err2);
+        runValidator();
+      });
+    };
+    runValidator();
+  });
+});
+
+app.all("/api/admin/register", (req, res, next) => {
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed", path: req.originalUrl });
+  adminAuthController.register(req, res);
+});
 
 const adminAuthRoutes = require("./src/routes/adminAuth.routes");
 app.use("/api/admin", adminAuthRoutes);
@@ -448,13 +478,19 @@ app.get("/api/admin/login-debug", (req, res) => {
   });
 });
 
-// Catch ALL /api requests first — if path looks like login/register, handle it here (before 404)
+// Catch ALL /api requests — handle OPTIONS (CORS preflight) and login/register
 app.use("/api", (req, res, next) => {
   if (res.headersSent) return next();
   const raw = (req.originalUrl || req.url || "").split("?")[0] || "";
   const pathOnly = raw.replace(/\/+$/, "");
-  const isLogin = pathOnly === "/api/admin/login" || pathOnly === "admin/login" || pathOnly === "/admin/login" || pathOnly.endsWith("/admin/login");
-  const isRegister = pathOnly === "/api/admin/register" || pathOnly === "admin/register" || pathOnly === "/admin/register" || pathOnly.endsWith("/admin/register");
+
+  // CORS preflight: browser sends OPTIONS before POST; must return 2xx or POST is blocked
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  const isLogin = pathOnly.includes("admin") && pathOnly.includes("login");
+  const isRegister = pathOnly.includes("admin") && pathOnly.includes("register");
   if (req.method === "POST" && (isLogin || isRegister)) {
     const adminAuthController = require("./src/controllers/adminAuth.Controller");
     if (isLogin) {
@@ -462,8 +498,9 @@ app.use("/api", (req, res, next) => {
     }
     return adminAuthController.register(req, res);
   }
+
   (req.log || logger).warn({ method: req.method, url: req.originalUrl }, "Unmatched API path [404]");
-  res.status(404).json({ error: "Not Found", path: req.originalUrl, _v: "2" });
+  res.status(404).json({ error: "Not Found", path: req.originalUrl });
 });
 
 // Readiness: DB connected — use for load balancer / k8s readiness probe
