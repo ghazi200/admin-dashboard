@@ -313,11 +313,12 @@ const loginRateLimit = rateLimit({
 });
 
 app.all("/api/admin/login", (req, res, next) => {
-  if (req.method === "OPTIONS") {
+  const method = (req.method || "").toUpperCase();
+  if (method === "OPTIONS") {
     return res.sendStatus(204);
   }
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed", path: req.originalUrl });
+  if (method !== "POST") {
+    return res.status(405).json({ error: "Method Not Allowed", path: req.originalUrl, method: req.method });
   }
   loginRateLimit(req, res, (err) => {
     if (err) return next(err);
@@ -339,8 +340,9 @@ app.all("/api/admin/login", (req, res, next) => {
 });
 
 app.all("/api/admin/register", (req, res, next) => {
-  if (req.method === "OPTIONS") return res.sendStatus(204);
-  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed", path: req.originalUrl });
+  const method = (req.method || "").toUpperCase();
+  if (method === "OPTIONS") return res.sendStatus(204);
+  if (method !== "POST") return res.status(405).json({ error: "Method Not Allowed", path: req.originalUrl, method: req.method });
   adminAuthController.register(req, res);
 });
 
