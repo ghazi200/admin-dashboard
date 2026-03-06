@@ -22,12 +22,22 @@ const REALTIME_URL =
 const ADMIN_REALTIME_URL =
   process.env.REACT_APP_ADMIN_REALTIME_URL || "http://localhost:5000";
 
+function isProductionOrigin() {
+  if (typeof window === "undefined") return false;
+  const u = window.location?.href || "";
+  return u.startsWith("https://") && !u.includes("localhost");
+}
+
 export function connectSocket() {
   const token = localStorage.getItem("adminToken") || "";
 
   // 🚫 Do not create socket until admin is authenticated
   if (!token) {
-    console.warn("⚠️ No adminToken yet — realtime socket not started");
+    return null;
+  }
+
+  // 🚫 In production (https), do not connect to localhost — browser blocks ws:// and it spams errors
+  if (isProductionOrigin() && (REALTIME_URL || "").includes("localhost")) {
     return null;
   }
 
@@ -105,9 +115,12 @@ export function connectSocket() {
 export function connectAdminSocket() {
   const token = localStorage.getItem("adminToken") || "";
 
-  // 🚫 Do not create socket until admin is authenticated
   if (!token) {
-    console.warn("⚠️ No adminToken yet — admin socket not started");
+    return null;
+  }
+
+  // 🚫 In production (https), do not connect to localhost
+  if (isProductionOrigin() && (ADMIN_REALTIME_URL || "").includes("localhost")) {
     return null;
   }
 

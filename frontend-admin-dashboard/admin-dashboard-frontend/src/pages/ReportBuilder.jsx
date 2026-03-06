@@ -708,13 +708,15 @@ function ScheduledReportsTab() {
     },
   });
 
-  const { data: templates } = useQuery({
+  const { data: templatesRaw } = useQuery({
     queryKey: ["reportTemplates"],
     queryFn: async () => {
       const response = await listReportTemplates();
-      return response.data;
+      const data = response?.data;
+      return Array.isArray(data) ? data : (data?.templates || data?.data || []);
     },
   });
+  const templatesList = Array.isArray(templatesRaw) ? templatesRaw : [];
 
   const createMutation = useMutation({
     mutationFn: createScheduledReport,
@@ -917,7 +919,7 @@ function ScheduledReportsTab() {
                     required
                   >
                     <option value="">Select a template</option>
-                    {templates?.map((t) => (
+                    {templatesList.map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
                       </option>
