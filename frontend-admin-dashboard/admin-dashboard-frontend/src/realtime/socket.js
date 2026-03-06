@@ -17,25 +17,23 @@ let socket = null;
 let adminSocket = null; // Separate socket for admin-dashboard events
 let lastToken = null;
 
-const REALTIME_URL =
-  process.env.REACT_APP_GUARD_REALTIME_URL || "http://localhost:4000";
-const ADMIN_REALTIME_URL =
-  process.env.REACT_APP_ADMIN_REALTIME_URL || "http://localhost:5000";
+const GUARD_REALTIME_URL_ENV = process.env.REACT_APP_GUARD_REALTIME_URL;
+const ADMIN_REALTIME_URL_ENV = process.env.REACT_APP_ADMIN_REALTIME_URL;
 
-// Never connect to localhost from a non-localhost page (avoids mixed content / blocked ws)
-function isLocalhostUrl(url) {
-  if (!url || typeof url !== "string") return false;
-  try {
-    const host = new URL(url).hostname;
-    return host === "localhost" || host === "127.0.0.1";
-  } catch {
-    return (url || "").includes("localhost") || (url || "").includes("127.0.0.1");
-  }
-}
 function isCurrentPageLocalhost() {
   if (typeof window === "undefined") return false;
   const h = window.location?.hostname || "";
   return h === "localhost" || h === "127.0.0.1";
+}
+
+// Only use localhost URLs when the page is on localhost (avoids blocked ws:// in production)
+function getGuardRealtimeUrl() {
+  if (GUARD_REALTIME_URL_ENV) return GUARD_REALTIME_URL_ENV;
+  return isCurrentPageLocalhost() ? "http://localhost:4000" : null;
+}
+function getAdminRealtimeUrl() {
+  if (ADMIN_REALTIME_URL_ENV) return ADMIN_REALTIME_URL_ENV;
+  return isCurrentPageLocalhost() ? "http://localhost:5000" : null;
 }
 
 export function connectSocket() {
@@ -43,10 +41,8 @@ export function connectSocket() {
 
   if (!token) return null;
 
-  // 🚫 Never connect to localhost from a deployed site — browser blocks ws:// and spams errors
-  if (isLocalhostUrl(REALTIME_URL) && !isCurrentPageLocalhost()) {
-    return null;
-  }
+  const url = getGuardRealtimeUrl();
+  if (!url) return null;
 
   // ♻️ If socket exists and token changed → reconnect safely (NO new instance)
   if (socket) {
@@ -63,7 +59,7 @@ export function connectSocket() {
   lastToken = token;
 
   // ✅ CREATE SOCKET (ONCE)
-  socket = io(REALTIME_URL, {
+  socket = io(url, {
     path: "/socket.io",
 
     // Socket.IO auth payload
@@ -121,12 +117,10 @@ export function connectSocket() {
 // ✅ Connect to admin-dashboard socket server (port 5000) for admin-specific events
 export function connectAdminSocket() {
   const token = localStorage.getItem("adminToken") || "";
-
   if (!token) return null;
 
-  if (isLocalhostUrl(ADMIN_REALTIME_URL) && !isCurrentPageLocalhost()) {
-    return null;
-  }
+  const url = getAdminRealtimeUrl();
+  if (!url) return null;
 
   // ♻️ If socket exists and token changed → reconnect safely
   if (adminSocket) {
@@ -143,7 +137,7 @@ export function connectAdminSocket() {
   lastToken = token;
 
   // ✅ CREATE ADMIN SOCKET (for admin-dashboard events on port 5000)
-  adminSocket = io(ADMIN_REALTIME_URL, {
+  adminSocket = io(url, {
     path: "/socket.io",
     auth: { token },
     transports: ["polling", "websocket"],
