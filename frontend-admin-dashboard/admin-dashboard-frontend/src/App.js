@@ -30,6 +30,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import AuthLayout from "./components/AuthLayout";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 import { NotificationsProvider } from "./context/NotificationContext";
 
@@ -114,7 +115,7 @@ export default function App() {
           <Route path="/map" element={<GeographicDashboard />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/callout-risk" element={<CalloutRisk />} />
-          <Route path="/reports" element={<ReportBuilder />} />
+          <Route path="/reports" element={<ErrorBoundary><ReportBuilder /></ErrorBoundary>} />
           <Route path="/email-scheduler-settings" element={<EmailSchedulerSettings />} />
           <Route path="/account" element={<AccountSecurity />} />
           <Route path="/schedule-generation" element={<ScheduleGeneration />} />
