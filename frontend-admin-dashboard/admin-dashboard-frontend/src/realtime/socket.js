@@ -58,14 +58,15 @@ export function connectSocket() {
 
   lastToken = token;
 
-  // When using default localhost URL, limit retries so we don't spam if abe-guard-ai isn't running
   const guardReconnectionAttempts = GUARD_REALTIME_URL_ENV ? Infinity : 3;
+  // Polling-only when using default localhost — avoids "websocket closed before connection" when server isn't running
+  const guardTransports = GUARD_REALTIME_URL_ENV ? ["polling", "websocket"] : ["polling"];
 
   socket = io(url, {
     path: "/socket.io",
     auth: { token },
-    transports: ["polling", "websocket"],
-    upgrade: true,
+    transports: guardTransports,
+    upgrade: !!GUARD_REALTIME_URL_ENV,
     autoConnect: true,
     reconnection: true,
     reconnectionAttempts: guardReconnectionAttempts,
@@ -126,11 +127,12 @@ export function connectAdminSocket() {
 
   // ✅ CREATE ADMIN SOCKET (for admin-dashboard events on port 5000)
   const adminReconnectionAttempts = ADMIN_REALTIME_URL_ENV ? Infinity : 3;
+  const adminTransports = ADMIN_REALTIME_URL_ENV ? ["polling", "websocket"] : ["polling"];
   adminSocket = io(url, {
     path: "/socket.io",
     auth: { token },
-    transports: ["polling", "websocket"],
-    upgrade: true,
+    transports: adminTransports,
+    upgrade: !!ADMIN_REALTIME_URL_ENV,
     autoConnect: true,
     reconnection: true,
     reconnectionAttempts: adminReconnectionAttempts,
