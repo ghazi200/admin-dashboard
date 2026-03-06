@@ -40,7 +40,14 @@ export default function ReportBuilder() {
     },
     retry: 1,
   });
-  const templates = Array.isArray(templatesRaw) ? templatesRaw : [];
+  // Always an array — never .map on non-array (avoids "y.map is not a function" from API/cache)
+  const templatesListForBuilder =
+    Array.isArray(templatesRaw)
+      ? templatesRaw
+      : (templatesRaw && typeof templatesRaw === "object"
+          ? templatesRaw.templates || templatesRaw.data || []
+          : []);
+  const templates = Array.isArray(templatesListForBuilder) ? templatesListForBuilder : [];
 
   // Create template mutation
   const createMutation = useMutation({
@@ -125,10 +132,11 @@ export default function ReportBuilder() {
     }
   }
 
-  // Load template when selected
+  // Load template when selected — always set an array so .map() never throws
   useEffect(() => {
     if (selectedTemplate) {
-      setWidgets(selectedTemplate.widgets || []);
+      const w = selectedTemplate.widgets;
+      setWidgets(Array.isArray(w) ? w : []);
     } else {
       setWidgets([]);
     }
@@ -142,7 +150,7 @@ export default function ReportBuilder() {
       config: getDefaultConfig(type),
     };
 
-    setWidgets([...widgets, newWidget]);
+    setWidgets([...safeWidgets, newWidget]);
   }
 
   function getDefaultConfig(type) {
@@ -176,14 +184,16 @@ export default function ReportBuilder() {
     }
   }
 
+  const safeWidgets = Array.isArray(widgets) ? widgets : [];
+
   function handleUpdateWidget(widgetId, updates) {
     setWidgets(
-      widgets.map((w) => (w.id === widgetId ? { ...w, ...updates } : w))
+      safeWidgets.map((w) => (w.id === widgetId ? { ...w, ...updates } : w))
     );
   }
 
   function handleDeleteWidget(widgetId) {
-    setWidgets(widgets.filter((w) => w.id !== widgetId));
+    setWidgets(safeWidgets.filter((w) => w.id !== widgetId));
   }
 
   function handleSaveTemplate() {
@@ -347,9 +357,9 @@ export default function ReportBuilder() {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
-              {reportRuns?.map((run) => (
+              {(Array.isArray(reportRuns) ? reportRuns : []).filter(Boolean).map((run) => (
                 <div
-                  key={run.id}
+                  key={run?.id ?? run?.generated_at ?? Math.random()}
                   style={{
                     padding: 15,
                     background: "rgba(255, 255, 255, 0.05)",
@@ -363,10 +373,10 @@ export default function ReportBuilder() {
                         Report #{String(run?.id || "").substring(0, 8)}...
                       </div>
                       <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        Generated: {new Date(run.generated_at).toLocaleString()}
+                        Generated: {run?.generated_at ? new Date(run.generated_at).toLocaleString() : "—"}
                       </div>
                       <div style={{ fontSize: 12, opacity: 0.7 }}>
-                        Status: {run.status}
+                        Status: {run?.status ?? "—"}
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -428,9 +438,9 @@ export default function ReportBuilder() {
               <div>Loading templates...</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {templates?.map((template) => (
+                {templates.filter(Boolean).map((template) => (
                   <div
-                    key={template.id}
+                    key={template?.id ?? template?.name ?? Math.random()}
                     style={{
                       padding: 12,
                       background:
@@ -628,7 +638,7 @@ export default function ReportBuilder() {
             ) : (
               <>
                 <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
-                  {widgets.map((widget) => (
+                  {(Array.isArray(widgets) ? widgets : []).map((widget) => (
                     <WidgetPreview
                       key={widget.id}
                       widget={widget}
@@ -700,13 +710,15 @@ function ScheduledReportsTab() {
     isActive: true,
   });
 
-  const { data: scheduledReports, isLoading, refetch } = useQuery({
+  const { data: scheduledReportsRaw, isLoading, refetch } = useQuery({
     queryKey: ["scheduledReports"],
     queryFn: async () => {
       const response = await listScheduledReports();
-      return response.data;
+      const data = response?.data;
+      return Array.isArray(data) ? data : (data?.schedules || data?.data || []);
     },
   });
+  const scheduledReportsList = Array.isArray(scheduledReportsRaw) ? scheduledReportsRaw : [];
 
   const { data: templatesRaw } = useQuery({
     queryKey: ["reportTemplates"],
@@ -819,13 +831,13 @@ function ScheduledReportsTab() {
       >
         {isLoading ? (
           <div style={{ padding: 40, textAlign: "center" }}>Loading...</div>
-        ) : scheduledReports?.length === 0 ? (
+        ) : scheduledReportsList.length === 0 ? (
           <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>
             No scheduled reports. Create one to automate report generation.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {scheduledReports?.map((schedule) => (
+            {scheduledReportsList.map((schedule) => (
               <div
                 key={schedule.id}
                 style={{

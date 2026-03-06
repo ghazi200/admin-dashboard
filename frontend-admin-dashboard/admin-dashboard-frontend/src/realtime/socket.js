@@ -58,57 +58,45 @@ export function connectSocket() {
 
   lastToken = token;
 
-  // ✅ CREATE SOCKET (ONCE)
+  // When using default localhost URL, limit retries so we don't spam if abe-guard-ai isn't running
+  const guardReconnectionAttempts = GUARD_REALTIME_URL_ENV ? Infinity : 3;
+
   socket = io(url, {
     path: "/socket.io",
-
-    // Socket.IO auth payload
     auth: { token },
-
-    // Polling first then upgrade to websocket (avoids "closed before connection established" behind proxies)
     transports: ["polling", "websocket"],
     upgrade: true,
-
     autoConnect: true,
-
-    // Stable reconnect behavior
     reconnection: true,
-    reconnectionAttempts: Infinity,
+    reconnectionAttempts: guardReconnectionAttempts,
     reconnectionDelay: 500,
     reconnectionDelayMax: 2000,
-
     timeout: 20000,
     withCredentials: true,
   });
 
-  // =============================
-  // SOCKET LIFECYCLE LOGGING
-  // =============================
-
+  let guardConnectErrorLogged = false;
   socket.on("connect", () => {
+    guardConnectErrorLogged = false;
     console.log("✅ Admin realtime socket connected:", socket.id);
-
-    // Join admin room so io.to("admins") emits reach this client
     socket.emit("join_admin");
-    console.log("📤 Emitted join_admin - should join 'admins' room");
   });
 
   socket.on("disconnect", (reason) => {
-    console.warn("⚠️ Admin realtime socket disconnected:", reason);
-    console.log("💡 Socket will automatically reconnect and rejoin 'admins' room");
+    if (guardReconnectionAttempts === Infinity) {
+      console.warn("⚠️ Admin realtime socket disconnected:", reason);
+    }
   });
 
   socket.on("reconnect", (attemptNumber) => {
-    console.log("🔄 Socket reconnected after", attemptNumber, "attempt(s)");
-    // Re-join admin room on reconnect
     socket.emit("join_admin");
-    console.log("📤 Re-emitted join_admin after reconnect");
   });
 
   socket.on("connect_error", (err) => {
-    console.error("❌ Admin realtime socket connect_error:", err?.message || err);
-    console.warn("💡 Make sure abe-guard-ai is running on port 4000");
-    console.warn("💡 Socket connection will retry automatically...");
+    if (!guardConnectErrorLogged) {
+      guardConnectErrorLogged = true;
+      console.warn("⚠️ Admin realtime socket unavailable:", err?.message || err, GUARD_REALTIME_URL_ENV ? "(will retry)" : "(abe-guard-ai may not be running on port 4000; retries limited)");
+    }
   });
 
   return socket;
@@ -137,6 +125,7 @@ export function connectAdminSocket() {
   lastToken = token;
 
   // ✅ CREATE ADMIN SOCKET (for admin-dashboard events on port 5000)
+  const adminReconnectionAttempts = ADMIN_REALTIME_URL_ENV ? Infinity : 3;
   adminSocket = io(url, {
     path: "/socket.io",
     auth: { token },
@@ -144,29 +133,30 @@ export function connectAdminSocket() {
     upgrade: true,
     autoConnect: true,
     reconnection: true,
-    reconnectionAttempts: Infinity,
+    reconnectionAttempts: adminReconnectionAttempts,
     reconnectionDelay: 500,
     reconnectionDelayMax: 2000,
     timeout: 20000,
     withCredentials: true,
   });
 
+  let adminConnectErrorLogged = false;
   adminSocket.on("connect", () => {
+    adminConnectErrorLogged = false;
     console.log("✅ Admin dashboard socket connected:", adminSocket.id);
-    // All connections are automatically joined to "role:all" on the server
   });
 
   adminSocket.on("disconnect", (reason) => {
-    console.warn("⚠️ Admin dashboard socket disconnected:", reason);
-  });
-
-  adminSocket.on("reconnect", (attemptNumber) => {
-    console.log("🔄 Admin dashboard socket reconnected after", attemptNumber, "attempt(s)");
+    if (adminReconnectionAttempts === Infinity) {
+      console.warn("⚠️ Admin dashboard socket disconnected:", reason);
+    }
   });
 
   adminSocket.on("connect_error", (err) => {
-    console.error("❌ Admin dashboard socket connect_error:", err?.message || err);
-    console.warn("💡 Make sure admin-dashboard backend is running on port 5000");
+    if (!adminConnectErrorLogged) {
+      adminConnectErrorLogged = true;
+      console.warn("⚠️ Admin dashboard socket unavailable:", err?.message || err, ADMIN_REALTIME_URL_ENV ? "(will retry)" : "(backend may not be running on port 5000; retries limited)");
+    }
   });
 
   return adminSocket;
