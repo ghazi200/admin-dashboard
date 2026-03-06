@@ -22,22 +22,29 @@ const REALTIME_URL =
 const ADMIN_REALTIME_URL =
   process.env.REACT_APP_ADMIN_REALTIME_URL || "http://localhost:5000";
 
-function isProductionOrigin() {
+// Never connect to localhost from a non-localhost page (avoids mixed content / blocked ws)
+function isLocalhostUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1";
+  } catch {
+    return (url || "").includes("localhost") || (url || "").includes("127.0.0.1");
+  }
+}
+function isCurrentPageLocalhost() {
   if (typeof window === "undefined") return false;
-  const u = window.location?.href || "";
-  return u.startsWith("https://") && !u.includes("localhost");
+  const h = window.location?.hostname || "";
+  return h === "localhost" || h === "127.0.0.1";
 }
 
 export function connectSocket() {
   const token = localStorage.getItem("adminToken") || "";
 
-  // 🚫 Do not create socket until admin is authenticated
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
-  // 🚫 In production (https), do not connect to localhost — browser blocks ws:// and it spams errors
-  if (isProductionOrigin() && (REALTIME_URL || "").includes("localhost")) {
+  // 🚫 Never connect to localhost from a deployed site — browser blocks ws:// and spams errors
+  if (isLocalhostUrl(REALTIME_URL) && !isCurrentPageLocalhost()) {
     return null;
   }
 
@@ -115,12 +122,9 @@ export function connectSocket() {
 export function connectAdminSocket() {
   const token = localStorage.getItem("adminToken") || "";
 
-  if (!token) {
-    return null;
-  }
+  if (!token) return null;
 
-  // 🚫 In production (https), do not connect to localhost
-  if (isProductionOrigin() && (ADMIN_REALTIME_URL || "").includes("localhost")) {
+  if (isLocalhostUrl(ADMIN_REALTIME_URL) && !isCurrentPageLocalhost()) {
     return null;
   }
 
