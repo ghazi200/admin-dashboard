@@ -26,16 +26,21 @@ export default function ReportBuilder() {
 
   // Fetch templates
   const {
-    data: templates,
+    data: templatesRaw,
     isLoading: templatesLoading,
+    isError: templatesError,
+    error: templatesErrorDetail,
     refetch: refetchTemplates,
   } = useQuery({
     queryKey: ["reportTemplates"],
     queryFn: async () => {
       const response = await listReportTemplates();
-      return response.data;
+      const data = response?.data;
+      return Array.isArray(data) ? data : (data?.templates || data?.data || []);
     },
+    retry: 1,
   });
+  const templates = Array.isArray(templatesRaw) ? templatesRaw : [];
 
   // Create template mutation
   const createMutation = useMutation({
@@ -85,16 +90,20 @@ export default function ReportBuilder() {
 
   // Fetch report runs (history)
   const {
-    data: reportRuns,
+    data: reportRunsRaw,
     isLoading: runsLoading,
+    isError: runsError,
     refetch: refetchRuns,
   } = useQuery({
     queryKey: ["reportRuns"],
     queryFn: async () => {
       const response = await listReportRuns();
-      return response.data;
+      const data = response?.data;
+      return Array.isArray(data) ? data : (data?.runs || data?.data || []);
     },
+    retry: 1,
   });
+  const reportRuns = Array.isArray(reportRunsRaw) ? reportRunsRaw : [];
 
   // Export report function
   async function handleExport(reportId, format) {
@@ -278,6 +287,21 @@ export default function ReportBuilder() {
     }
   }
 
+  if (templatesError && !templates?.length) {
+    return (
+      <div className="container">
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ margin: 0, fontSize: 26 }}>📊 Report Builder</h1>
+        </div>
+        <div style={{ padding: 24, background: "rgba(220, 80, 60, 0.1)", borderRadius: 8, border: "1px solid rgba(220,80,60,0.3)" }}>
+          <p style={{ margin: "0 0 12px 0" }}>Could not load report templates. You may need to sign in again or the reports API may not be available.</p>
+          <p style={{ margin: "0 0 12px 0", fontSize: 13, opacity: 0.8 }}>{templatesErrorDetail?.response?.data?.message || templatesErrorDetail?.message || "Network or server error"}</p>
+          <button type="button" className="btn btnPrimary" onClick={() => refetchTemplates()}>Retry</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
       <div style={{ marginBottom: 20 }}>
@@ -336,7 +360,7 @@ export default function ReportBuilder() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 10 }}>
                     <div>
                       <div style={{ fontWeight: 600, marginBottom: 5 }}>
-                        Report #{run.id.substring(0, 8)}...
+                        Report #{String(run?.id || "").substring(0, 8)}...
                       </div>
                       <div style={{ fontSize: 12, opacity: 0.7 }}>
                         Generated: {new Date(run.generated_at).toLocaleString()}

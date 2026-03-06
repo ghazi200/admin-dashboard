@@ -5,8 +5,7 @@ import { useNavigate } from "react-router-dom";
  * Admin Login FORM ONLY (no page wrapper!)
  * Handles optional MFA: if login returns requiresMfa, shows code input and calls verify-login.
  */
-const API_URL =
-  process.env.REACT_APP_ADMIN_API_URL || "http://localhost:5000/api/admin";
+const API_URL = (process.env.REACT_APP_ADMIN_API_URL || "http://localhost:5000/api/admin").replace(/\/+$/, "");
 
 const isProduction = typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1";
 const isLocalhostApi = !API_URL || /localhost|127\.0\.0\.1/.test(API_URL);
@@ -39,6 +38,7 @@ export default function Login() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mfaToken, code: mfaCode.trim() }),
+          credentials: "include",
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -74,10 +74,12 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/login`, {
+      const loginUrl = `${API_URL}/login`;
+      const res = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
+        credentials: "include",
       });
 
       const data = await res.json().catch(() => ({}));

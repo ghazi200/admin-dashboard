@@ -52,8 +52,8 @@ export function connectSocket() {
     // Socket.IO auth payload
     auth: { token },
 
-    // Prefer websocket but allow fallback (Safari-safe)
-    transports: ["websocket"],
+    // Polling first then upgrade to websocket (avoids "closed before connection established" behind proxies)
+    transports: ["polling", "websocket"],
     upgrade: true,
 
     autoConnect: true,
@@ -129,7 +129,7 @@ export function connectAdminSocket() {
   adminSocket = io(ADMIN_REALTIME_URL, {
     path: "/socket.io",
     auth: { token },
-    transports: ["websocket"],
+    transports: ["polling", "websocket"],
     upgrade: true,
     autoConnect: true,
     reconnection: true,

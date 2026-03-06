@@ -318,7 +318,10 @@ app.all("/api/admin/login", (req, res, next) => {
     return res.sendStatus(204);
   }
   if (method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed", path: req.originalUrl, method: req.method });
+    return res.status(400).json({
+      message: "Use POST with JSON body: { email, password }. This URL was called with " + req.method + ".",
+      path: req.originalUrl,
+    });
   }
   loginRateLimit(req, res, (err) => {
     if (err) return next(err);
@@ -342,7 +345,7 @@ app.all("/api/admin/login", (req, res, next) => {
 app.all("/api/admin/register", (req, res, next) => {
   const method = (req.method || "").toUpperCase();
   if (method === "OPTIONS") return res.sendStatus(204);
-  if (method !== "POST") return res.status(405).json({ error: "Method Not Allowed", path: req.originalUrl, method: req.method });
+  if (method !== "POST") return res.status(400).json({ message: "Use POST", path: req.originalUrl });
   adminAuthController.register(req, res);
 });
 
