@@ -540,12 +540,11 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 
-  // ✅ Keepalive tuning (prevents ping timeout disconnect loops in dev)
-  pingInterval: 25000, // send ping every 25s
-  pingTimeout: 60000,  // wait up to 60s for pong before disconnect
+  // ✅ Keepalive: longer timeout reduces disconnects behind proxies (Railway, etc.)
+  pingInterval: 20000,
+  pingTimeout: 120000, // 2 min before disconnect on missed pong
 
-  // ✅ Allow both; client is websocket-only, but this is safe
-  transports: ["websocket", "polling"],
+  transports: ["polling", "websocket"], // polling first so clients that only use polling work reliably
 });
 
 // 🔐 Socket auth (JWT in handshake.auth.token) - Supports both admin and guard tokens

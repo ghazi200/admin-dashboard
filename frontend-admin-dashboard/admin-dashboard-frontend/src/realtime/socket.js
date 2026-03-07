@@ -20,17 +20,23 @@ function isCurrentPageLocalhost() {
   return h === "localhost" || h === "127.0.0.1";
 }
 
-function getGuardRealtimeUrl() {
-  return GUARD_REALTIME_URL_ENV || null;
-}
-function getAdminRealtimeUrl() {
-  if (ADMIN_REALTIME_URL_ENV) return ADMIN_REALTIME_URL_ENV;
-  return isCurrentPageLocalhost() ? "http://localhost:5000" : null;
-}
-
 function isProductionOrigin() {
   if (typeof window === "undefined") return false;
   return window.location?.protocol === "https:" && !window.location?.hostname?.includes("localhost");
+}
+
+// Production (https): never open a socket = zero WebSocket errors and zero disconnects.
+// To enable realtime on Vercel later, set REACT_APP_ENABLE_REALTIME=true and the *_REALTIME_URL vars, then redeploy.
+const ENABLE_REALTIME_IN_PRODUCTION = process.env.REACT_APP_ENABLE_REALTIME === "true";
+
+function getGuardRealtimeUrl() {
+  if (isProductionOrigin() && !ENABLE_REALTIME_IN_PRODUCTION) return null;
+  return GUARD_REALTIME_URL_ENV || null;
+}
+function getAdminRealtimeUrl() {
+  if (isProductionOrigin() && !ENABLE_REALTIME_IN_PRODUCTION) return null;
+  if (ADMIN_REALTIME_URL_ENV) return ADMIN_REALTIME_URL_ENV;
+  return isCurrentPageLocalhost() ? "http://localhost:5000" : null;
 }
 
 // Shared options: polling-only = no WebSocket. Fewer retries in production to avoid connect/disconnect flash loops.
@@ -48,6 +54,9 @@ const POLLING_ONLY_OPTS = {
 };
 
 export function connectSocket() {
+  // Never open a socket on https (production) — eliminates all WebSocket disconnect errors there.
+  if (typeof window !== "undefined" && window.location.protocol === "https:") return null;
+
   const token = localStorage.getItem("adminToken") || "";
   if (!token) return null;
 
@@ -99,6 +108,9 @@ export function connectSocket() {
 }
 
 export function connectAdminSocket() {
+  // Never open a socket on https (production) — eliminates all WebSocket disconnect errors there.
+  if (typeof window !== "undefined" && window.location.protocol === "https:") return null;
+
   const token = localStorage.getItem("adminToken") || "";
   if (!token) return null;
 
