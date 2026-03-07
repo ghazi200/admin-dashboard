@@ -3,18 +3,12 @@ import { io } from "socket.io-client";
 
 /**
  * SINGLE shared socket instance for Admin Dashboard
- * ------------------------------------------------
- * REST  → http://localhost:5000
- * SOCKET → http://localhost:4000 (abe-guard-ai for guard events)
- * ADMIN_SOCKET → http://localhost:5000 (admin-dashboard for admin events)
- *
- * Override with:
- * REACT_APP_GUARD_REALTIME_URL=http://localhost:4000
- * REACT_APP_ADMIN_REALTIME_URL=http://localhost:5000
+ * Uses POLLING ONLY to avoid "WebSocket connection failed" / "closed before connection" errors.
+ * Override: REACT_APP_GUARD_REALTIME_URL, REACT_APP_ADMIN_REALTIME_URL
  */
 
 let socket = null;
-let adminSocket = null; // Separate socket for admin-dashboard events
+let adminSocket = null;
 let lastToken = null;
 
 const GUARD_REALTIME_URL_ENV = process.env.REACT_APP_GUARD_REALTIME_URL;
@@ -26,7 +20,6 @@ function isCurrentPageLocalhost() {
   return h === "localhost" || h === "127.0.0.1";
 }
 
-// Guard socket: only connect when explicitly configured (stops "websocket error" / "closed before connection" when abe-guard-ai isn't running)
 function getGuardRealtimeUrl() {
   return GUARD_REALTIME_URL_ENV || null;
 }
@@ -35,20 +28,31 @@ function getAdminRealtimeUrl() {
   return isCurrentPageLocalhost() ? "http://localhost:5000" : null;
 }
 
+// Shared options: polling-only = no WebSocket, no "websocket error" or "closed before connection"
+const POLLING_ONLY_OPTS = {
+  path: "/socket.io",
+  transports: ["polling"],
+  upgrade: false,
+  autoConnect: true,
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 15000,
+  withCredentials: true,
+};
+
 export function connectSocket() {
   const token = localStorage.getItem("adminToken") || "";
-
   if (!token) return null;
 
   const url = getGuardRealtimeUrl();
   if (!url) return null;
 
-  // ♻️ If socket exists and token changed → reconnect safely (NO new instance)
   if (socket) {
     if (lastToken !== token) {
       lastToken = token;
       socket.auth = { token };
-
       if (socket.connected) socket.disconnect();
       socket.connect();
     }
@@ -57,54 +61,38 @@ export function connectSocket() {
 
   lastToken = token;
 
-  const guardReconnectionAttempts = GUARD_REALTIME_URL_ENV ? Infinity : 3;
-  // Polling-only when using default localhost — avoids "websocket closed before connection" when server isn't running
-  const guardTransports = GUARD_REALTIME_URL_ENV ? ["polling", "websocket"] : ["polling"];
+  try {
+    socket = io(url, {
+      ...POLLING_ONLY_OPTS,
+      auth: { token },
+    });
 
-  socket = io(url, {
-    path: "/socket.io",
-    auth: { token },
-    transports: guardTransports,
-    upgrade: !!GUARD_REALTIME_URL_ENV,
-    autoConnect: true,
-    reconnection: true,
-    reconnectionAttempts: guardReconnectionAttempts,
-    reconnectionDelay: 500,
-    reconnectionDelayMax: 2000,
-    timeout: 20000,
-    withCredentials: true,
-  });
-
-  let guardConnectErrorLogged = false;
-  socket.on("connect", () => {
-    guardConnectErrorLogged = false;
-    console.log("✅ Admin realtime socket connected:", socket.id);
-    socket.emit("join_admin");
-  });
-
-  socket.on("disconnect", (reason) => {
-    if (guardReconnectionAttempts === Infinity) {
-      console.warn("⚠️ Admin realtime socket disconnected:", reason);
-    }
-  });
-
-  socket.on("reconnect", (attemptNumber) => {
-    socket.emit("join_admin");
-  });
-
-  socket.on("connect_error", () => {
-    if (!guardConnectErrorLogged) {
-      guardConnectErrorLogged = true;
-      if (typeof console !== "undefined" && console.warn) {
-        console.warn("⚠️ Guard realtime socket unavailable. Set REACT_APP_GUARD_REALTIME_URL when abe-guard-ai is running.");
+    socket.on("connect", () => {
+      socket.emit("join_admin");
+    });
+    socket.on("reconnect", () => {
+      socket.emit("join_admin");
+    });
+    socket.on("connect_error", () => {
+      // Log once; polling failure is silent after first warning
+      if (!socket._connectErrorLogged) {
+        socket._connectErrorLogged = true;
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("⚠️ Guard realtime unavailable. Set REACT_APP_GUARD_REALTIME_URL when abe-guard-ai is running.");
+        }
       }
+    });
+  } catch (err) {
+    if (typeof console !== "undefined" && console.warn) {
+      console.warn("⚠️ Guard socket init failed:", err?.message || err);
     }
-  });
+    socket = null;
+    return null;
+  }
 
   return socket;
 }
 
-// ✅ Connect to admin-dashboard socket server (port 5000) for admin-specific events
 export function connectAdminSocket() {
   const token = localStorage.getItem("adminToken") || "";
   if (!token) return null;
@@ -112,12 +100,10 @@ export function connectAdminSocket() {
   const url = getAdminRealtimeUrl();
   if (!url) return null;
 
-  // ♻️ If socket exists and token changed → reconnect safely
   if (adminSocket) {
     if (lastToken !== token) {
       lastToken = token;
       adminSocket.auth = { token };
-
       if (adminSocket.connected) adminSocket.disconnect();
       adminSocket.connect();
     }
@@ -126,43 +112,27 @@ export function connectAdminSocket() {
 
   lastToken = token;
 
-  // ✅ CREATE ADMIN SOCKET (for admin-dashboard events on port 5000)
-  const adminReconnectionAttempts = ADMIN_REALTIME_URL_ENV ? Infinity : 3;
-  const adminTransports = ADMIN_REALTIME_URL_ENV ? ["polling", "websocket"] : ["polling"];
-  adminSocket = io(url, {
-    path: "/socket.io",
-    auth: { token },
-    transports: adminTransports,
-    upgrade: !!ADMIN_REALTIME_URL_ENV,
-    autoConnect: true,
-    reconnection: true,
-    reconnectionAttempts: adminReconnectionAttempts,
-    reconnectionDelay: 500,
-    reconnectionDelayMax: 2000,
-    timeout: 20000,
-    withCredentials: true,
-  });
+  try {
+    adminSocket = io(url, {
+      ...POLLING_ONLY_OPTS,
+      auth: { token },
+    });
 
-  let adminConnectErrorLogged = false;
-  adminSocket.on("connect", () => {
-    adminConnectErrorLogged = false;
-    console.log("✅ Admin dashboard socket connected:", adminSocket.id);
-  });
-
-  adminSocket.on("disconnect", (reason) => {
-    if (adminReconnectionAttempts === Infinity) {
-      console.warn("⚠️ Admin dashboard socket disconnected:", reason);
-    }
-  });
-
-  adminSocket.on("connect_error", () => {
-    if (!adminConnectErrorLogged) {
-      adminConnectErrorLogged = true;
-      if (typeof console !== "undefined" && console.warn) {
-        console.warn("⚠️ Admin dashboard socket unavailable. Set REACT_APP_ADMIN_REALTIME_URL when backend supports Socket.IO.");
+    adminSocket.on("connect_error", () => {
+      if (!adminSocket._connectErrorLogged) {
+        adminSocket._connectErrorLogged = true;
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("⚠️ Admin dashboard socket unavailable. Set REACT_APP_ADMIN_REALTIME_URL when backend supports Socket.IO.");
+        }
       }
+    });
+  } catch (err) {
+    if (typeof console !== "undefined" && console.warn) {
+      console.warn("⚠️ Admin socket init failed:", err?.message || err);
     }
-  });
+    adminSocket = null;
+    return null;
+  }
 
   return adminSocket;
 }

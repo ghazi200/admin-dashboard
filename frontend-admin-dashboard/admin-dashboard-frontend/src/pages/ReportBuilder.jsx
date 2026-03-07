@@ -438,7 +438,7 @@ export default function ReportBuilder() {
               <div>Loading templates...</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {templates.filter(Boolean).map((template) => (
+                {(Array.isArray(templates) ? templates : []).filter(Boolean).map((template) => (
                   <div
                     key={template?.id ?? template?.name ?? Math.random()}
                     style={{
