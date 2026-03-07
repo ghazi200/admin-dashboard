@@ -77,7 +77,9 @@ export default function Inspections() {
   async function loadSites() {
     try {
       const res = await listSites();
-      setSites(res.data || []);
+      const raw = res?.data;
+      const list = Array.isArray(raw) ? raw : (raw?.sites ?? raw?.data ?? []);
+      setSites(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("Error loading sites:", err);
     }
@@ -86,7 +88,9 @@ export default function Inspections() {
   async function loadGuards() {
     try {
       const res = await listGuards();
-      setGuards(res.data || []);
+      const raw = res?.data;
+      const list = Array.isArray(raw) ? raw : (raw?.guards ?? raw?.data ?? []);
+      setGuards(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("Error loading guards:", err);
     }
@@ -103,7 +107,9 @@ export default function Inspections() {
       params.limit = 50;
 
       const res = await listInspectionRequests(params);
-      setRequests(res.data || []);
+      const raw = res?.data;
+      const list = Array.isArray(raw) ? raw : (raw?.requests ?? raw?.data ?? []);
+      setRequests(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("Error loading inspection requests:", err);
       setError(err.response?.data?.message || "Failed to load inspection requests");
@@ -164,12 +170,15 @@ export default function Inspections() {
     }
   };
 
-  const siteById = sites.reduce((acc, site) => {
+  const sitesList = Array.isArray(sites) ? sites : [];
+  const guardsList = Array.isArray(guards) ? guards : [];
+  const requestsList = Array.isArray(requests) ? requests : [];
+  const siteById = sitesList.reduce((acc, site) => {
     acc[site.id] = site;
     return acc;
   }, {});
 
-  const guardById = guards.reduce((acc, guard) => {
+  const guardById = guardsList.reduce((acc, guard) => {
     acc[guard.id] = guard;
     return acc;
   }, {});
@@ -247,7 +256,7 @@ export default function Inspections() {
               }}
             >
               <option value="">All Sites</option>
-              {sites.map((site) => (
+              {sitesList.map((site) => (
                 <option key={site.id} value={site.id}>
                   {site.name}
                 </option>
@@ -272,7 +281,7 @@ export default function Inspections() {
               }}
             >
               <option value="">All Guards</option>
-              {guards.map((guard) => (
+              {guardsList.map((guard) => (
                 <option key={guard.id} value={guard.id}>
                   {guard.name}
                 </option>
@@ -314,20 +323,21 @@ export default function Inspections() {
         <div style={{ padding: 40, textAlign: "center", color: "rgba(255,255,255,0.7)" }}>
           Loading inspection requests...
         </div>
-      ) : requests.length === 0 ? (
+      ) : requestsList.length === 0 ? (
         <Card style={{ padding: 40, textAlign: "center" }}>
           <p style={{ color: "rgba(255,255,255,0.7)" }}>No inspection requests found</p>
         </Card>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {requests.map((request) => {
-            const site = request.site_id ? siteById[request.site_id] : null;
-            const guard = request.guard_id ? guardById[request.guard_id] : null;
-            const submissions = request.submissions || [];
+          {requestsList.map((request, reqIdx) => {
+            const site = request?.site_id ? siteById[request.site_id] : null;
+            const guard = request?.guard_id ? guardById[request.guard_id] : null;
+            const submissionsRaw = request?.submissions;
+            const submissions = Array.isArray(submissionsRaw) ? submissionsRaw : [];
             const latestSubmission = submissions.length > 0 ? submissions[0] : null;
 
             return (
-              <Card key={request.id} style={{ padding: 20 }}>
+              <Card key={request?.id ?? reqIdx} style={{ padding: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
@@ -406,7 +416,7 @@ export default function Inspections() {
                             {latestSubmission.comment}
                           </p>
                         )}
-                        {latestSubmission.photos_json && latestSubmission.photos_json.length > 0 && (
+                        {latestSubmission.photos_json && Array.isArray(latestSubmission.photos_json) && latestSubmission.photos_json.length > 0 && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             {latestSubmission.photos_json.map((photo, idx) => (
                               <a
@@ -528,7 +538,7 @@ export default function Inspections() {
                 }}
               >
                 <option value="">Select a site</option>
-                {sites.map((site) => (
+                {sitesList.map((site) => (
                   <option key={site.id} value={site.id}>
                     {site.name}
                   </option>
@@ -553,7 +563,7 @@ export default function Inspections() {
                 }}
               >
                 <option value="">All guards on site</option>
-                {guards.map((guard) => (
+                {guardsList.map((guard) => (
                   <option key={guard.id} value={guard.id}>
                     {guard.name}
                   </option>

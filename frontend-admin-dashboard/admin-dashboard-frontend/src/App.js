@@ -110,7 +110,7 @@ export default function App() {
           <Route path="/supervisor" element={<SupervisorAssistant />} />
           <Route path="/reputation" element={<GuardReputation />} />
           <Route path="/incidents" element={<ErrorBoundary><Incidents /></ErrorBoundary>} />
-          <Route path="/inspections" element={<Inspections />} />
+          <Route path="/inspections" element={<ErrorBoundary><Inspections /></ErrorBoundary>} />
           <Route path="/command-center" element={<CommandCenter />} />
           <Route path="/map" element={<GeographicDashboard />} />
           <Route path="/analytics" element={<Analytics />} />
