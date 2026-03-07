@@ -36,18 +36,28 @@ export default function ReportBuilder() {
     queryFn: async () => {
       const response = await listReportTemplates();
       const data = response?.data;
-      return Array.isArray(data) ? data : (data?.templates || data?.data || []);
+      if (Array.isArray(data)) return data;
+      if (data && typeof data === "object") {
+        if (Array.isArray(data.templates)) return data.templates;
+        if (Array.isArray(data.data)) return data.data;
+        if (data.data && typeof data.data === "object" && Array.isArray(data.data.templates)) return data.data.templates;
+      }
+      return [];
     },
     retry: 1,
   });
-  // Always an array — never .map on non-array (avoids "y.map is not a function" from API/cache)
-  const templatesListForBuilder =
-    Array.isArray(templatesRaw)
-      ? templatesRaw
-      : (templatesRaw && typeof templatesRaw === "object"
-          ? templatesRaw.templates || templatesRaw.data || []
-          : []);
-  const templates = Array.isArray(templatesListForBuilder) ? templatesListForBuilder : [];
+  // Always an array — never .map on non-array (avoids "y.map is not a function")
+  function getTemplatesArray() {
+    const raw = templatesRaw;
+    if (Array.isArray(raw)) return raw;
+    if (raw && typeof raw === "object") {
+      if (Array.isArray(raw.templates)) return raw.templates;
+      if (Array.isArray(raw.data)) return raw.data;
+      if (raw.data && typeof raw.data === "object" && Array.isArray(raw.data.templates)) return raw.data.templates;
+    }
+    return [];
+  }
+  const templates = getTemplatesArray();
 
   // Create template mutation
   const createMutation = useMutation({
@@ -438,7 +448,7 @@ export default function ReportBuilder() {
               <div>Loading templates...</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(Array.isArray(templates) ? templates : []).filter(Boolean).map((template) => (
+                {safeTemplatesList.map((template) => (
                   <div
                     key={template?.id ?? template?.name ?? Math.random()}
                     style={{
@@ -725,10 +735,18 @@ function ScheduledReportsTab() {
     queryFn: async () => {
       const response = await listReportTemplates();
       const data = response?.data;
-      return Array.isArray(data) ? data : (data?.templates || data?.data || []);
+      if (Array.isArray(data)) return data;
+      if (data?.templates && Array.isArray(data.templates)) return data.templates;
+      if (data?.data && Array.isArray(data.data)) return data.data;
+      if (data?.data?.templates && Array.isArray(data.data.templates)) return data.data.templates;
+      return [];
     },
   });
-  const templatesList = Array.isArray(templatesRaw) ? templatesRaw : [];
+  const templatesList = Array.isArray(templatesRaw)
+    ? templatesRaw
+    : (templatesRaw && typeof templatesRaw === "object" && Array.isArray(templatesRaw.templates)
+        ? templatesRaw.templates
+        : []);
 
   const createMutation = useMutation({
     mutationFn: createScheduledReport,

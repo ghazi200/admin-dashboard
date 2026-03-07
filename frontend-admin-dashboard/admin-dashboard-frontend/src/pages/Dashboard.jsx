@@ -1019,9 +1019,13 @@ export default function Dashboard() {
       attachListeners();
     }
     
-    // Log connection errors
-    s.on("connect_error", (err) => {
-      console.error("❌ Socket connection error:", err?.message || err);
+    // Log connection error once to avoid console spam on reconnect loops
+    let connectErrorLogged = false;
+    s.on("connect_error", () => {
+      if (!connectErrorLogged) {
+        connectErrorLogged = true;
+        console.warn("⚠️ Guard socket unavailable (realtime disabled until connection succeeds).");
+      }
     });
 
     return () => {

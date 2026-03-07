@@ -28,17 +28,22 @@ function getAdminRealtimeUrl() {
   return isCurrentPageLocalhost() ? "http://localhost:5000" : null;
 }
 
-// Shared options: polling-only = no WebSocket, no "websocket error" or "closed before connection"
+function isProductionOrigin() {
+  if (typeof window === "undefined") return false;
+  return window.location?.protocol === "https:" && !window.location?.hostname?.includes("localhost");
+}
+
+// Shared options: polling-only = no WebSocket. Fewer retries in production to avoid connect/disconnect flash loops.
 const POLLING_ONLY_OPTS = {
   path: "/socket.io",
   transports: ["polling"],
   upgrade: false,
   autoConnect: true,
   reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  timeout: 15000,
+  reconnectionAttempts: isProductionOrigin() ? 2 : 5,
+  reconnectionDelay: isProductionOrigin() ? 3000 : 1000,
+  reconnectionDelayMax: 10000,
+  timeout: 20000,
   withCredentials: true,
 };
 
