@@ -2,9 +2,8 @@
 import { io } from "socket.io-client";
 
 /**
- * SINGLE shared socket instance for Admin Dashboard
- * Uses POLLING ONLY to avoid "WebSocket connection failed" / "closed before connection" errors.
- * Override: REACT_APP_GUARD_REALTIME_URL, REACT_APP_ADMIN_REALTIME_URL
+ * Admin Dashboard realtime — DISABLED on production (https / vercel.app) to avoid connection failures.
+ * Set REACT_APP_ENABLE_REALTIME=true in Vercel to enable (when backend is stable).
  */
 
 let socket = null;
@@ -13,6 +12,22 @@ let lastToken = null;
 
 const GUARD_REALTIME_URL_ENV = process.env.REACT_APP_GUARD_REALTIME_URL;
 const ADMIN_REALTIME_URL_ENV = process.env.REACT_APP_ADMIN_REALTIME_URL;
+const ENABLE_REALTIME = process.env.REACT_APP_ENABLE_REALTIME === "true";
+
+/** Return true = do NOT create any socket (avoids failed connections). */
+function mustNotConnect() {
+  try {
+    if (typeof window === "undefined") return false;
+    const protocol = window.location.protocol || "";
+    const hostname = window.location.hostname || "";
+    // No socket on https (production) or on Vercel, unless explicitly enabled
+    if (protocol === "https:") return !ENABLE_REALTIME;
+    if (hostname.endsWith(".vercel.app")) return !ENABLE_REALTIME;
+    return false;
+  } catch (_) {
+    return true;
+  }
+}
 
 function isCurrentPageLocalhost() {
   if (typeof window === "undefined") return false;
@@ -20,23 +35,18 @@ function isCurrentPageLocalhost() {
   return h === "localhost" || h === "127.0.0.1";
 }
 
-function isProductionOrigin() {
-  if (typeof window === "undefined") return false;
-  return window.location?.protocol === "https:" && !window.location?.hostname?.includes("localhost");
-}
-
-// Production (https): never open a socket = zero WebSocket errors and zero disconnects.
-// To enable realtime on Vercel later, set REACT_APP_ENABLE_REALTIME=true and the *_REALTIME_URL vars, then redeploy.
-const ENABLE_REALTIME_IN_PRODUCTION = process.env.REACT_APP_ENABLE_REALTIME === "true";
-
 function getGuardRealtimeUrl() {
-  if (isProductionOrigin() && !ENABLE_REALTIME_IN_PRODUCTION) return null;
+  if (mustNotConnect()) return null;
   return GUARD_REALTIME_URL_ENV || null;
 }
 function getAdminRealtimeUrl() {
-  if (isProductionOrigin() && !ENABLE_REALTIME_IN_PRODUCTION) return null;
+  if (mustNotConnect()) return null;
   if (ADMIN_REALTIME_URL_ENV) return ADMIN_REALTIME_URL_ENV;
   return isCurrentPageLocalhost() ? "http://localhost:5000" : null;
+}
+
+function isProductionOrigin() {
+  return mustNotConnect();
 }
 
 // Shared options: polling-only = no WebSocket. Fewer retries in production to avoid connect/disconnect flash loops.
@@ -54,12 +64,9 @@ const POLLING_ONLY_OPTS = {
 };
 
 export function connectSocket() {
-  // Never open a socket on https (production) — eliminates all WebSocket disconnect errors there.
-  if (typeof window !== "undefined" && window.location.protocol === "https:") return null;
-
+  if (mustNotConnect()) return null;
   const token = localStorage.getItem("adminToken") || "";
   if (!token) return null;
-
   const url = getGuardRealtimeUrl();
   if (!url) return null;
 
@@ -108,12 +115,9 @@ export function connectSocket() {
 }
 
 export function connectAdminSocket() {
-  // Never open a socket on https (production) — eliminates all WebSocket disconnect errors there.
-  if (typeof window !== "undefined" && window.location.protocol === "https:") return null;
-
+  if (mustNotConnect()) return null;
   const token = localStorage.getItem("adminToken") || "";
   if (!token) return null;
-
   const url = getAdminRealtimeUrl();
   if (!url) return null;
 
