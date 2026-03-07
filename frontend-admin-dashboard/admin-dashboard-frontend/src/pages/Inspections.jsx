@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { listInspectionRequests, updateInspectionRequest, listSites, listGuards, createInspectionRequest } from "../services/api";
-import { connectSocket } from "../realtime/socket";
 import Card from "../components/Card";
+
+// No socket on this page — avoids failures when guard realtime disconnects. Refresh to see new inspections.
 
 export default function Inspections() {
   const [requests, setRequests] = useState([]);
@@ -39,35 +40,6 @@ export default function Inspections() {
     loadSites();
     loadGuards();
     loadRequests();
-    
-    // Set up real-time listener for inspection events
-    const socket = connectSocket();
-    if (socket) {
-      const handleNewRequest = () => {
-        console.log("🆕 New inspection request created");
-        loadRequests();
-      };
-      
-      const handleNewSubmission = () => {
-        console.log("📸 New inspection submission received");
-        loadRequests();
-      };
-      
-      const handleStatusChanged = () => {
-        console.log("🔄 Inspection status changed");
-        loadRequests();
-      };
-      
-      socket.on("inspection:request:created", handleNewRequest);
-      socket.on("inspection:submitted", handleNewSubmission);
-      socket.on("inspection:status_changed", handleStatusChanged);
-      
-      return () => {
-        socket.off("inspection:request:created", handleNewRequest);
-        socket.off("inspection:submitted", handleNewSubmission);
-        socket.off("inspection:status_changed", handleStatusChanged);
-      };
-    }
   }, []);
 
   useEffect(() => {
