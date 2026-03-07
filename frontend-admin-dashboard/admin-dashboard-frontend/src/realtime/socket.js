@@ -26,10 +26,9 @@ function isCurrentPageLocalhost() {
   return h === "localhost" || h === "127.0.0.1";
 }
 
-// Only use localhost URLs when the page is on localhost (avoids blocked ws:// in production)
+// Guard socket: only connect when explicitly configured (stops "websocket error" / "closed before connection" when abe-guard-ai isn't running)
 function getGuardRealtimeUrl() {
-  if (GUARD_REALTIME_URL_ENV) return GUARD_REALTIME_URL_ENV;
-  return isCurrentPageLocalhost() ? "http://localhost:4000" : null;
+  return GUARD_REALTIME_URL_ENV || null;
 }
 function getAdminRealtimeUrl() {
   if (ADMIN_REALTIME_URL_ENV) return ADMIN_REALTIME_URL_ENV;
@@ -93,10 +92,12 @@ export function connectSocket() {
     socket.emit("join_admin");
   });
 
-  socket.on("connect_error", (err) => {
+  socket.on("connect_error", () => {
     if (!guardConnectErrorLogged) {
       guardConnectErrorLogged = true;
-      console.warn("⚠️ Admin realtime socket unavailable:", err?.message || err, GUARD_REALTIME_URL_ENV ? "(will retry)" : "(abe-guard-ai may not be running on port 4000; retries limited)");
+      if (typeof console !== "undefined" && console.warn) {
+        console.warn("⚠️ Guard realtime socket unavailable. Set REACT_APP_GUARD_REALTIME_URL when abe-guard-ai is running.");
+      }
     }
   });
 
@@ -154,10 +155,12 @@ export function connectAdminSocket() {
     }
   });
 
-  adminSocket.on("connect_error", (err) => {
+  adminSocket.on("connect_error", () => {
     if (!adminConnectErrorLogged) {
       adminConnectErrorLogged = true;
-      console.warn("⚠️ Admin dashboard socket unavailable:", err?.message || err, ADMIN_REALTIME_URL_ENV ? "(will retry)" : "(backend may not be running on port 5000; retries limited)");
+      if (typeof console !== "undefined" && console.warn) {
+        console.warn("⚠️ Admin dashboard socket unavailable. Set REACT_APP_ADMIN_REALTIME_URL when backend supports Socket.IO.");
+      }
     }
   });
 

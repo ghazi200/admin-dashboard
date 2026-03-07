@@ -59,7 +59,9 @@ export default function Incidents() {
   async function loadSites() {
     try {
       const res = await listSites();
-      setSites(res.data || []);
+      const raw = res?.data;
+      const list = Array.isArray(raw) ? raw : (raw?.sites ?? raw?.data ?? []);
+      setSites(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("Error loading sites:", err);
     }
@@ -79,8 +81,9 @@ export default function Incidents() {
       params.limit = 50; // Default limit
 
       const res = await listIncidents(params);
-      const incidentsData = res.data || [];
-      
+      const raw = res?.data;
+      const list = Array.isArray(raw) ? raw : (raw?.incidents ?? raw?.data ?? []);
+      const incidentsData = Array.isArray(list) ? list : [];
       console.log("📋 Loaded incidents:", incidentsData.length);
       setIncidents(incidentsData);
     } catch (err) {
@@ -148,7 +151,9 @@ export default function Incidents() {
     }
   };
 
-  const siteById = sites.reduce((acc, site) => {
+  const sitesList = Array.isArray(sites) ? sites : [];
+  const incidentsList = Array.isArray(incidents) ? incidents : [];
+  const siteById = sitesList.reduce((acc, site) => {
     acc[site.id] = site;
     return acc;
   }, {});
@@ -322,7 +327,7 @@ export default function Incidents() {
               }}
             >
               <option value="">All Sites</option>
-              {sites.map((site) => (
+              {sitesList.map((site) => (
                 <option key={site.id} value={site.id}>
                   {site.name}
                 </option>
@@ -364,19 +369,19 @@ export default function Incidents() {
         <div style={{ padding: 40, textAlign: "center", color: "rgba(255,255,255,0.7)" }}>
           Loading incidents...
         </div>
-      ) : incidents.length === 0 ? (
+      ) : incidentsList.length === 0 ? (
         <Card style={{ padding: 40, textAlign: "center" }}>
           <p style={{ color: "rgba(255,255,255,0.7)" }}>No incidents found</p>
         </Card>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {incidents.map((incident) => {
-            const site = incident.site_id ? siteById[incident.site_id] : null;
-            if (!incident.id) {
+          {incidentsList.map((incident, idx) => {
+            const site = incident?.site_id ? siteById[incident.site_id] : null;
+            if (!incident?.id) {
               console.warn("⚠️ Incident missing ID:", incident);
             }
             return (
-              <Card key={incident.id} style={{ padding: 20 }}>
+              <Card key={incident?.id ?? idx} style={{ padding: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
@@ -567,7 +572,7 @@ export default function Incidents() {
                         )}
                       </>
                     )}
-                    {incident.attachments_json && incident.attachments_json.length > 0 && (
+                    {incident.attachments_json && Array.isArray(incident.attachments_json) && incident.attachments_json.length > 0 && (
                       <div style={{ marginTop: 12 }}>
                         <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: "rgba(255,255,255,0.7)" }}>
                           Attachments ({incident.attachments_json.length})
