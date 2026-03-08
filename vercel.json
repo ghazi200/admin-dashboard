@@ -1,8 +1,7 @@
 {
-  "buildCommand": "cd frontend-admin-dashboard/admin-dashboard-frontend && npm run build:vercel",
+  "buildCommand": "cd frontend-admin-dashboard/admin-dashboard-frontend && npm install --no-audit && npm run build:vercel",
   "outputDirectory": "frontend-admin-dashboard/admin-dashboard-frontend/build",
-  "installCommand": "cd frontend-admin-dashboard/admin-dashboard-frontend && npm install --no-audit",
-  "framework": null,
+  "framework": "create-react-app",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
