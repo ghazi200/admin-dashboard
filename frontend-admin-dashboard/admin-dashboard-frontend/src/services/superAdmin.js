@@ -1,16 +1,37 @@
 import axios from "axios";
+import { getBackendOrigin } from "../api/apiOrigin";
 
 /**
- * Super-Admin API client
- * Uses direct connection to backend on port 5000
+ * Super-Admin API client.
+ * Uses same backend origin as axiosClient (localStorage, env, or production Railway) — never hardcodes localhost in production.
  */
+function getSuperAdminBaseURL() {
+  const origin = getBackendOrigin();
+  return origin ? `${origin}/api/super-admin` : "/api/super-admin";
+}
+
 const superAdminClient = axios.create({
-  baseURL: "http://localhost:5000/api/super-admin",
+  baseURL: getSuperAdminBaseURL(),
   headers: {
     "Content-Type": "application/json",
   },
   withCredentials: true,
 });
+
+// Resolve origin at request time so runtime override (e.g. "Use Railway backend") is respected
+superAdminClient.interceptors.request.use(
+  (config) => {
+    const origin = getBackendOrigin();
+    config.baseURL = origin ? `${origin}/api/super-admin` : "/api/super-admin";
+    if (origin && config.url) {
+      const path = config.url.startsWith("/") ? config.url : `/${config.url}`;
+      config.url = `${origin}/api/super-admin${path}`;
+      config.baseURL = "";
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Attach admin token to requests
 superAdminClient.interceptors.request.use(

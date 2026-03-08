@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { getBackendOrigin } from "../api/apiOrigin";
 
 /**
  * Admin Login FORM ONLY (no page wrapper!)
@@ -92,6 +93,9 @@ export default function Login() {
   };
 
   const getApiBaseForRequest = () => {
+    // When on Vercel, use same-origin so the proxy forwards /api/* to Railway (no CORS)
+    const origin = getBackendOrigin();
+    if (origin === "") return "/api/admin";
     try {
       const s = localStorage.getItem("adminApiUrl");
       if (s && s.trim()) {
@@ -107,8 +111,14 @@ export default function Login() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setError("");
-    const apiBase = getApiBaseForRequest();
+    let apiBase = getApiBaseForRequest();
+    // Force same-origin proxy path when on Vercel so we never POST to /login (which would return index.html)
+    const hostname = typeof window !== "undefined" && window.location?.hostname;
+    if (hostname && (hostname.endsWith(".vercel.app") || hostname === "admin-dashboard-frontend-flax.vercel.app")) {
+      if (!apiBase || !String(apiBase).includes("/api/admin")) apiBase = "/api/admin";
+    }
     if (blockLoginInProductionNoApi && !apiBase.includes("railway.app")) {
       setError("Click \"Use Railway backend\" below to fix without redeploying, or set REACT_APP_ADMIN_API_URL in Vercel and redeploy.");
       return;
@@ -162,7 +172,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const loginUrl = `${apiBase}/login`;
+      const loginUrl = `${apiBase.replace(/\/+$/, "")}/login`;
       const res = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -228,7 +238,7 @@ export default function Login() {
   };
 
   return (
-    <form className="loginForm" onSubmit={onSubmit}>
+    <form className="loginForm" onSubmit={onSubmit} noValidate>
       <div style={{ marginBottom: 12, fontSize: 11, color: "rgba(255,255,255,0.7)", wordBreak: "break-all" }}>
         API (build): <code>{BUILD_API_URL}</code> {runtimeApi ? " → override: " + effectiveApiUrl : ""}
       </div>

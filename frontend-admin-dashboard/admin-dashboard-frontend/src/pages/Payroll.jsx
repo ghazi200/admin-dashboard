@@ -13,6 +13,7 @@ import {
   listGuards,
 } from "../services/payroll.service";
 import { getAdminInfo } from "../utils/access";
+import { getGuardAiOrigin } from "../api/apiOrigin";
 
 export default function Payroll() {
   const adminInfo = getAdminInfo();
@@ -481,7 +482,7 @@ export default function Payroll() {
                 </div>
                 {stub.file_url && (
                   <a
-                    href={`http://localhost:4000${stub.file_url}`}
+                    href={getGuardAiOrigin() ? `${getGuardAiOrigin()}${stub.file_url}` : stub.file_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: "#3b82f6", textDecoration: "none" }}

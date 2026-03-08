@@ -1,33 +1,33 @@
 /**
  * Guard In-App Messaging API
- * For use in guard-ui: calls /api/guard/messages/* on the admin-dashboard backend (port 5000).
- *
- * In guard-ui: set baseURL to your backend (e.g. REACT_APP_API_URL=http://localhost:5000)
- * and ensure requests send Authorization: Bearer <guardToken>.
+ * Calls /api/guard/messages/* on the admin-dashboard backend.
+ * Uses same origin as rest of admin app (apiOrigin) so production uses Railway, not localhost.
  */
 import axios from "axios";
+import { getBackendOrigin } from "../../api/apiOrigin";
 
-const getBaseURL = () => {
-  if (typeof process !== "undefined" && process.env?.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL.replace(/[\/?]+$/, "");
-  }
-  if (typeof window !== "undefined" && window.location?.hostname === "localhost") {
-    return "http://localhost:5000";
-  }
-  return "";
-};
-
-const baseURL = getBaseURL();
-const API_BASE = baseURL ? `${baseURL}/api/guard/messages` : "/api/guard/messages";
+function getMessagesBaseURL() {
+  const origin = getBackendOrigin();
+  return origin ? `${origin}/api/guard/messages` : "/api/guard/messages";
+}
 
 const client = axios.create({
-  baseURL: API_BASE,
+  baseURL: getMessagesBaseURL(),
   timeout: 30000,
   headers: { "Content-Type": "application/json" },
   withCredentials: true,
 });
 
 client.interceptors.request.use((config) => {
+  const origin = getBackendOrigin();
+  const baseURL = origin ? `${origin}/api/guard/messages` : "/api/guard/messages";
+  if (origin && config.url) {
+    const path = config.url.startsWith("/") ? config.url : `/${config.url}`;
+    config.url = `${origin}/api/guard/messages${path}`;
+    config.baseURL = "";
+  } else {
+    config.baseURL = baseURL;
+  }
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("guardToken") : null;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { listIncidents, updateIncident, listSites, summarizeIncident } from "../services/api";
 import { connectSocket } from "../realtime/socket";
+import { getGuardAiOrigin } from "../api/apiOrigin";
 import Card from "../components/Card";
 
 export default function Incidents() {
@@ -581,7 +582,7 @@ export default function Incidents() {
                           {incident.attachments_json.map((att, idx) => (
                             <a
                               key={idx}
-                              href={`http://localhost:4000${att.url}`}
+                              href={getGuardAiOrigin() ? `${getGuardAiOrigin()}${att.url}` : att.url}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{

@@ -1,31 +1,10 @@
 import axios from "axios";
+import { getBackendOrigin } from "./apiOrigin";
 
 /**
  * Admin API client.
- * Uses REACT_APP_API_URL at build time, or localStorage "adminApiUrl" (set by Login page "Use Railway backend") at runtime.
+ * Uses apiOrigin.getBackendOrigin() (localStorage, REACT_APP_API_URL, or production Railway URL).
  */
-function getBackendOrigin() {
-  if (typeof window !== "undefined") {
-    try {
-      const stored = localStorage.getItem("adminApiUrl");
-      if (stored && stored.trim()) {
-        const base = stored.trim().replace(/[\/?]+$/, "");
-        return base.endsWith("/api/admin") ? base.replace(/\/api\/admin\/?$/, "") : base;
-      }
-    } catch (_) {}
-  }
-  if (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL.replace(/[\/?]+$/, "");
-  }
-  if (typeof window !== "undefined" && window.location?.hostname === "localhost") {
-    return "http://localhost:5000";
-  }
-  if (typeof window !== "undefined" && window.location?.hostname !== "127.0.0.1") {
-    return "https://admin-dashboard-production-2596.up.railway.app";
-  }
-  return "";
-}
-
 const backendOrigin = getBackendOrigin();
 const baseURL = backendOrigin ? `${backendOrigin}/api/admin` : "/api/admin";
 

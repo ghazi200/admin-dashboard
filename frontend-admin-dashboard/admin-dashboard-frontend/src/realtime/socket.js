@@ -6,7 +6,14 @@
 
 import { io } from "socket.io-client";
 
-const GATEWAY_URL = process.env.REACT_APP_WS_GATEWAY_URL ? process.env.REACT_APP_WS_GATEWAY_URL.replace(/[\/?]+$/, "") : null;
+const RAILWAY_ORIGIN = "https://admin-dashboard-production-2596.up.railway.app";
+
+// Prefer WebSocket gateway; fallback to Railway when on production (Vercel) so sockets don't go through serverless
+const GATEWAY_URL =
+  (process.env.REACT_APP_WS_GATEWAY_URL && process.env.REACT_APP_WS_GATEWAY_URL.replace(/[\/?]+$/, "")) ||
+  (typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1"
+    ? RAILWAY_ORIGIN
+    : null);
 
 let gatewaySocket = null;
 let lastToken = null;
@@ -16,7 +23,7 @@ const OPTS = {
   transports: ["polling", "websocket"],
   autoConnect: true,
   reconnection: true,
-  reconnectionAttempts: 5,
+  reconnectionAttempts: 10,
   reconnectionDelay: 2000,
   reconnectionDelayMax: 10000,
   timeout: 20000,
@@ -71,6 +78,11 @@ function connectGateway() {
         if (typeof console !== "undefined" && console.warn) {
           console.warn("⚠️ Realtime gateway unavailable. Set REACT_APP_WS_GATEWAY_URL to your WebSocket Gateway URL.");
         }
+      }
+    });
+    gatewaySocket.on("disconnect", (reason) => {
+      if (reason === "io server disconnect" || reason === "transport close") {
+        gatewaySocket.connect();
       }
     });
   } catch (err) {

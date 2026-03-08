@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { listInspectionRequests, updateInspectionRequest, listSites, listGuards, createInspectionRequest } from "../services/api";
+import { getGuardAiOrigin } from "../api/apiOrigin";
 import Card from "../components/Card";
 
 // No socket on this page — avoids failures when guard realtime disconnects. Refresh to see new inspections.
@@ -393,7 +394,7 @@ export default function Inspections() {
                             {latestSubmission.photos_json.map((photo, idx) => (
                               <a
                                 key={idx}
-                                href={`http://localhost:4000${photo.url}`}
+                                href={getGuardAiOrigin() ? `${getGuardAiOrigin()}${photo.url}` : photo.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{

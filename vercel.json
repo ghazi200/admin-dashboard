@@ -3,6 +3,8 @@
   "outputDirectory": "frontend-admin-dashboard/admin-dashboard-frontend/build",
   "framework": "create-react-app",
   "rewrites": [
+    { "source": "/health", "destination": "/api/health" },
+    { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
