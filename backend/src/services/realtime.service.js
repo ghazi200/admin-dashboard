@@ -3,7 +3,7 @@
  * Use this instead of io.to(room).emit() so Core API stays stateless and Gateway handles connections.
  */
 
-const logger = require("../logger");
+const logger = require("../../logger");
 
 let redisClient = null;
 const CHANNEL = "realtime:events";
