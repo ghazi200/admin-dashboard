@@ -99,7 +99,10 @@ export default function Login() {
         return u.endsWith("/api/admin") ? u : u + "/api/admin";
       }
     } catch (_) {}
-    return effectiveApiUrl;
+    const fallback = effectiveApiUrl;
+    const isProduction = typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1";
+    if (isProduction && (!fallback || /localhost|127\.0\.0\.1/.test(fallback))) return DEFAULT_RUNTIME_API;
+    return fallback || DEFAULT_RUNTIME_API;
   };
 
   const onSubmit = async (e) => {
@@ -206,10 +209,11 @@ export default function Login() {
       nav("/", { replace: true });
     } catch (err) {
       const raw = err?.message || "Network error";
-      const isCorsOrNetwork = /fetch|network|access control|cors|failed to load/i.test(raw) || !raw;
+      const isCorsOrNetwork = /fetch|network|access control|cors|failed to load|load failed/i.test(raw) || !raw;
+      const tried = `${apiBase}/login`;
       const friendly = isCorsOrNetwork
-        ? "Request blocked (CORS/network). Set REACT_APP_API_URL and REACT_APP_ADMIN_API_URL in Vercel to your backend URL (e.g. https://admin-dashboard-production-2596.up.railway.app), then redeploy. Ensure backend CORS_ORIGINS includes your Vercel URL."
-        : raw;
+        ? "Request failed to " + tried + ". If that is localhost, clear site data and reload. If it is Railway, set CORS_ORIGINS on Railway to your Vercel URL and redeploy backend."
+        : raw + " (tried " + tried + ")";
       setError(friendly);
     } finally {
       setLoading(false);
