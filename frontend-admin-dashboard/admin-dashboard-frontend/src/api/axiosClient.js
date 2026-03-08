@@ -20,6 +20,9 @@ function getBackendOrigin() {
   if (typeof window !== "undefined" && window.location?.hostname === "localhost") {
     return "http://localhost:5000";
   }
+  if (typeof window !== "undefined" && window.location?.hostname !== "127.0.0.1") {
+    return "https://admin-dashboard-production-2596.up.railway.app";
+  }
   return "";
 }
 

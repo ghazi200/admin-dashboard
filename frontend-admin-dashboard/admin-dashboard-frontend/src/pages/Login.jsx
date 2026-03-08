@@ -52,6 +52,7 @@ export default function Login() {
   const effectiveApiUrl = useMemo(() => {
     const r = runtimeApi && runtimeApi.trim().replace(/[\/?]+$/, "");
     if (r) return r.endsWith("/api/admin") ? r : r + "/api/admin";
+    if (typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1") return DEFAULT_RUNTIME_API;
     return BUILD_API_URL;
   }, [runtimeApi]);
 
