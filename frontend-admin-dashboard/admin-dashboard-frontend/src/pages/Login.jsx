@@ -1,20 +1,49 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 /**
  * Admin Login FORM ONLY (no page wrapper!)
  * Handles optional MFA: if login returns requiresMfa, shows code input and calls verify-login.
+ * Runtime override: ?api=https://your-backend.up.railway.app (saved to localStorage so no redeploy needed).
  */
-const API_URL = (process.env.REACT_APP_ADMIN_API_URL || "http://localhost:5000/api/admin").replace(/[\/?]+$/, "");
+const BUILD_API_URL = (process.env.REACT_APP_ADMIN_API_URL || "http://localhost:5000/api/admin").replace(/[\/?]+$/, "");
 
-const isProduction = typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1";
-const isLocalhostApi = !API_URL || /localhost|127\.0\.0\.1/.test(API_URL);
-const showProductionApiWarning = isProduction && isLocalhostApi;
-/** When true, login will fail with CORS; block submit and show config steps */
-const blockLoginInProductionNoApi = showProductionApiWarning;
+const STORAGE_KEY = "adminApiUrl";
+const DEFAULT_RUNTIME_API = "https://admin-dashboard-production-2596.up.railway.app/api/admin";
+
+function getRuntimeApi() {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search).get("api");
+  if (q && q.trim()) {
+    let u = q.trim().replace(/[\/?]+$/, "");
+    if (u && !u.endsWith("/api/admin")) u = u + "/api/admin";
+    try {
+      localStorage.setItem(STORAGE_KEY, u);
+      return u;
+    } catch (_) {}
+    return u;
+  }
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch (_) {}
+  return null;
+}
 
 export default function Login() {
   const nav = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [runtimeApi, setRuntimeApi] = useState(getRuntimeApi);
+
+  const effectiveApiUrl = useMemo(() => {
+    const r = runtimeApi && runtimeApi.trim().replace(/[\/?]+$/, "");
+    if (r) return r.endsWith("/api/admin") ? r : r + "/api/admin";
+    return BUILD_API_URL;
+  }, [runtimeApi]);
+
+  const isProduction = typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1";
+  const isLocalhostApi = !effectiveApiUrl || /localhost|127\.0\.0\.1/.test(effectiveApiUrl);
+  const showProductionApiWarning = isProduction && isLocalhostApi;
+  const blockLoginInProductionNoApi = showProductionApiWarning;
 
   const [email, setEmail] = useState("admin@test.com");
   const [password, setPassword] = useState("password123");
@@ -24,15 +53,33 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(
     blockLoginInProductionNoApi
-      ? "App is calling localhost (wrong). In Vercel set REACT_APP_API_URL and REACT_APP_ADMIN_API_URL to https://admin-dashboard-production-2596.up.railway.app (and .../api/admin), then redeploy."
+      ? "App is calling localhost. Use the link below to point to your backend (no redeploy needed), or set env vars in Vercel and redeploy."
       : ""
   );
+
+  const applyDefaultBackend = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, DEFAULT_RUNTIME_API);
+      setRuntimeApi(DEFAULT_RUNTIME_API);
+      setError("");
+      setSearchParams({});
+    } catch (_) {}
+  };
+
+  const clearBackendOverride = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      setRuntimeApi(null);
+      setSearchParams({});
+      setError("Cleared. Reload to use build default.");
+    } catch (_) {}
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
     if (blockLoginInProductionNoApi) {
-      setError("Set REACT_APP_API_URL and REACT_APP_ADMIN_API_URL in Vercel (Environment Variables), then redeploy. See the red notice above.");
+      setError("Click \"Use Railway backend\" below to fix without redeploying, or set REACT_APP_ADMIN_API_URL in Vercel and redeploy.");
       return;
     }
 
@@ -44,7 +91,7 @@ export default function Login() {
       }
       setLoading(true);
       try {
-        const res = await fetch(`${API_URL}/mfa/verify-login`, {
+        const res = await fetch(`${effectiveApiUrl}/mfa/verify-login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mfaToken, code: mfaCode.trim() }),
@@ -84,7 +131,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const loginUrl = `${API_URL}/login`;
+      const loginUrl = `${effectiveApiUrl}/login`;
       const res = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -153,19 +200,22 @@ export default function Login() {
       {showProductionApiWarning ? (
         <div className="loginAlert" role="alert" style={{ marginBottom: 16, background: "rgba(220, 80, 60, 0.2)", border: "1px solid rgba(220,80,60,0.6)", padding: 16 }}>
           <div className="loginAlertText">
-            <strong>Fix “access control” / CORS: set backend URL in Vercel</strong>
+            <strong>Fix “access control” / CORS (no redeploy needed)</strong>
             <span style={{ display: "block", marginTop: 8, fontSize: 13 }}>
-              This build is calling: <code style={{ wordBreak: "break-all" }}>{API_URL || "http://localhost:5000/api/admin"}</code>
+              This build is calling: <code style={{ wordBreak: "break-all" }}>{effectiveApiUrl}</code>
             </span>
-            <span style={{ display: "block", marginTop: 8, fontSize: 13 }}>
-              In Vercel → Project → Settings → Environment Variables add (then redeploy):
-            </span>
-            <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 13 }}>
-              <li><code>REACT_APP_API_URL</code> = <code>https://admin-dashboard-production-2596.up.railway.app</code></li>
-              <li><code>REACT_APP_ADMIN_API_URL</code> = <code>https://admin-dashboard-production-2596.up.railway.app/api/admin</code></li>
-            </ul>
-            <span style={{ display: "block", marginTop: 8, fontSize: 12, opacity: 0.9 }}>Then push this repo, or Deployments → Redeploy. New message appears after you deploy.</span>
+            <span style={{ display: "block", marginTop: 12, fontSize: 13 }}>Click below to use your Railway backend for this browser:</span>
+            <button type="button" onClick={applyDefaultBackend} style={{ marginTop: 8, padding: "8px 14px", background: "#0a0", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>
+              Use Railway backend
+            </button>
+            <span style={{ display: "block", marginTop: 8, fontSize: 12, opacity: 0.9 }}>Or add the same URL as <code>?api=</code>: <code style={{ wordBreak: "break-all" }}>?api=https://admin-dashboard-production-2596.up.railway.app</code></span>
           </div>
+        </div>
+      ) : null}
+      {effectiveApiUrl && !isLocalhostApi ? (
+        <div style={{ marginBottom: 12, fontSize: 12, opacity: 0.85 }}>
+          Backend: <code style={{ wordBreak: "break-all" }}>{effectiveApiUrl}</code>{" "}
+          <button type="button" onClick={clearBackendOverride} style={{ marginLeft: 8, padding: "2px 8px", fontSize: 11, cursor: "pointer" }}>Clear</button>
         </div>
       ) : null}
       {error ? (

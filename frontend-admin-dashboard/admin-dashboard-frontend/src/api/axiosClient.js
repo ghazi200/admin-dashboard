@@ -2,12 +2,20 @@ import axios from "axios";
 
 /**
  * Admin API client.
- * Always send requests to /api/admin/... (e.g. /api/admin/notifications, /api/admin/messages/conversations).
- * On localhost we hit the backend (5000) directly so the dev-server proxy is not required.
+ * Uses REACT_APP_API_URL at build time, or localStorage "adminApiUrl" (set by Login page "Use Railway backend") at runtime.
  */
 function getBackendOrigin() {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("adminApiUrl");
+      if (stored && stored.trim()) {
+        const base = stored.trim().replace(/[\/?]+$/, "");
+        return base.endsWith("/api/admin") ? base.replace(/\/api\/admin\/?$/, "") : base;
+      }
+    } catch (_) {}
+  }
   if (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL.replace(/\/$/, "");
+    return process.env.REACT_APP_API_URL.replace(/[\/?]+$/, "");
   }
   if (typeof window !== "undefined" && window.location?.hostname === "localhost") {
     return "http://localhost:5000";
@@ -38,8 +46,9 @@ axiosClient.interceptors.request.use(
     if (!config.url || typeof config.url !== "string") return config;
     const path = config.url.startsWith("/") ? config.url : `/${config.url}`;
     const apiPath = path.startsWith("/api/admin") ? path : `/api/admin${path === "/" ? "" : path}`;
-    if (backendOrigin) {
-      config.url = `${backendOrigin}${apiPath}`;
+    const origin = getBackendOrigin();
+    if (origin) {
+      config.url = `${origin}${apiPath}`;
       config.baseURL = "";
     } else {
       config.url = apiPath;
