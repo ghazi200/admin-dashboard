@@ -90,10 +90,22 @@ export default function Login() {
     } catch (_) {}
   };
 
+  const getApiBaseForRequest = () => {
+    try {
+      const s = localStorage.getItem("adminApiUrl");
+      if (s && s.trim()) {
+        let u = s.trim().replace(/[\/?]+$/, "");
+        return u.endsWith("/api/admin") ? u : u + "/api/admin";
+      }
+    } catch (_) {}
+    return effectiveApiUrl;
+  };
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (blockLoginInProductionNoApi) {
+    const apiBase = getApiBaseForRequest();
+    if (blockLoginInProductionNoApi && !apiBase.includes("railway.app")) {
       setError("Click \"Use Railway backend\" below to fix without redeploying, or set REACT_APP_ADMIN_API_URL in Vercel and redeploy.");
       return;
     }
@@ -106,7 +118,7 @@ export default function Login() {
       }
       setLoading(true);
       try {
-        const res = await fetch(`${effectiveApiUrl}/mfa/verify-login`, {
+        const res = await fetch(`${apiBase}/mfa/verify-login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mfaToken, code: mfaCode.trim() }),
@@ -146,7 +158,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const loginUrl = `${effectiveApiUrl}/login`;
+      const loginUrl = `${apiBase}/login`;
       const res = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
