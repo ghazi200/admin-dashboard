@@ -37,14 +37,24 @@ function isCurrentPageLocalhost() {
   return h === "localhost" || h === "127.0.0.1";
 }
 
+/** Never use localhost URL when the app is served from HTTPS/Vercel (mixed content / wrong host). */
+function isLocalhostUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  const u = url.toLowerCase();
+  return u.includes("localhost") || u.includes("127.0.0.1");
+}
+
 function getGuardRealtimeUrl() {
   if (mustNotConnect()) return null;
-  return GUARD_REALTIME_URL_ENV || null;
+  const url = GUARD_REALTIME_URL_ENV || null;
+  if (url && !isCurrentPageLocalhost() && isLocalhostUrl(url)) return null;
+  return url;
 }
 function getAdminRealtimeUrl() {
   if (mustNotConnect()) return null;
-  if (ADMIN_REALTIME_URL_ENV) return ADMIN_REALTIME_URL_ENV;
-  return isCurrentPageLocalhost() ? "http://localhost:5000" : null;
+  const url = ADMIN_REALTIME_URL_ENV || (isCurrentPageLocalhost() ? "http://localhost:5000" : null);
+  if (url && !isCurrentPageLocalhost() && isLocalhostUrl(url)) return null;
+  return url;
 }
 
 function isProductionOrigin() {
@@ -66,6 +76,10 @@ const POLLING_ONLY_OPTS = {
 };
 
 export function connectSocket() {
+  if (typeof window !== "undefined") {
+    if (window.location?.protocol === "https:") return null;
+    if (window.location?.hostname?.endsWith?.("vercel.app")) return null;
+  }
   if (mustNotConnect()) return null;
   const token = localStorage.getItem("adminToken") || "";
   if (!token) return null;
@@ -117,6 +131,10 @@ export function connectSocket() {
 }
 
 export function connectAdminSocket() {
+  if (typeof window !== "undefined") {
+    if (window.location?.protocol === "https:") return null;
+    if (window.location?.hostname?.endsWith?.("vercel.app")) return null;
+  }
   if (mustNotConnect()) return null;
   const token = localStorage.getItem("adminToken") || "";
   if (!token) return null;
