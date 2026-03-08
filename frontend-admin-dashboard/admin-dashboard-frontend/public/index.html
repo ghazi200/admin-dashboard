@@ -9,6 +9,9 @@
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
   </head>
   <body>
+    <script>
+      (function(){ try { if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") { localStorage.setItem("adminApiUrl", "https://admin-dashboard-production-2596.up.railway.app/api/admin"); } } catch(e) {} })();
+    </script>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="login-fix-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;padding:10px 14px;font-size:13px;font-family:system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.2);">
       <strong>Login failing with &quot;access control&quot;?</strong> Open <a href="/use-railway-backend.html" style="color:#fff;text-decoration:underline;font-weight:bold;">this link</a> first, then sign in. Or set REACT_APP_API_URL and REACT_APP_ADMIN_API_URL in Vercel and redeploy.
