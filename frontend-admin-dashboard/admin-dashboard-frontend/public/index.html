@@ -8,6 +8,13 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="login-fix-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;padding:10px 14px;font-size:13px;font-family:system-ui,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.2);">
+      <strong>Login failing with &quot;access control&quot;?</strong> Open <a href="/use-railway-backend.html" style="color:#fff;text-decoration:underline;font-weight:bold;">this link</a> first, then sign in. Or set REACT_APP_API_URL and REACT_APP_ADMIN_API_URL in Vercel and redeploy.
+      <button type="button" onclick="this.parentElement.style.display='none'" style="margin-left:10px;padding:2px 8px;cursor:pointer;background:rgba(255,255,255,.3);border:none;color:#fff;border-radius:4px;">Dismiss</button>
+    </div>
+    <script>
+      (function(){ var p = window.location.pathname || ''; if (p.indexOf('login') !== -1) { var b = document.getElementById('login-fix-banner'); if(b) b.style.display='block'; } })();
+    </script>
     <div id="root"></div>
   </body>
 </html>
