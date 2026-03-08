@@ -464,8 +464,6 @@ export default function Dashboard() {
 
     // ✅ Use the shared socket singleton (prevents duplicate connections)
     const s = connectSocket();
-    if (!s) return;
-
     // ✅ Also connect to admin-dashboard socket for admin-specific events
     const adminS = connectAdminSocket();
     if (!adminS) {
@@ -969,6 +967,13 @@ export default function Dashboard() {
       
       console.log("✅ All socket listeners attached");
     };
+
+    // When realtime is disabled (no socket), poll so dashboard still updates
+    if (!s) {
+      refreshAll();
+      const pollInterval = setInterval(refreshAll, 45000);
+      return () => clearInterval(pollInterval);
+    }
 
     // Attach listeners immediately (works even if socket not connected yet)
     attachListeners();

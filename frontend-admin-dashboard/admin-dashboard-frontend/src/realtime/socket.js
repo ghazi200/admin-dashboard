@@ -2,9 +2,12 @@
 import { io } from "socket.io-client";
 
 /**
- * Admin Dashboard realtime — DISABLED on production (https / vercel.app) to avoid connection failures.
- * Set REACT_APP_ENABLE_REALTIME=true in Vercel to enable (when backend is stable).
+ * Realtime is OFF unless you set REACT_APP_USE_REALTIME=true.
+ * This avoids connection errors everywhere (Vercel, Railway, localhost).
+ * When you want to try realtime again: set REACT_APP_USE_REALTIME=true and the *_REALTIME_URL vars, then rebuild.
  */
+
+const USE_REALTIME = process.env.REACT_APP_USE_REALTIME === "true";
 
 let socket = null;
 let adminSocket = null;
@@ -12,17 +15,16 @@ let lastToken = null;
 
 const GUARD_REALTIME_URL_ENV = process.env.REACT_APP_GUARD_REALTIME_URL;
 const ADMIN_REALTIME_URL_ENV = process.env.REACT_APP_ADMIN_REALTIME_URL;
-const ENABLE_REALTIME = process.env.REACT_APP_ENABLE_REALTIME === "true";
 
-/** Return true = do NOT create any socket (avoids failed connections). */
+/** Realtime disabled = never create a socket. When enabled, still skip https/Vercel to avoid failures. */
 function mustNotConnect() {
+  if (!USE_REALTIME) return true;
   try {
     if (typeof window === "undefined") return false;
     const protocol = window.location.protocol || "";
     const hostname = window.location.hostname || "";
-    // No socket on https (production) or on Vercel, unless explicitly enabled
-    if (protocol === "https:") return !ENABLE_REALTIME;
-    if (hostname.endsWith(".vercel.app")) return !ENABLE_REALTIME;
+    if (protocol === "https:") return true;
+    if (hostname.endsWith(".vercel.app")) return true;
     return false;
   } catch (_) {
     return true;

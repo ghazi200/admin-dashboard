@@ -12,8 +12,6 @@
  * still run when the process was sleeping (e.g. Railway).
  */
 
-const cron = require("node-cron");
-
 async function runReminders24h(app) {
   const { Notification, sequelize } = app.locals.models;
   try {
@@ -197,25 +195,13 @@ async function runAllShiftReminders(app) {
 
 /**
  * Schedule shift reminder notifications.
- * Each cron callback returns immediately; work runs in setImmediate to avoid blocking the scheduler.
+ * In-process cron is DISABLED to avoid "missed execution" when the process sleeps (e.g. Railway).
+ * Run reminders via HTTP: GET /api/cron/shift-reminders?secret=YOUR_CRON_SECRET
+ * Use external cron (e.g. cron-job.org) every 5–15 minutes to hit that URL.
  */
 function scheduleShiftReminders(app) {
-  // Every hour at :00 — 24h reminders
-  cron.schedule("0 * * * *", () => {
-    setImmediate(() => runReminders24h(app));
-  });
-
-  // Every 15 minutes — 2h reminders
-  cron.schedule("*/15 * * * *", () => {
-    setImmediate(() => runReminders2h(app));
-  });
-
-  // Every 5 minutes — 30m reminders
-  cron.schedule("*/5 * * * *", () => {
-    setImmediate(() => runReminders30m(app));
-  });
-
-  console.log("✅ Shift reminders scheduler started");
+  // No node-cron schedules — reminders run only via /api/cron/shift-reminders (external cron)
+  console.log("✅ Shift reminders: in-process cron disabled. Use GET /api/cron/shift-reminders (with CRON_SECRET) every 5–15 min.");
 }
 
 module.exports = {
