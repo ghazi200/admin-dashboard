@@ -15,9 +15,9 @@
  * @param {string} options.message - Notification message
  * @param {string} options.shiftId - UUID of the shift (optional)
  * @param {Object} options.meta - Additional metadata (optional)
- * @param {Object} options.io - Socket.IO instance for real-time notification (optional)
+ * @param {Object} options.app - Express app for realtime publish (optional)
  */
-async function createGuardNotification({ sequelize, guardId, type, title, message, shiftId = null, meta = {}, io = null }) {
+async function createGuardNotification({ sequelize, guardId, type, title, message, shiftId = null, meta = {}, app = null }) {
   try {
     if (!guardId || !sequelize) {
       console.warn("⚠️ createGuardNotification: guardId and sequelize are required");
@@ -38,11 +38,8 @@ async function createGuardNotification({ sequelize, guardId, type, title, messag
 
     const notification = result[0];
 
-    // Emit socket event to notify guard in real-time
-    if (io) {
-      // Emit to guard-specific room
-      io.to(`guard:${guardId}`).emit("guard:notification:new", notification);
-      console.log(`📤 Emitted guard notification to guard:${guardId}`, notification.id);
+    if (app?.locals?.emitToRealtime) {
+      app.locals.emitToRealtime(app, `guard:${guardId}`, "guard:notification:new", notification).catch(() => {});
     }
 
     console.log(`✅ Created guard notification: ${notification.id} for guard ${guardId}`);
@@ -60,9 +57,9 @@ async function createGuardNotification({ sequelize, guardId, type, title, messag
  * @param {Object} options.sequelize - Sequelize instance
  * @param {Object} options.currentShift - Current shift data (before update)
  * @param {Object} options.updatedShift - Updated shift data (after update)
- * @param {Object} options.io - Socket.IO instance (optional)
+ * @param {Object} options.app - Express app for realtime (optional)
  */
-async function notifyShiftChanges({ sequelize, currentShift, updatedShift, io = null }) {
+async function notifyShiftChanges({ sequelize, currentShift, updatedShift, app = null }) {
   if (!currentShift || !updatedShift || !sequelize) {
     return;
   }
@@ -93,7 +90,7 @@ async function notifyShiftChanges({ sequelize, currentShift, updatedShift, io = 
         shiftEnd: updatedShift.shift_end,
         location: updatedShift.location,
       },
-      io,
+      app,
     });
     if (notification) notifications.push(notification);
   }
@@ -113,7 +110,7 @@ async function notifyShiftChanges({ sequelize, currentShift, updatedShift, io = 
         shiftEnd: currentShift.shift_end,
         location: currentShift.location,
       },
-      io,
+      app,
     });
     if (notification) notifications.push(notification);
   }

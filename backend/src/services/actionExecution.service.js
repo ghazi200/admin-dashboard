@@ -13,10 +13,10 @@
  * Execute an approved action
  * @param {Object} action - CommandCenterAction instance
  * @param {Object} models - Sequelize models
- * @param {Object} io - Socket.IO instance (optional)
+ * @param {Object} app - Express app (for app.locals.emitToRealtime)
  * @returns {Promise<Object>} Execution result
  */
-async function executeAction(action, models, io = null) {
+async function executeAction(action, models, app = null) {
   try {
     const { CommandCenterAction } = models;
     const actionType = action.action_type || action.type;
@@ -30,23 +30,23 @@ async function executeAction(action, models, io = null) {
 
     switch (actionType) {
       case "REQUEST_BACKUP":
-        result = await executeRequestBackup(action, entityRefs, models, io);
+        result = await executeRequestBackup(action, entityRefs, models, app);
         break;
 
       case "ESCALATE_SUPERVISOR":
-        result = await executeEscalateSupervisor(action, entityRefs, models, io);
+        result = await executeEscalateSupervisor(action, entityRefs, models, app);
         break;
 
       case "TRIGGER_CALLOUT":
-        result = await executeTriggerCallout(action, entityRefs, models, io);
+        result = await executeTriggerCallout(action, entityRefs, models, app);
         break;
 
       case "REQUEST_INSPECTION":
-        result = await executeRequestInspection(action, entityRefs, models, io);
+        result = await executeRequestInspection(action, entityRefs, models, app);
         break;
 
       case "NOTIFY_SUPERVISOR":
-        result = await executeNotifySupervisor(action, entityRefs, models, io);
+        result = await executeNotifySupervisor(action, entityRefs, models, app);
         break;
 
       default:
@@ -93,7 +93,7 @@ async function executeAction(action, models, io = null) {
 /**
  * Execute REQUEST_BACKUP action
  */
-async function executeRequestBackup(action, entityRefs, models, io) {
+async function executeRequestBackup(action, entityRefs, models, app) {
   const { Shift, Guard } = models;
   const shiftId = entityRefs.shift_id;
 
@@ -114,12 +114,13 @@ async function executeRequestBackup(action, entityRefs, models, io) {
     // 2. Create a callout request
     // 3. Send notifications to eligible guards
     
-    if (io) {
-      io.to("role:all").emit("action:backup_requested", {
+    const emitToRealtime = app?.locals?.emitToRealtime;
+    if (emitToRealtime) {
+      await emitToRealtime(app, "role:all", "action:backup_requested", {
         shiftId,
         actionId: action.id,
         description: action.description,
-      });
+      }).catch(() => {});
     }
 
     return {
@@ -141,7 +142,7 @@ async function executeRequestBackup(action, entityRefs, models, io) {
 /**
  * Execute ESCALATE_SUPERVISOR action
  */
-async function executeEscalateSupervisor(action, entityRefs, models, io) {
+async function executeEscalateSupervisor(action, entityRefs, models, app) {
   const { Notification, Admin } = models;
   const incidentId = entityRefs.incident_id;
 
@@ -199,7 +200,7 @@ async function executeEscalateSupervisor(action, entityRefs, models, io) {
 /**
  * Execute TRIGGER_CALLOUT action
  */
-async function executeTriggerCallout(action, entityRefs, models, io) {
+async function executeTriggerCallout(action, entityRefs, models, app) {
   const { Shift, Guard } = models;
   const shiftId = entityRefs.shift_id;
 
@@ -218,12 +219,13 @@ async function executeTriggerCallout(action, entityRefs, models, io) {
     
     console.log(`📞 Triggering callout for shift: ${shiftId}`);
     
-    if (io) {
-      io.to("role:all").emit("action:callout_triggered", {
+    const emitToRealtime = app?.locals?.emitToRealtime;
+    if (emitToRealtime) {
+      await emitToRealtime(app, "role:all", "action:callout_triggered", {
         shiftId,
         actionId: action.id,
         description: action.description,
-      });
+      }).catch(() => {});
     }
 
     return {
@@ -245,7 +247,7 @@ async function executeTriggerCallout(action, entityRefs, models, io) {
 /**
  * Execute REQUEST_INSPECTION action
  */
-async function executeRequestInspection(action, entityRefs, models, io) {
+async function executeRequestInspection(action, entityRefs, models, app) {
   const { Guard, Shift } = models;
   const guardId = entityRefs.guard_id;
   const shiftId = entityRefs.shift_id;
@@ -258,13 +260,14 @@ async function executeRequestInspection(action, entityRefs, models, io) {
     // 2. Send push notification to guard
     // 3. Set deadline
     
-    if (io) {
-      io.to(`guard:${guardId}`).emit("inspection:request", {
+    const emitToRealtime = app?.locals?.emitToRealtime;
+    if (emitToRealtime) {
+      await emitToRealtime(app, `guard:${guardId}`, "inspection:request", {
         guardId,
         shiftId,
         actionId: action.id,
         description: action.description,
-      });
+      }).catch(() => {});
     }
 
     return {
@@ -287,7 +290,7 @@ async function executeRequestInspection(action, entityRefs, models, io) {
 /**
  * Execute NOTIFY_SUPERVISOR action
  */
-async function executeNotifySupervisor(action, entityRefs, models, io) {
+async function executeNotifySupervisor(action, entityRefs, models, app) {
   const { Notification, Admin } = models;
 
   try {
@@ -316,12 +319,13 @@ async function executeNotifySupervisor(action, entityRefs, models, io) {
       )
     );
 
-    if (io) {
-      io.to("role:admin").to("role:supervisor").emit("notification:new", {
+    const emitToRealtime = app?.locals?.emitToRealtime;
+    if (emitToRealtime) {
+      await emitToRealtime(app, ["role:admin", "role:supervisor"], "notification:new", {
         type: "ACTION_NOTIFICATION",
         title: action.description.split(":")[0] || "Action Notification",
         message: action.description,
-      });
+      }).catch(() => {});
     }
 
     return {

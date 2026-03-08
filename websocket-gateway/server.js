@@ -23,7 +23,7 @@ const app = express();
 const server = createServer(app);
 const PORT = process.env.PORT || 4001;
 
-// CORS for Socket.IO handshake
+// CORS for Socket.IO handshake — allow localhost + any *.vercel.app + env list
 const corsOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
@@ -34,16 +34,25 @@ const corsOrigins = [
 ];
 const extra = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "")
   .split(",")
-  .map((s) => s.trim())
+  .map((s) => s.trim().replace(/[\/?]+$/, ""))
   .filter(Boolean);
 extra.forEach((o) => { if (o && !corsOrigins.includes(o)) corsOrigins.push(o); });
 
-app.use(cors({ origin: corsOrigins }));
+function allowOrigin(origin, cb) {
+  if (!origin) return cb(null, true);
+  if (corsOrigins.includes(origin)) return cb(null, true);
+  try {
+    if (new URL(origin).hostname.endsWith(".vercel.app")) return cb(null, true);
+  } catch (_) {}
+  return cb(null, false);
+}
+
+app.use(cors({ origin: allowOrigin }));
 app.get("/", (req, res) => res.json({ service: "websocket-gateway", status: "OK" }));
 app.get("/health", (req, res) => res.json({ status: "OK" }));
 
 const io = new Server(server, {
-  cors: { origin: corsOrigins, credentials: true, methods: ["GET", "POST"] },
+  cors: { origin: allowOrigin, credentials: true, methods: ["GET", "POST"] },
   pingInterval: 20000,
   pingTimeout: 120000,
   transports: ["polling", "websocket"],
@@ -122,7 +131,7 @@ io.on("connection", (socket) => {
   // conversation:join — verify with Core API then join room
   socket.on("conversation:join", async (data) => {
     const conversationId = data?.conversationId;
-    const coreUrl = (process.env.CORE_API_URL || "").replace(/\/+$/, "");
+    const coreUrl = (process.env.CORE_API_URL || "").replace(/[\/?]+$/, "");
     const token = socket.handshake.auth?.token;
     if (!coreUrl || !token || !conversationId) {
       socket.emit("error", { message: "Missing config or conversationId" });

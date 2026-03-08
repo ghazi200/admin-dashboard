@@ -1,0 +1,22 @@
+# ============================================================
+# VERCEL — copy each VALUE below into Environment Variables
+# Vercel → Project → Settings → Environment Variables → Add
+# ============================================================
+
+REACT_APP_API_URL
+https://admin-dashboard-production-2596.up.railway.app
+
+REACT_APP_ADMIN_API_URL
+https://admin-dashboard-production-2596.up.railway.app/api/admin
+
+REACT_APP_WS_GATEWAY_URL
+https://generous-manifestation-production-dbd9.up.railway.app
+
+
+# ============================================================
+# RAILWAY BACKEND — CORS_ORIGINS (so login works from Vercel)
+# Railway → backend service → Variables → Add
+# ============================================================
+
+CORS_ORIGINS
+https://admin-dashboard-frontend-flax.vercel.app

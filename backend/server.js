@@ -97,7 +97,6 @@ if (process.env.NODE_ENV === "production") {
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const http = require("http");
-const { Server } = require("socket.io");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
@@ -160,7 +159,7 @@ const corsOrigins = [
 ];
 [process.env.CORS_ORIGINS, process.env.GUARD_APP_URL, process.env.ADMIN_APP_URL]
   .filter(Boolean)
-  .flatMap((s) => s.split(",").map((o) => o.trim()).filter(Boolean))
+  .flatMap((s) => s.split(",").map((o) => o.trim().replace(/[\/?]+$/, "")).filter(Boolean))
   .forEach((o) => { if (o && !corsOrigins.includes(o)) corsOrigins.push(o); });
 
 let productionCorsBlockWarningLogged = false;
@@ -319,6 +318,43 @@ if (process.env.DEBUG_STARTUP) logger.debug({ modelKeys: Object.keys(app.locals.
 })();
 
 // ✅ Routes (after models)
+// Internal: Gateway calls this to verify conversation membership (conversation:join)
+const { toParticipantId } = require("./src/utils/messagingId");
+app.post("/api/internal/socket/join-conversation", async (req, res) => {
+  const auth = req.headers.authorization || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  const { conversationId } = req.body || {};
+  if (!token || !conversationId) {
+    return res.status(400).json({ ok: false, error: "Missing token or conversationId" });
+  }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userType = decoded.adminId || decoded.role === "admin" || decoded.role === "super_admin" ? "admin" : "guard";
+    const userId = decoded.adminId || decoded.guardId || decoded.id;
+    const participantId = toParticipantId(userType, userId);
+    const models = req.app.locals.models;
+    if (!models?.ConversationParticipant) {
+      return res.status(503).json({ ok: false, error: "Models not ready" });
+    }
+    const participant = await models.ConversationParticipant.findOne({
+      where: {
+        conversation_id: conversationId,
+        participant_type: userType,
+        participant_id: participantId,
+      },
+    });
+    if (participant) {
+      return res.json({ ok: true });
+    }
+    return res.status(403).json({ ok: false, error: "Not a participant" });
+  } catch (e) {
+    if (e.name === "JsonWebTokenError" || e.name === "TokenExpiredError") {
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+    return res.status(500).json({ ok: false, error: e?.message || "Server error" });
+  }
+});
+
 const devSeedRoutes = require("./src/routes/devSeed.routes");
 app.use("/api/dev", devSeedRoutes);
 
@@ -551,91 +587,16 @@ app.get("/health/ready", async (req, res) => {
   }
 });
 
-// ✅ HTTP server + Socket.IO
+// ✅ HTTP server (realtime via WebSocket Gateway + Redis; no Socket.IO in this process)
 const server = http.createServer(app);
 
-const io = new Server(server, {
-  cors: {
-    origin: corsOrigins,
-    credentials: true,
-    methods: ["GET", "POST"],
-  },
+const { emitToRealtime } = require("./src/services/realtime.service");
+app.locals.emitToRealtime = emitToRealtime;
+app.set("emitToRealtime", emitToRealtime);
 
-  // ✅ Keepalive: longer timeout reduces disconnects behind proxies (Railway, etc.)
-  pingInterval: 20000,
-  pingTimeout: 120000, // 2 min before disconnect on missed pong
-
-  transports: ["polling", "websocket"], // polling first so clients that only use polling work reliably
-});
-
-// 🔐 Socket auth (JWT in handshake.auth.token) - Supports both admin and guard tokens
-io.use((socket, next) => {
-  try {
-    const token = socket.handshake.auth?.token;
-    if (!token) return next(new Error("Unauthorized"));
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    // Check if it's an admin token
-    if (decoded.adminId || decoded.role === "admin" || decoded.role === "super_admin") {
-      socket.admin = {
-        id: decoded.adminId || decoded.id,
-        role: decoded.role,
-        permissions: decoded.permissions || [],
-        tenant_id: decoded.tenant_id || null,
-      };
-    }
-
-    // Check if it's a guard token
-    if (decoded.guardId || (decoded.role === "guard" && !socket.admin)) {
-      socket.guard = {
-        id: decoded.guardId || decoded.id,
-        role: decoded.role || "guard",
-        tenant_id: decoded.tenant_id || null,
-      };
-    }
-
-    // Must be either admin or guard
-    if (!socket.admin && !socket.guard) {
-      return next(new Error("Invalid token: must be admin or guard"));
-    }
-
-    next();
-  } catch (err) {
-    logger.error({ err: err.message }, "Socket auth failed");
-    next(new Error("Unauthorized"));
-  }
-});
-
-// ✅ Initialize Command Center Socket Event Interceptor (after models are loaded)
-// Will be initialized after models are available
-
-// 🔊 GLOBAL ADMIN FEED + connection/disconnect logging to debug drops
-io.on("connection", (socket) => {
-  console.log("connected:", socket.id);
-  logger.info({ socketId: socket.id }, "Socket connected");
-  socket.join("role:all");
-
-  socket.on("disconnect", (reason) => {
-    console.log("disconnect reason:", reason);
-    logger.info({ socketId: socket.id, reason }, "Socket disconnected");
-  });
-});
-
-// ✅ Make io available to controllers/helpers
-app.set("io", io);
-
-// ✅ Initialize Command Center Socket Event Interceptor
-const { initSocketEventInterceptor } = require("./src/services/socketEventInterceptor");
-initSocketEventInterceptor(io, models);
-
-// ✅ Initialize callout notification listener (connects to abe-guard-ai)
+// ✅ Initialize callout notification listener (connects to abe-guard-ai, publishes to Redis)
 const { initCalloutNotificationListener } = require("./src/services/calloutNotificationListener");
 initCalloutNotificationListener(app);
-
-// ✅ Initialize messaging socket handlers
-const { initMessagingSocketHandlers } = require("./src/services/messagingSocket.service");
-initMessagingSocketHandlers(io, models);
 
 // ✅ Global Express error handler (after routes)
 app.use((err, req, res, next) => {

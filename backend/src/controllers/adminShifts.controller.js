@@ -281,15 +281,13 @@ exports.createShift = async (req, res) => {
         console.warn("⚠️ Failed to create OpEvent for new shift:", opEventError.message);
       }
 
-      // ✅ Emit socket event for real-time schedule updates
-      const io = req.app.locals.io;
-      if (io) {
-        io.to("role:all").emit("shift_created", {
-          shift: created,
-          tenant_id: created.tenant_id,
-          location: created.location,
-        });
-        console.log("📤 Emitted shift_created event for schedule update");
+      const emitToRealtime = req.app.locals.emitToRealtime;
+      if (emitToRealtime) {
+        emitToRealtime(req.app, "role:all", "shift_created", {
+        shift: created,
+        tenant_id: created.tenant_id,
+        location: created.location,
+      }).catch(() => {});
       }
 
       // ✅ SHIFT CHANGE ALERTS: Notify guard if shift is created with assignment
@@ -556,29 +554,25 @@ exports.updateShift = async (req, res) => {
         console.warn("⚠️ Failed to create OpEvent for shift closure:", opEventError.message);
       }
 
-      // ✅ Emit shift_filled event (already handled by socket listeners in Dashboard)
-      const io = req.app.locals.io;
-      if (io) {
-        io.to("role:all").emit("shift_filled", {
+      const emitToRealtime = req.app.locals.emitToRealtime;
+      if (emitToRealtime) {
+        emitToRealtime(req.app, "role:all", "shift_filled", {
           shift: updated,
           tenant_id: updated.tenant_id,
           location: updated.location,
-        });
-        console.log("📤 Emitted shift_filled event for schedule update");
+        }).catch(() => {});
       }
     }
 
-    // ✅ Emit shift_updated event for any shift update (for schedule page)
-    const io = req.app.locals.io;
-    if (io) {
-      io.to("role:all").emit("shift_updated", {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, "role:all", "shift_updated", {
         shift: updated,
         tenant_id: updated.tenant_id,
         location: updated.location,
         previousStatus: previousStatus,
         newStatus: updated.status,
-      });
-      console.log("📤 Emitted shift_updated event for schedule update");
+      }).catch(() => {});
     }
 
     // ✅ SHIFT CHANGE ALERTS: Notify guards of shift changes
@@ -974,7 +968,6 @@ exports.deleteShift = async (req, res) => {
     if (shiftToDelete.guard_id) {
       try {
         const { createGuardNotification } = require("../utils/guardNotification");
-        const io = req.app.locals.io;
         await createGuardNotification({
           sequelize,
           guardId: shiftToDelete.guard_id,
@@ -989,7 +982,7 @@ exports.deleteShift = async (req, res) => {
             location: shiftToDelete.location,
             deletedAt: new Date().toISOString(),
           },
-          io,
+          app: req.app,
         });
       } catch (notificationError) {
         console.warn("⚠️ Failed to create guard notification for deleted shift:", notificationError.message);

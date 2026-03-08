@@ -18,7 +18,7 @@ let isConnected = false;
 function initCalloutNotificationListener(app) {
   const abeGuardAiUrl = process.env.ABE_GUARD_AI_URL || "http://localhost:4000";
   const { Notification } = app.locals.models;
-  const io = app.locals.io; // Admin dashboard's own socket server
+  const emitToRealtime = app.locals.emitToRealtime;
 
   console.log(`🔌 Connecting to abe-guard-ai at ${abeGuardAiUrl} for callout notifications...`);
 
@@ -145,10 +145,9 @@ function initCalloutNotificationListener(app) {
 
       console.log(`✅ Created callout notification: ${notification.id}`);
 
-      // Emit to admin dashboard clients
-      if (io) {
-        io.to("role:all").emit("notification:new", notification);
-        console.log("📤 Emitted notification:new to admin dashboard clients");
+      if (emitToRealtime) {
+        emitToRealtime(app, "role:all", "notification:new", notification).catch((e) => console.warn("Realtime emit failed:", e?.message));
+        console.log("📤 Published notification:new to realtime (Gateway)");
       }
 
       // ✅ ENHANCED EVENT CAPTURE: Create OpEvent for Command Center

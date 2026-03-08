@@ -507,17 +507,16 @@ exports.updateSchedule = async (req, res) => {
       });
     }
 
-    // Emit socket event for real-time updates
-    const io = req.app.get("io");
-    if (io) {
-      io.to("role:all").emit("schedule_updated", {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, "role:all", "schedule_updated", {
         building: {
           id: scheduleConfig.buildingId,
           name: scheduleConfig.buildingName,
           location: scheduleConfig.buildingLocation,
         },
         scheduleTemplate: scheduleConfig.scheduleTemplate,
-      });
+      }).catch(() => {});
     }
 
     return res.json({

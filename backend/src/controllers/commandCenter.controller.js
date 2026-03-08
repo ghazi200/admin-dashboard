@@ -369,12 +369,10 @@ exports.approveAction = async (req, res) => {
       }
     );
 
-    // Execute the action
-    const io = req.app.locals.io;
     const executionResult = await actionExecutionService.executeAction(
       { ...action.toJSON(), id: actionId },
       models,
-      io
+      req.app
     );
 
     return res.json({

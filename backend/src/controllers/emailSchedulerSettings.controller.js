@@ -101,13 +101,12 @@ exports.updateSettings = async (req, res) => {
       await emailSchedulerManager.reloadSchedulers(req.app.locals.models);
     }
 
-    // Emit socket event for real-time updates
-    const io = req.app.get("io");
-    if (io) {
-      io.to("role:all").emit("email_scheduler_settings_updated", {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, "role:all", "email_scheduler_settings_updated", {
         settingType,
         settings: settings.toJSON(),
-      });
+      }).catch(() => {});
     }
 
     return res.json({

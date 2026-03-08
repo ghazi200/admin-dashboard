@@ -2,7 +2,6 @@ const smartNotificationService = require("../services/smartNotification.service"
 
 async function notify(app, payload) {
   const { Notification } = app.locals.models;
-  const io = app.locals.io;
 
   // Analyze notification with smart service
   const notificationData = {
@@ -57,11 +56,11 @@ async function notify(app, payload) {
       quickActions: smartAnalysis?.quickActions || null,
     });
 
-    // Emit realtime to everyone (global feed) - non-blocking
-    try {
-      io?.to("role:all")?.emit("notification:new", created);
-    } catch (emitError) {
-      console.warn("⚠️ Failed to emit notification (non-fatal):", emitError.message);
+    const emitToRealtime = app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(app, "role:all", "notification:new", created).catch((emitError) => {
+        console.warn("⚠️ Failed to emit notification (non-fatal):", emitError?.message);
+      });
     }
   } catch (dbError) {
     console.error("⚠️ Failed to create notification (non-fatal):", dbError.message);

@@ -9,7 +9,7 @@ import axios from "axios";
 
 const getBaseURL = () => {
   if (typeof process !== "undefined" && process.env?.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL.replace(/\/$/, "");
+    return process.env.REACT_APP_API_URL.replace(/[\/?]+$/, "");
   }
   if (typeof window !== "undefined" && window.location?.hostname === "localhost") {
     return "http://localhost:5000";

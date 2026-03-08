@@ -157,15 +157,14 @@ exports.autoAssign = async (req, res) => {
         ]
       });
 
-      // Emit socket event
-      const io = req.app.locals.io;
-      if (io) {
-        io.to("role:all").emit("shift_optimized", {
+      const emitToRealtime = req.app.locals.emitToRealtime;
+      if (emitToRealtime) {
+        emitToRealtime(req.app, "role:all", "shift_optimized", {
           shiftId: shift.id,
           assignedGuard: result.assignedGuard,
           aiDecision: result.aiDecision
-        });
-        console.log("📤 Emitted shift_optimized event");
+        }).catch(() => {});
+        console.log("📤 Published shift_optimized to realtime");
       }
     }
 

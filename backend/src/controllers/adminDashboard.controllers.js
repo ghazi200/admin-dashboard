@@ -837,14 +837,13 @@ exports.resolveEmergency = async (req, res) => {
       });
     }
 
-    // Emit socket event to notify all admins
-    const io = req.app.get("io");
-    if (io) {
-      io.to("role:all").emit("emergency:resolved", {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, "role:all", "emergency:resolved", {
         emergencyId: id,
         resolvedBy: adminId,
         resolvedAt: new Date().toISOString(),
-      });
+      }).catch(() => {});
     }
 
     return res.json({

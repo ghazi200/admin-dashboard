@@ -159,11 +159,9 @@ exports.createOvertimeOffer = async (req, res) => {
     );
     const guardName = guards[0]?.name || guards[0]?.email || "Guard";
 
-    // Notify the guard via Socket.IO (same abe_guard DB; no second database).
-    // Guard backend can listen for this event.
-    const io = req.app.locals.io;
-    if (io) {
-      io.to(`guard:${guardId}`).emit("overtime_offer", {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, `guard:${guardId}`, "overtime_offer", {
         offerId: offer.id,
         shiftId: offer.shift_id,
         proposedEndTime: offer.proposed_end_time,
@@ -171,7 +169,7 @@ exports.createOvertimeOffer = async (req, res) => {
         reason: offer.reason,
         expiresAt: expiresAt.toISOString(),
         adminName: req.admin?.name || req.admin?.email || "Admin",
-      });
+      }).catch(() => {});
     }
 
     // Create admin notification
@@ -400,14 +398,13 @@ exports.approveOvertimeRequest = async (req, res) => {
       // Don't fail the whole approval if shift update fails
     }
 
-    // Emit socket event to notify guard
-    const io = req.app.locals.io;
-    if (io) {
-      io.to(`guard:${offer.guard_id}`).emit("overtime_request_approved", {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, `guard:${offer.guard_id}`, "overtime_request_approved", {
         offerId: offer.id,
         shiftId: offer.shift_id,
         proposedEndTime: offer.proposed_end_time,
-      });
+      }).catch(() => {});
     }
 
     // Create admin notification (optional - don't fail if this errors)
@@ -499,14 +496,13 @@ exports.denyOvertimeRequest = async (req, res) => {
       { bind: [denialNote, offerId] }
     );
 
-    // Emit socket event to notify guard
-    const io = req.app.locals.io;
-    if (io) {
-      io.to(`guard:${offer.guard_id}`).emit("overtime_request_denied", {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, `guard:${offer.guard_id}`, "overtime_request_denied", {
         offerId: offer.id,
         shiftId: offer.shift_id,
         reason: adminNotes || "Request denied by admin",
-      });
+      }).catch(() => {});
     }
 
     // Create admin notification
@@ -575,13 +571,12 @@ exports.cancelOvertimeOffer = async (req, res) => {
       { bind: [offerId] }
     );
 
-    // Emit socket event to notify guard
-    const io = req.app.locals.io;
-    if (io) {
-      io.to(`guard:${offer.guard_id}`).emit("overtime_offer_cancelled", {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, `guard:${offer.guard_id}`, "overtime_offer_cancelled", {
         offerId: offer.id,
         shiftId: offer.shift_id,
-      });
+      }).catch(() => {});
     }
 
     return res.json({

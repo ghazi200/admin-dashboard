@@ -413,7 +413,6 @@ router.get("/conversations/:conversationId/messages", authAdmin, async (req, res
 router.post("/conversations/:conversationId/messages", authAdmin, async (req, res) => {
   try {
     const { Message, Conversation, ConversationParticipant } = req.app.locals.models;
-    const io = req.app.get("io");
     const adminId = req.admin?.id;
     const conversationId = req.params.conversationId;
     const adminMessagingId = ensureAdminMessagingId(adminId);
@@ -459,23 +458,21 @@ router.post("/conversations/:conversationId/messages", authAdmin, async (req, re
       { where: { id: conversationId } }
     );
 
-    // Emit socket event to all participants
     const participants = await ConversationParticipant.findAll({
       where: { conversation_id: conversationId },
     });
 
     const messageData = toMessageResponse(message);
-    participants.forEach((p) => {
-      const roomName = p.participant_type === "guard"
-        ? `guard:${p.participant_id}`
-        : `admin:${p.participant_id}`;
-      if (io) {
-        io.to(roomName).emit("message:new", {
-          conversationId,
-          message: messageData,
-        });
-      }
-    });
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      const rooms = participants.map((p) =>
+        p.participant_type === "guard" ? `guard:${p.participant_id}` : `admin:${p.participant_id}`
+      );
+      emitToRealtime(req.app, rooms, "message:new", {
+        conversationId,
+        message: messageData,
+      }).catch(() => {});
+    }
 
     res.status(201).json({ message: messageData, id: messageData.id });
   } catch (error) {

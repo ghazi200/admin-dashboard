@@ -39,13 +39,12 @@ exports.generate = async (req, res) => {
       constraints
     }, req.app.locals.models);
 
-    // Emit socket event
-    const io = req.app.locals.io;
-    if (io) {
-      io.to(`tenant:${tenantId}`).emit('schedule_generated', {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, `tenant:${tenantId}`, "schedule_generated", {
         totalShifts: results.totalShifts,
         assignedShifts: results.assignedShifts.length
-      });
+      }).catch(() => {});
     }
 
     return res.json({
@@ -87,14 +86,13 @@ exports.generateFromTemplate = async (req, res) => {
       req.app.locals.models
     );
 
-    // Emit socket event
-    const io = req.app.locals.io;
-    if (io) {
-      io.to(`tenant:${template.tenantId}`).emit('schedule_generated', {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, `tenant:${template.tenantId}`, "schedule_generated", {
         totalShifts: results.totalShifts,
         assignedShifts: results.assignedShifts.length,
         weeks: results.weeks?.length || 0
-      });
+      }).catch(() => {});
     }
 
     return res.json({

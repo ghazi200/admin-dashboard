@@ -113,14 +113,13 @@ exports.autoRebalance = async (req, res) => {
       req.app.locals.models
     );
 
-    // Emit socket event
-    const io = req.app.locals.io;
-    if (io && results.results && results.results.totalApplied > 0) {
-      io.to(`tenant:${tenantId}`).emit('shifts_rebalanced', {
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime && results.results && results.results.totalApplied > 0) {
+      emitToRealtime(req.app, `tenant:${tenantId}`, "shifts_rebalanced", {
         totalApplied: results.results.totalApplied,
         applied: results.results.applied.length,
         failed: results.results.failed.length
-      });
+      }).catch(() => {});
     }
 
     return res.json({

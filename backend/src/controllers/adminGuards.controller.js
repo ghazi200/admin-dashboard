@@ -257,22 +257,20 @@ exports.updateGuardAvailability = async (req, res) => {
       console.log("✅ updateGuardAvailability - Transaction completed, guardIdInt was:", guardIdInt);
     }
     
-    // Emit socket event to notify dashboard of availability change
     try {
-      const io = req.app.locals.io;
-      if (io) {
-        // Emit to all, but include tenant_id so frontend can filter if needed
-        io.to("role:all").emit("guard:availability_updated", {
+      const emitToRealtime = req.app.locals.emitToRealtime;
+      if (emitToRealtime) {
+        await emitToRealtime(req.app, "role:all", "guard:availability_updated", {
           guardId: guardId,
           guardName: updatedGuard.guard.name,
           availability: Boolean(availability),
-          tenantId: updatedGuard.guard.tenant_id, // Include tenant_id for filtering
+          tenantId: updatedGuard.guard.tenant_id,
           updatedAt: new Date().toISOString(),
         });
-        console.log("✅ updateGuardAvailability - Socket event emitted");
+        console.log("✅ updateGuardAvailability - Realtime event published");
       }
     } catch (socketError) {
-      console.warn("⚠️ updateGuardAvailability - Failed to emit socket event (non-fatal):", socketError.message);
+      console.warn("⚠️ updateGuardAvailability - Failed to emit realtime (non-fatal):", socketError.message);
     }
     
     return res.json({
@@ -469,21 +467,20 @@ exports.createGuard = async (req, res) => {
           to: availabilityValue,
         });
 
-        // Emit socket event for availability
         try {
-          const io = req.app.locals.io;
-          if (io) {
-            io.to("role:all").emit("guard:availability_updated", {
+          const emitToRealtime = req.app.locals.emitToRealtime;
+          if (emitToRealtime) {
+            await emitToRealtime(req.app, "role:all", "guard:availability_updated", {
               guardId: guard.id,
               guardName: guard.name,
               availability: availabilityValue,
               tenantId: guard.tenant_id,
               updatedAt: new Date().toISOString(),
             });
-            console.log("✅ createGuard - Socket event emitted for availability");
+            console.log("✅ createGuard - Realtime event published for availability");
           }
         } catch (socketError) {
-          console.warn("⚠️ createGuard - Failed to emit socket event (non-fatal):", socketError.message);
+          console.warn("⚠️ createGuard - Failed to emit realtime (non-fatal):", socketError.message);
         }
       } catch (logError) {
         // Log error but don't fail guard creation
@@ -633,21 +630,20 @@ exports.updateGuard = async (req, res) => {
           createdAt: logEntry.createdAt
         });
 
-        // Emit socket event for availability change
         try {
-          const io = req.app.locals.io;
-          if (io) {
-            io.to("role:all").emit("guard:availability_updated", {
+          const emitToRealtime = req.app.locals.emitToRealtime;
+          if (emitToRealtime) {
+            await emitToRealtime(req.app, "role:all", "guard:availability_updated", {
               guardId: guard.id,
               guardName: guard.name,
               availability: newAvailability,
               tenantId: guard.tenant_id,
               updatedAt: new Date().toISOString(),
             });
-            console.log("✅ updateGuard - Socket event emitted for availability change, availability:", newAvailability);
+            console.log("✅ updateGuard - Realtime event published for availability change, availability:", newAvailability);
           }
         } catch (socketError) {
-          console.warn("⚠️ updateGuard - Failed to emit socket event for availability (non-fatal):", socketError.message);
+          console.warn("⚠️ updateGuard - Failed to emit realtime for availability (non-fatal):", socketError.message);
         }
       } catch (logError) {
         // Log error but don't fail the guard update
@@ -670,19 +666,18 @@ exports.updateGuard = async (req, res) => {
       }
     }
 
-    // ✅ Emit socket event if active status changed (dashboard needs to refresh)
     if (activeChanged) {
       try {
-        const io = req.app.locals.io;
-        if (io) {
-          io.to("role:all").emit("guard:status_updated", {
+        const emitToRealtime = req.app.locals.emitToRealtime;
+        if (emitToRealtime) {
+          await emitToRealtime(req.app, "role:all", "guard:status_updated", {
             guardId: guard.id,
             guardName: guard.name,
             active: guard.active,
             tenantId: guard.tenant_id,
             updatedAt: new Date().toISOString(),
           });
-          console.log("✅ updateGuard - Socket event emitted for active status change");
+          console.log("✅ updateGuard - Realtime event published for active status change");
         }
       } catch (socketError) {
         console.warn("⚠️ updateGuard - Failed to emit socket event (non-fatal):", socketError.message);

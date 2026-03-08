@@ -8,8 +8,9 @@ import axios from "axios";
  * Note: In development, CRA proxy forwards /api/guard-ai/* to http://localhost:4000
  * If proxy is not configured, you can use absolute URL: http://localhost:4000
  */
+const base = (process.env.REACT_APP_GUARD_AI_URL || "http://localhost:4000").replace(/[\/?]+$/, "");
 const abeGuardAiClient = axios.create({
-  baseURL: process.env.REACT_APP_GUARD_AI_URL || "http://localhost:4000",
+  baseURL: base,
   headers: { "Content-Type": "application/json" },
   withCredentials: true,
 });
