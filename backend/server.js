@@ -108,6 +108,27 @@ const PORT = process.env.PORT || 5000;
 app.get("/", (req, res) => res.json({ service: "admin-dashboard-backend", status: "OK", health: "/health", ready: "/health/ready" }));
 app.get("/health", (req, res) => res.json({ status: "OK" }));
 
+// Cron endpoint: run shift reminders (for external cron when process may have been sleeping)
+// Call: GET /api/cron/shift-reminders?secret=YOUR_CRON_SECRET or Header: X-Cron-Secret: YOUR_CRON_SECRET
+app.get("/api/cron/shift-reminders", async (req, res) => {
+  const secret = req.query.secret || req.get("X-Cron-Secret") || "";
+  const want = process.env.CRON_SECRET;
+  if (want && secret !== want) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+  if (!app.locals.models) {
+    return res.status(503).json({ ok: false, error: "Models not ready" });
+  }
+  try {
+    const { runAllShiftReminders } = require("./src/services/shiftReminders.service");
+    await runAllShiftReminders(app);
+    return res.json({ ok: true, ran: "shift-reminders" });
+  } catch (err) {
+    logger.warn({ err: err?.message }, "Cron shift-reminders error");
+    return res.status(500).json({ ok: false, error: err?.message || "Run failed" });
+  }
+});
+
 // Correct database for all features (admin, guards, messaging)
 const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard", "railway"];
 function isAllowedDb(name) {
@@ -589,10 +610,16 @@ io.use((socket, next) => {
 // ✅ Initialize Command Center Socket Event Interceptor (after models are loaded)
 // Will be initialized after models are available
 
-// 🔊 GLOBAL ADMIN FEED
+// 🔊 GLOBAL ADMIN FEED + connection/disconnect logging to debug drops
 io.on("connection", (socket) => {
+  console.log("connected:", socket.id);
+  logger.info({ socketId: socket.id }, "Socket connected");
   socket.join("role:all");
-  socket.on("disconnect", () => {});
+
+  socket.on("disconnect", (reason) => {
+    console.log("disconnect reason:", reason);
+    logger.info({ socketId: socket.id, reason }, "Socket disconnected");
+  });
 });
 
 // ✅ Make io available to controllers/helpers
