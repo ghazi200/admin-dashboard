@@ -406,6 +406,8 @@ app.all("/api/admin/register", (req, res, next) => {
   adminAuthController.register(req, res);
 });
 
+app.get("/api/admin", (req, res) => res.json({ ok: true, service: "admin-api", paths: ["/api/admin/login", "/api/admin/register", "/api/admin/dashboard", "..."] }));
+
 const adminAuthRoutes = require("./src/routes/adminAuth.routes");
 app.use("/api/admin", adminAuthRoutes);
 
