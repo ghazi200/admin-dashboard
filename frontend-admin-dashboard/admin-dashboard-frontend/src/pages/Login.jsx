@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 /**
@@ -33,6 +33,21 @@ export default function Login() {
   const nav = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [runtimeApi, setRuntimeApi] = useState(getRuntimeApi);
+
+  useEffect(() => {
+    fetch("/api-config.json")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const url = data?.adminApiUrl || (data?.apiBase ? data.apiBase.replace(/[\/?]+$/, "") + "/api/admin" : null);
+        if (url && url.replace(/[\/?]+$/, "")) {
+          try {
+            localStorage.setItem(STORAGE_KEY, url);
+            setRuntimeApi(url);
+          } catch (_) {}
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const effectiveApiUrl = useMemo(() => {
     const r = runtimeApi && runtimeApi.trim().replace(/[\/?]+$/, "");
