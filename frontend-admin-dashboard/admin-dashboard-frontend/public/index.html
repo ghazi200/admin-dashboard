@@ -3,6 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
     <title>Admin Dashboard</title>
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
   </head>
@@ -13,7 +15,18 @@
       <button type="button" onclick="this.parentElement.style.display='none'" style="margin-left:10px;padding:2px 8px;cursor:pointer;background:rgba(255,255,255,.3);border:none;color:#fff;border-radius:4px;">Dismiss</button>
     </div>
     <script>
-      (function(){ var p = window.location.pathname || ''; if (p.indexOf('login') !== -1) { var b = document.getElementById('login-fix-banner'); if(b) b.style.display='block'; } })();
+      (function(){
+        function showBannerIfLogin(){
+          var p = (window.location.pathname || '');
+          if (p.indexOf('login') !== -1) {
+            var b = document.getElementById('login-fix-banner');
+            if (b) b.style.display = 'block';
+          }
+        }
+        showBannerIfLogin();
+        var n = 0;
+        var t = setInterval(function(){ showBannerIfLogin(); n++; if (n >= 24) clearInterval(t); }, 500);
+      })();
     </script>
     <div id="root"></div>
   </body>

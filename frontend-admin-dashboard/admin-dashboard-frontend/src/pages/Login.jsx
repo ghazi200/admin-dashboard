@@ -197,6 +197,9 @@ export default function Login() {
 
   return (
     <form className="loginForm" onSubmit={onSubmit}>
+      <div style={{ marginBottom: 12, fontSize: 11, color: "rgba(255,255,255,0.7)", wordBreak: "break-all" }}>
+        API (build): <code>{BUILD_API_URL}</code> {runtimeApi ? " → override: " + effectiveApiUrl : ""}
+      </div>
       {showProductionApiWarning ? (
         <div className="loginAlert" role="alert" style={{ marginBottom: 16, background: "rgba(220, 80, 60, 0.2)", border: "1px solid rgba(220,80,60,0.6)", padding: 16 }}>
           <div className="loginAlertText">

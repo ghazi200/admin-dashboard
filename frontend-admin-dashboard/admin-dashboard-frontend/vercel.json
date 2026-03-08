@@ -2,5 +2,19 @@
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "build",
   "framework": "create-react-app",
-  "installCommand": "npm install --no-audit"
+  "installCommand": "npm install --no-audit",
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ]
 }
