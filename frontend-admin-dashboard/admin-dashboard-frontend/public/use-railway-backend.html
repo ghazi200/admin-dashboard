@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Set backend – Admin Dashboard</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.25rem; }
+    .btn { display: inline-block; margin-top: 1rem; padding: 10px 16px; background: #0a0; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-decoration: none; }
+    .btn:hover { background: #080; }
+    code { background: #eee; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
+    p { color: #333; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <h1>Point this app to your Railway backend</h1>
+  <p>Click the button below. It will save the backend URL and send you to the login page. Use this if the login page still shows “access control” or calls localhost.</p>
+  <p>Backend: <code>https://admin-dashboard-production-2596.up.railway.app/api/admin</code></p>
+  <a href="/login" class="btn" id="go">Use Railway backend and go to Login</a>
+  <script>
+    (function () {
+      var url = "https://admin-dashboard-production-2596.up.railway.app/api/admin";
+      try { localStorage.setItem("adminApiUrl", url); } catch (e) {}
+      document.getElementById("go").addEventListener("click", function (e) {
+        e.preventDefault();
+        try { localStorage.setItem("adminApiUrl", url); } catch (e) {}
+        window.location.href = "/login";
+      });
+    })();
+  </script>
+</body>
+</html>
