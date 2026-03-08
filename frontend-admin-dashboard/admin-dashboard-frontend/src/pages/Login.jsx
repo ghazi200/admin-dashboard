@@ -5,11 +5,13 @@ import { useNavigate } from "react-router-dom";
  * Admin Login FORM ONLY (no page wrapper!)
  * Handles optional MFA: if login returns requiresMfa, shows code input and calls verify-login.
  */
-const API_URL = (process.env.REACT_APP_ADMIN_API_URL || "http://localhost:5000/api/admin").replace(/\/+$/, "");
+const API_URL = (process.env.REACT_APP_ADMIN_API_URL || "http://localhost:5000/api/admin").replace(/[\/?]+$/, "");
 
 const isProduction = typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1";
 const isLocalhostApi = !API_URL || /localhost|127\.0\.0\.1/.test(API_URL);
 const showProductionApiWarning = isProduction && isLocalhostApi;
+/** When true, login will fail with CORS; block submit and show config steps */
+const blockLoginInProductionNoApi = showProductionApiWarning;
 
 export default function Login() {
   const nav = useNavigate();
@@ -20,11 +22,19 @@ export default function Login() {
   const [mfaCode, setMfaCode] = useState("");
   const [mfaChannel, setMfaChannel] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    blockLoginInProductionNoApi
+      ? "App is calling localhost (wrong). In Vercel set REACT_APP_API_URL and REACT_APP_ADMIN_API_URL to https://admin-dashboard-production-2596.up.railway.app (and .../api/admin), then redeploy."
+      : ""
+  );
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    if (blockLoginInProductionNoApi) {
+      setError("Set REACT_APP_API_URL and REACT_APP_ADMIN_API_URL in Vercel (Environment Variables), then redeploy. See the red notice above.");
+      return;
+    }
 
     if (mfaToken) {
       // Step 2: verify MFA code
@@ -85,7 +95,11 @@ export default function Login() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data?.message || "Login failed");
+        const msg = data?.message || "Login failed";
+        const hint = (res.status === 401 || /invalid|password|credentials/i.test(msg))
+          ? " Test accounts need seeding first: POST your-backend/api/dev/seed-admin (see LOGIN_CREDENTIALS.md)."
+          : "";
+        setError(msg + hint);
         setLoading(false);
         return;
       }
@@ -116,7 +130,12 @@ export default function Login() {
 
       nav("/", { replace: true });
     } catch (err) {
-      setError(err?.message || "Network error");
+      const raw = err?.message || "Network error";
+      const isCorsOrNetwork = /fetch|network|access control|cors|failed to load/i.test(raw) || !raw;
+      const friendly = isCorsOrNetwork
+        ? "Request blocked (CORS/network). Set REACT_APP_API_URL and REACT_APP_ADMIN_API_URL in Vercel to your backend URL (e.g. https://admin-dashboard-production-2596.up.railway.app), then redeploy. Ensure backend CORS_ORIGINS includes your Vercel URL."
+        : raw;
+      setError(friendly);
     } finally {
       setLoading(false);
     }
@@ -132,14 +151,20 @@ export default function Login() {
   return (
     <form className="loginForm" onSubmit={onSubmit}>
       {showProductionApiWarning ? (
-        <div className="loginAlert" role="alert" style={{ marginBottom: 16, background: "rgba(220, 80, 60, 0.15)", border: "1px solid rgba(220,80,60,0.5)" }}>
+        <div className="loginAlert" role="alert" style={{ marginBottom: 16, background: "rgba(220, 80, 60, 0.2)", border: "1px solid rgba(220,80,60,0.6)", padding: 16 }}>
           <div className="loginAlertText">
-            <strong>Production API not configured</strong>
+            <strong>Fix “access control” / CORS: set backend URL in Vercel</strong>
             <span style={{ display: "block", marginTop: 8, fontSize: 13 }}>
-              Step 1: Get your backend URLs (e.g. from Railway/Render).<br />
-              Step 2: In Vercel → this project → Settings → Environment Variables, set REACT_APP_API_URL, REACT_APP_ADMIN_API_URL, REACT_APP_GUARD_AI_URL to those URLs.<br />
-              Step 3: Redeploy (Deployments → … → Redeploy). See VERCEL_DEPLOY.md for details.
+              This build is calling: <code style={{ wordBreak: "break-all" }}>{API_URL || "http://localhost:5000/api/admin"}</code>
             </span>
+            <span style={{ display: "block", marginTop: 8, fontSize: 13 }}>
+              In Vercel → Project → Settings → Environment Variables add (then redeploy):
+            </span>
+            <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 13 }}>
+              <li><code>REACT_APP_API_URL</code> = <code>https://admin-dashboard-production-2596.up.railway.app</code></li>
+              <li><code>REACT_APP_ADMIN_API_URL</code> = <code>https://admin-dashboard-production-2596.up.railway.app/api/admin</code></li>
+            </ul>
+            <span style={{ display: "block", marginTop: 8, fontSize: 12, opacity: 0.9 }}>Then push this repo, or Deployments → Redeploy. New message appears after you deploy.</span>
           </div>
         </div>
       ) : null}
@@ -175,7 +200,7 @@ export default function Login() {
               maxLength={6}
             />
           </div>
-          <button className="btnPrimaryFull" type="submit" disabled={loading}>
+          <button className="btnPrimaryFull" type="submit" disabled={loading || blockLoginInProductionNoApi}>
             {loading ? "Verifying…" : "Verify and sign in"}
           </button>
           <button
@@ -222,15 +247,13 @@ export default function Login() {
             />
           </div>
 
-          <button className="btnPrimaryFull" type="submit" disabled={loading}>
+          <button className="btnPrimaryFull" type="submit" disabled={loading || blockLoginInProductionNoApi}>
             {loading ? "Signing in…" : "Sign in"}
           </button>
 
           <div className="loginFooter">
             <div className="hint">
-              Admin: <code>admin@test.com</code> / <code>password123</code>
-              <br />
-              Supervisor: <code>supervisor@test.com</code> / <code>password123</code>
+              Test accounts (only work after seeding): Admin <code>admin@test.com</code> / <code>password123</code>, Supervisor <code>supervisor@test.com</code> / <code>password123</code>. Seed once: POST your-backend/api/dev/seed-admin (see LOGIN_CREDENTIALS.md).
             </div>
           </div>
         </>
