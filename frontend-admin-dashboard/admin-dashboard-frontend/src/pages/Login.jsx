@@ -1,66 +1,31 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { getBackendOrigin } from "../api/apiOrigin";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Admin Login FORM ONLY (no page wrapper!)
- * Handles optional MFA: if login returns requiresMfa, shows code input and calls verify-login.
- * Runtime override: ?api=https://your-backend.up.railway.app (saved to localStorage so no redeploy needed).
+ * Handles optional MFA. API URL resolved at runtime so production (Vercel) uses Railway without env.
  */
-const BUILD_API_URL = (process.env.REACT_APP_ADMIN_API_URL || "http://localhost:5000/api/admin").replace(/[\/?]+$/, "");
+const RAILWAY_API = "https://admin-dashboard-production-2596.up.railway.app/api/admin";
 
-const STORAGE_KEY = "adminApiUrl";
-const DEFAULT_RUNTIME_API = "https://admin-dashboard-production-2596.up.railway.app/api/admin";
-
-function getRuntimeApi() {
-  if (typeof window === "undefined") return null;
-  const q = new URLSearchParams(window.location.search).get("api");
-  if (q && q.trim()) {
-    let u = q.trim().replace(/[\/?]+$/, "");
-    if (u && !u.endsWith("/api/admin")) u = u + "/api/admin";
-    try {
-      localStorage.setItem(STORAGE_KEY, u);
-      return u;
-    } catch (_) {}
-    return u;
-  }
-  try {
-    return localStorage.getItem(STORAGE_KEY);
-  } catch (_) {}
-  return null;
+function getLoginApiUrl() {
+  if (typeof window === "undefined") return "http://localhost:5000/api/admin";
+  const host = window.location?.hostname;
+  if (process.env.REACT_APP_ADMIN_API_URL) return String(process.env.REACT_APP_ADMIN_API_URL).replace(/\/+$/, "");
+  if (host === "localhost" || host === "127.0.0.1") return "http://localhost:5000/api/admin";
+  return RAILWAY_API;
 }
+
+/** Never send login to empty or relative URL (fixes deployed bundle where base was inlined as ""). */
+function ensureLoginBase(base) {
+  if (base && base.startsWith("http")) return base.replace(/\/+$/, "");
+  return RAILWAY_API;
+}
+
+const isProduction = typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1";
+const showProductionApiWarning = false; // we always use Railway in production now
 
 export default function Login() {
   const nav = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [runtimeApi, setRuntimeApi] = useState(getRuntimeApi);
-
-  useEffect(() => {
-    fetch("/api-config.json")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        const url = data?.adminApiUrl || (data?.apiBase ? data.apiBase.replace(/[\/?]+$/, "") + "/api/admin" : null);
-        if (url && url.replace(/[\/?]+$/, "")) {
-          try {
-            localStorage.setItem(STORAGE_KEY, url);
-            setRuntimeApi(url);
-          } catch (_) {}
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const effectiveApiUrl = useMemo(() => {
-    const r = runtimeApi && runtimeApi.trim().replace(/[\/?]+$/, "");
-    if (r) return r.endsWith("/api/admin") ? r : r + "/api/admin";
-    if (typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1") return DEFAULT_RUNTIME_API;
-    return BUILD_API_URL;
-  }, [runtimeApi]);
-
-  const isProduction = typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1";
-  const isLocalhostApi = !effectiveApiUrl || /localhost|127\.0\.0\.1/.test(effectiveApiUrl);
-  const showProductionApiWarning = isProduction && isLocalhostApi;
-  const blockLoginInProductionNoApi = showProductionApiWarning;
 
   const [email, setEmail] = useState("admin@test.com");
   const [password, setPassword] = useState("password123");
@@ -68,61 +33,11 @@ export default function Login() {
   const [mfaCode, setMfaCode] = useState("");
   const [mfaChannel, setMfaChannel] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(
-    blockLoginInProductionNoApi
-      ? "App is calling localhost. Use the link below to point to your backend (no redeploy needed), or set env vars in Vercel and redeploy."
-      : ""
-  );
-
-  const applyDefaultBackend = () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, DEFAULT_RUNTIME_API);
-      setRuntimeApi(DEFAULT_RUNTIME_API);
-      setError("");
-      setSearchParams({});
-    } catch (_) {}
-  };
-
-  const clearBackendOverride = () => {
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      setRuntimeApi(null);
-      setSearchParams({});
-      setError("Cleared. Reload to use build default.");
-    } catch (_) {}
-  };
-
-  const getApiBaseForRequest = () => {
-    // When on Vercel, use same-origin so the proxy forwards /api/* to Railway (no CORS)
-    const origin = getBackendOrigin();
-    if (origin === "") return "/api/admin";
-    try {
-      const s = localStorage.getItem("adminApiUrl");
-      if (s && s.trim()) {
-        let u = s.trim().replace(/[\/?]+$/, "");
-        return u.endsWith("/api/admin") ? u : u + "/api/admin";
-      }
-    } catch (_) {}
-    const fallback = effectiveApiUrl;
-    const isProduction = typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1";
-    if (isProduction && (!fallback || /localhost|127\.0\.0\.1/.test(fallback))) return DEFAULT_RUNTIME_API;
-    return fallback || DEFAULT_RUNTIME_API;
-  };
+  const [error, setError] = useState("");
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    e.stopPropagation();
     setError("");
-    let apiBase = getApiBaseForRequest();
-    // Force same-origin proxy path when on Vercel so we never POST to /login (which would return index.html)
-    const hostname = typeof window !== "undefined" && window.location?.hostname;
-    if (hostname && (hostname.endsWith(".vercel.app") || hostname === "admin-dashboard-frontend-flax.vercel.app")) {
-      if (!apiBase || !String(apiBase).includes("/api/admin")) apiBase = "/api/admin";
-    }
-    if (blockLoginInProductionNoApi && !apiBase.includes("railway.app")) {
-      setError("Click \"Use Railway backend\" below to fix without redeploying, or set REACT_APP_ADMIN_API_URL in Vercel and redeploy.");
-      return;
-    }
 
     if (mfaToken) {
       // Step 2: verify MFA code
@@ -132,7 +47,7 @@ export default function Login() {
       }
       setLoading(true);
       try {
-        const res = await fetch(`${apiBase}/mfa/verify-login`, {
+        const res = await fetch(`${ensureLoginBase(getLoginApiUrl())}/mfa/verify-login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mfaToken, code: mfaCode.trim() }),
@@ -172,7 +87,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const loginUrl = `${apiBase.replace(/\/+$/, "")}/login`;
+      const loginUrl = `${ensureLoginBase(getLoginApiUrl())}/login`;
       const res = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,11 +98,7 @@ export default function Login() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const msg = data?.message || "Login failed";
-        const hint = (res.status === 401 || /invalid|password|credentials/i.test(msg))
-          ? " Test accounts need seeding first: POST your-backend/api/dev/seed-admin (see LOGIN_CREDENTIALS.md)."
-          : "";
-        setError(msg + hint);
+        setError(data?.message || "Login failed");
         setLoading(false);
         return;
       }
@@ -218,13 +129,7 @@ export default function Login() {
 
       nav("/", { replace: true });
     } catch (err) {
-      const raw = err?.message || "Network error";
-      const isCorsOrNetwork = /fetch|network|access control|cors|failed to load|load failed/i.test(raw) || !raw;
-      const tried = `${apiBase}/login`;
-      const friendly = isCorsOrNetwork
-        ? "Request failed to " + tried + ". If that is localhost, clear site data and reload. If it is Railway, set CORS_ORIGINS on Railway to your Vercel URL and redeploy backend."
-        : raw + " (tried " + tried + ")";
-      setError(friendly);
+      setError(err?.message || "Network error");
     } finally {
       setLoading(false);
     }
@@ -238,29 +143,17 @@ export default function Login() {
   };
 
   return (
-    <form className="loginForm" onSubmit={onSubmit} noValidate>
-      <div style={{ marginBottom: 12, fontSize: 11, color: "rgba(255,255,255,0.7)", wordBreak: "break-all" }}>
-        API (build): <code>{BUILD_API_URL}</code> {runtimeApi ? " → override: " + effectiveApiUrl : ""}
-      </div>
+    <form className="loginForm" onSubmit={onSubmit}>
       {showProductionApiWarning ? (
-        <div className="loginAlert" role="alert" style={{ marginBottom: 16, background: "rgba(220, 80, 60, 0.2)", border: "1px solid rgba(220,80,60,0.6)", padding: 16 }}>
+        <div className="loginAlert" role="alert" style={{ marginBottom: 16, background: "rgba(220, 80, 60, 0.15)", border: "1px solid rgba(220,80,60,0.5)" }}>
           <div className="loginAlertText">
-            <strong>Fix “access control” / CORS (no redeploy needed)</strong>
+            <strong>Production API not configured</strong>
             <span style={{ display: "block", marginTop: 8, fontSize: 13 }}>
-              This build is calling: <code style={{ wordBreak: "break-all" }}>{effectiveApiUrl}</code>
+              Step 1: Get your backend URLs (e.g. from Railway/Render).<br />
+              Step 2: In Vercel → this project → Settings → Environment Variables, set REACT_APP_API_URL, REACT_APP_ADMIN_API_URL, REACT_APP_GUARD_AI_URL to those URLs.<br />
+              Step 3: Redeploy (Deployments → … → Redeploy). See VERCEL_DEPLOY.md for details.
             </span>
-            <span style={{ display: "block", marginTop: 12, fontSize: 13 }}>Click below to use your Railway backend for this browser:</span>
-            <button type="button" onClick={applyDefaultBackend} style={{ marginTop: 8, padding: "8px 14px", background: "#0a0", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontWeight: 600 }}>
-              Use Railway backend
-            </button>
-            <span style={{ display: "block", marginTop: 8, fontSize: 12, opacity: 0.9 }}>Or add the same URL as <code>?api=</code>: <code style={{ wordBreak: "break-all" }}>?api=https://admin-dashboard-production-2596.up.railway.app</code></span>
           </div>
-        </div>
-      ) : null}
-      {effectiveApiUrl && !isLocalhostApi ? (
-        <div style={{ marginBottom: 12, fontSize: 12, opacity: 0.85 }}>
-          Backend: <code style={{ wordBreak: "break-all" }}>{effectiveApiUrl}</code>{" "}
-          <button type="button" onClick={clearBackendOverride} style={{ marginLeft: 8, padding: "2px 8px", fontSize: 11, cursor: "pointer" }}>Clear</button>
         </div>
       ) : null}
       {error ? (
@@ -295,7 +188,7 @@ export default function Login() {
               maxLength={6}
             />
           </div>
-          <button className="btnPrimaryFull" type="submit" disabled={loading || blockLoginInProductionNoApi}>
+          <button className="btnPrimaryFull" type="submit" disabled={loading}>
             {loading ? "Verifying…" : "Verify and sign in"}
           </button>
           <button
@@ -342,13 +235,15 @@ export default function Login() {
             />
           </div>
 
-          <button className="btnPrimaryFull" type="submit" disabled={loading || blockLoginInProductionNoApi}>
+          <button className="btnPrimaryFull" type="submit" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}
           </button>
 
           <div className="loginFooter">
             <div className="hint">
-              Test accounts (only work after seeding): Admin <code>admin@test.com</code> / <code>password123</code>, Supervisor <code>supervisor@test.com</code> / <code>password123</code>. Seed once: POST your-backend/api/dev/seed-admin (see LOGIN_CREDENTIALS.md).
+              Admin: <code>admin@test.com</code> / <code>password123</code>
+              <br />
+              Supervisor: <code>supervisor@test.com</code> / <code>password123</code>
             </div>
           </div>
         </>

@@ -1,18 +1,26 @@
 import axios from "axios";
-import { getBackendOrigin } from "./apiOrigin";
 
 /**
  * Admin API client.
- * Uses apiOrigin.getBackendOrigin() (localStorage, REACT_APP_API_URL, or production Railway URL).
+ * Origin resolved at request time so production (e.g. Vercel) uses Railway even when build-time env is missing.
  */
-const backendOrigin = getBackendOrigin();
-const baseURL = backendOrigin ? `${backendOrigin}/api/admin` : "/api/admin";
+const RAILWAY_ORIGIN = "https://admin-dashboard-production-2596.up.railway.app";
+
+function getBackendOrigin() {
+  if (typeof window === "undefined") return "";
+  const host = window.location?.hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  if (process.env.REACT_APP_API_URL) return String(process.env.REACT_APP_API_URL).replace(/\/+$/, "");
+  if (isLocal) return "http://localhost:5000";
+  if (host) return RAILWAY_ORIGIN; // production: always use Railway so login works without env
+  return "";
+}
 
 // Avoid browser/default timeouts; 30s so slow DB or cold start can still respond
 const REQUEST_TIMEOUT_MS = 30000;
 
 const axiosClient = axios.create({
-  baseURL,
+  baseURL: "",
   timeout: REQUEST_TIMEOUT_MS,
   headers: {
     "Content-Type": "application/json",
@@ -29,13 +37,8 @@ axiosClient.interceptors.request.use(
     const path = config.url.startsWith("/") ? config.url : `/${config.url}`;
     const apiPath = path.startsWith("/api/admin") ? path : `/api/admin${path === "/" ? "" : path}`;
     const origin = getBackendOrigin();
-    if (origin) {
-      config.url = `${origin}${apiPath}`;
-      config.baseURL = "";
-    } else {
-      config.url = apiPath;
-      config.baseURL = "";
-    }
+    config.url = origin ? `${origin}${apiPath}` : apiPath;
+    config.baseURL = "";
     return config;
   },
   (error) => Promise.reject(error)
