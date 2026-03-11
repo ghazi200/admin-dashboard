@@ -47,7 +47,7 @@ export default function GeographicDashboard() {
 
   const is404 = error?.response?.status === 404;
   const geographicUnavailableMessage =
-    "Geographic API not found (404). Start the admin-dashboard backend on port 5000: from admin-dashboard/backend run `node server.js` (not the abe-guard-ai backend).";
+    "Geographic API not found (404). Ensure the admin-dashboard backend is running and reachable.";
 
   const sites = Array.isArray(data) ? data : [];
   const sitesWithCoords = sites.filter((s) => s.latitude != null && s.longitude != null);

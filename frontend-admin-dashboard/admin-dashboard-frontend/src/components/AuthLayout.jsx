@@ -5,7 +5,7 @@ export default function AuthLayout({
   // LEFT PANEL
   leftKicker = "ABE",
   leftTitle = "Admin Scheduling Console",
-  leftSubtitle = "Manage guards, shifts, and coverage issues in one place. Secure JWT auth with backend on :5000.",
+  leftSubtitle = "Manage guards, shifts, and coverage issues in one place. Secure JWT auth with Admin API.",
   badges = ["Auth: JWT", "Ops: Live Callouts", "CRUD: Guards/Shifts"],
 
   // RIGHT PANEL

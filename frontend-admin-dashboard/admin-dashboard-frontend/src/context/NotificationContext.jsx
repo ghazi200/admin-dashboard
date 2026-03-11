@@ -41,7 +41,7 @@ export function NotificationsProvider({ children }) {
         const isNetwork = msg === "Network Error" || !e?.response;
         if (isTimeout || isNetwork) {
           console.warn(
-            "Notifications initial load failed: backend may be down or slow. Ensure the server is running on http://localhost:5000.",
+            "Notifications initial load failed: backend may be down or slow.",
             msg
           );
         } else {
@@ -55,11 +55,14 @@ export function NotificationsProvider({ children }) {
     };
   }, []);
 
-  // realtime
+  // realtime (socket optional — Reports/Inspections work without it)
   useEffect(() => {
-    const s = connectSocket();
-
-    // ✅ If not logged in yet / token missing, socket can be null
+    let s;
+    try {
+      s = connectSocket();
+    } catch (_) {
+      return;
+    }
     if (!s) return;
 
     const onNew = (n) => {
@@ -67,16 +70,16 @@ export function NotificationsProvider({ children }) {
       setUnread((u) => u + 1);
     };
 
-    s.on("notification:new", onNew);
+    try {
+      s.on("notification:new", onNew);
+    } catch (_) {
+      return;
+    }
 
-    // ✅ Cleanup should remove handler, not necessarily disconnect
-    // Disconnecting here can break other listeners/components that share the socket.
     return () => {
       try {
-        s.off("notification:new", onNew);
-      } catch (e) {
-        // ignore
-      }
+        if (s) s.off("notification:new", onNew);
+      } catch (_) {}
     };
   }, []);
 

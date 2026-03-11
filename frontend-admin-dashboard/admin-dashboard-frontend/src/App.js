@@ -77,7 +77,7 @@ export default function App() {
             <AuthLayout
               leftKicker="ABE"
               leftTitle="Admin Command Center Powered By AI Agent 24"
-              leftSubtitle="Manage guards, shifts, and coverage issues in one place. Secure JWT auth with backend on :5000."
+              leftSubtitle="Manage guards, shifts, and coverage issues in one place. Secure JWT auth with Admin API."
               badges={["Auth: JWT", "Ops: Live Callouts", "CRUD: Guards/Shifts"]}
               formTitle="Sign in"
               formSubtitle="Use your credentials"

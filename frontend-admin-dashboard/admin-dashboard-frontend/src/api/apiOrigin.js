@@ -7,8 +7,10 @@ const RAILWAY_ORIGIN = "https://admin-dashboard-production-2596.up.railway.app";
 export function getBackendOrigin() {
   if (typeof window === "undefined") return "";
   const host = window.location?.hostname;
-  if (process.env.REACT_APP_API_URL) return String(process.env.REACT_APP_API_URL).replace(/\/+$/, "");
-  if (host === "localhost" || host === "127.0.0.1") return "http://localhost:5000";
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  const envUrl = process.env.REACT_APP_API_URL && String(process.env.REACT_APP_API_URL).replace(/\/+$/, "");
+  if (envUrl && (isLocal || !/localhost|127\.0\.0\.1/.test(envUrl))) return envUrl;
+  if (isLocal) return "http://localhost:5000";
   if (host) return RAILWAY_ORIGIN;
   return "";
 }

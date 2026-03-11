@@ -1,19 +1,22 @@
 /**
  * Realtime: single connection to WebSocket Gateway (Redis-backed).
- * Set REACT_APP_WS_GATEWAY_URL to your Gateway URL (e.g. https://your-gateway.up.railway.app).
- * Same socket is used for all events (admin + guard-style); Gateway emits by room.
+ * URL resolved at connect time. Production always uses WS_GATEWAY_DEFAULT (never localhost). Env typo-safe.
  */
 
 import { io } from "socket.io-client";
 
-const RAILWAY_ORIGIN = "https://admin-dashboard-production-2596.up.railway.app";
+/** WebSocket gateway (realtime events). Distinct from admin API backend. */
+const WS_GATEWAY_DEFAULT = "https://generous-manifestation-production-dbd9.up.railway.app";
 
-// Prefer WebSocket gateway; fallback to Railway when on production (Vercel) so sockets don't go through serverless
-const GATEWAY_URL =
-  (process.env.REACT_APP_WS_GATEWAY_URL && process.env.REACT_APP_WS_GATEWAY_URL.replace(/[\/?]+$/, "")) ||
-  (typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1"
-    ? RAILWAY_ORIGIN
-    : null);
+function getGatewayUrl() {
+  if (typeof window === "undefined") return null;
+  const host = window.location?.hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  const envUrl = process.env.REACT_APP_WS_GATEWAY_URL && String(process.env.REACT_APP_WS_GATEWAY_URL).replace(/[\/?]+$/, "");
+  if (envUrl && (isLocal || !/localhost|127\.0\.0\.1/.test(envUrl))) return envUrl;
+  if (isLocal) return null;
+  return WS_GATEWAY_DEFAULT;
+}
 
 let gatewaySocket = null;
 let lastToken = null;
@@ -45,7 +48,8 @@ export function connectAdminSocket() {
 }
 
 function connectGateway() {
-  if (!GATEWAY_URL) return null;
+  const gatewayUrl = getGatewayUrl();
+  if (!gatewayUrl) return null;
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("adminToken") || "" : "";
   if (!token) return null;
 
@@ -61,7 +65,7 @@ function connectGateway() {
 
   lastToken = token;
   try {
-    gatewaySocket = io(GATEWAY_URL, {
+    gatewaySocket = io(gatewayUrl, {
       ...OPTS,
       auth: { token },
     });

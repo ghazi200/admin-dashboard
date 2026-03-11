@@ -10,8 +10,10 @@ const RAILWAY_API = "https://admin-dashboard-production-2596.up.railway.app/api/
 function getLoginApiUrl() {
   if (typeof window === "undefined") return "http://localhost:5000/api/admin";
   const host = window.location?.hostname;
-  if (process.env.REACT_APP_ADMIN_API_URL) return String(process.env.REACT_APP_ADMIN_API_URL).replace(/\/+$/, "");
-  if (host === "localhost" || host === "127.0.0.1") return "http://localhost:5000/api/admin";
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  const envUrl = process.env.REACT_APP_ADMIN_API_URL && String(process.env.REACT_APP_ADMIN_API_URL).replace(/\/+$/, "");
+  if (envUrl && (isLocal || !/localhost|127\.0\.0\.1/.test(envUrl))) return envUrl;
+  if (isLocal) return "http://localhost:5000/api/admin";
   return RAILWAY_API;
 }
 

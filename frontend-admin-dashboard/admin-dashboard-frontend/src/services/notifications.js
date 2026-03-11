@@ -3,7 +3,7 @@ import axiosClient from "../api/axiosClient";
 
 /**
  * Option A:
- * axiosClient baseURL = http://localhost:5000/api
+ * Uses axiosClient (getBackendOrigin → /api/admin or Railway).
  * → ALL admin routes must start with /admin
  */
 

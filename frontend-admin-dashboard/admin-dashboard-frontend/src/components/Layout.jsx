@@ -293,7 +293,7 @@ export default function Layout() {
         </NavLink>
 
         <div style={{ marginTop: 14 }} className="muted">
-          Backend: :5000
+          Backend: Admin API
         </div>
         <div className="muted" style={{ marginTop: 10 }}>
           Tip: Use Guards to manage staff, Shifts to assign coverage.
