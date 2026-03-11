@@ -1,122 +1,103 @@
 /**
- * Realtime: single connection to WebSocket Gateway (Redis-backed).
- * URL resolved at connect time. Production always uses WS_GATEWAY_DEFAULT (never localhost). Env typo-safe.
+ * Realtime: single connection to WebSocket Gateway.
+ * Uses REACT_APP_SOCKET_URL (or REACT_APP_WS_GATEWAY_URL). Production fallback to Railway so we never use localhost.
  */
 
 import { io } from "socket.io-client";
 
-/** WebSocket gateway (realtime events). Distinct from admin API backend. */
-const WS_GATEWAY_DEFAULT = "https://generous-manifestation-production-dbd9.up.railway.app";
+const WS_GATEWAY_PRODUCTION = "https://generous-manifestation-production-dbd9.up.railway.app";
+
+let socket = null;
+let lastToken = null;
 
 function getGatewayUrl() {
   if (typeof window === "undefined") return null;
   const host = window.location?.hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
-  // Production (Vercel etc.): always use Railway gateway — never localhost (avoids blocked ws://localhost:4000)
-  if (!isLocal) return WS_GATEWAY_DEFAULT;
-  // Local only: optional env gateway; never use localhost URL from env when we're not on localhost
-  const envUrl = process.env.REACT_APP_WS_GATEWAY_URL && String(process.env.REACT_APP_WS_GATEWAY_URL).replace(/[\/?]+$/, "");
-  if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) return envUrl;
-  return null;
+  const envUrl = (process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_WS_GATEWAY_URL || "")
+    .replace(/[\/?]+$/, "");
+  // Production: never use localhost (browser blocks ws://localhost). Ignore env if it points to localhost.
+  if (!isLocal) {
+    if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) return envUrl;
+    return WS_GATEWAY_PRODUCTION;
+  }
+  if (envUrl) return envUrl;
+  return WS_GATEWAY_PRODUCTION;
 }
 
-let gatewaySocket = null;
-let lastToken = null;
+export function connectSocket() {
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("adminToken") || "" : "";
+  if (!token) {
+    console.warn("⚠️ Socket disabled: no adminToken");
+    return null;
+  }
 
-/** Polling-only in production avoids proxy/WebSocket disconnects (per WEBSOCKET_PRODUCTION_DISCONNECT_REVIEW). */
-function getSocketOpts() {
-  const isLocal =
-    typeof window !== "undefined" &&
-    (window.location?.hostname === "localhost" || window.location?.hostname === "127.0.0.1");
-  return {
+  const gateway = getGatewayUrl();
+  if (!gateway) {
+    console.warn("⚠️ Socket disabled: missing gateway URL (set REACT_APP_SOCKET_URL or REACT_APP_WS_GATEWAY_URL)");
+    return null;
+  }
+
+  if (socket) {
+    if (lastToken !== token) {
+      lastToken = token;
+      socket.auth = { token };
+      if (socket.connected) socket.disconnect();
+      socket.connect();
+    }
+    return socket;
+  }
+
+  lastToken = token;
+
+  socket = io(gateway, {
     path: "/socket.io",
-    transports: isLocal ? ["polling", "websocket"] : ["polling"],
-    upgrade: isLocal,
-    autoConnect: true,
+    transports: ["websocket"],
+    upgrade: false,
+    auth: { token },
     reconnection: true,
-    reconnectionAttempts: 10,
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 2000,
     reconnectionDelayMax: 10000,
     timeout: 20000,
     withCredentials: true,
-  };
+  });
+
+  socket.on("connect", () => {
+    console.log("✅ Socket connected:", socket.id);
+    socket.emit("join_admin");
+  });
+
+  socket.on("reconnect", () => {
+    socket.emit("join_admin");
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.warn("⚠️ Socket disconnected:", reason);
+    if (reason === "io server disconnect" || reason === "transport close") {
+      socket.connect();
+    }
+  });
+
+  socket.on("connect_error", (err) => {
+    console.error("❌ Socket connect_error:", err.message);
+  });
+
+  return socket;
 }
 
-/**
- * Connect to the WebSocket Gateway. Returns one shared socket for both "guard" and "admin" events.
- */
-export function connectSocket() {
-  return connectGateway();
-}
-
-/**
- * Same as connectSocket — single Gateway connection for all realtime events.
- */
 export function connectAdminSocket() {
-  return connectGateway();
-}
-
-function connectGateway() {
-  const gatewayUrl = getGatewayUrl();
-  if (!gatewayUrl) return null;
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("adminToken") || "" : "";
-  if (!token) return null;
-
-  if (gatewaySocket) {
-    if (lastToken !== token) {
-      lastToken = token;
-      gatewaySocket.auth = { token };
-      if (gatewaySocket.connected) gatewaySocket.disconnect();
-      gatewaySocket.connect();
-    }
-    return gatewaySocket;
-  }
-
-  lastToken = token;
-  try {
-    gatewaySocket = io(gatewayUrl, {
-      ...getSocketOpts(),
-      auth: { token },
-    });
-
-    gatewaySocket.on("connect", () => {
-      gatewaySocket.emit("join_admin");
-    });
-    gatewaySocket.on("reconnect", () => {
-      gatewaySocket.emit("join_admin");
-    });
-    gatewaySocket.on("connect_error", () => {
-      if (!gatewaySocket._connectErrorLogged) {
-        gatewaySocket._connectErrorLogged = true;
-        if (typeof console !== "undefined" && console.warn) {
-          console.warn("⚠️ Realtime gateway unavailable. Set REACT_APP_WS_GATEWAY_URL to your WebSocket Gateway URL.");
-        }
-      }
-    });
-    gatewaySocket.on("disconnect", (reason) => {
-      if (reason === "io server disconnect" || reason === "transport close") {
-        gatewaySocket.connect();
-      }
-    });
-  } catch (err) {
-    if (typeof console !== "undefined" && console.warn) {
-      console.warn("⚠️ Gateway socket init failed:", err?.message || err);
-    }
-    gatewaySocket = null;
-    return null;
-  }
-
-  return gatewaySocket;
+  return connectSocket();
 }
 
 export function disconnectSocket() {
-  if (gatewaySocket) {
+  if (socket) {
     try {
-      gatewaySocket.disconnect();
+      socket.disconnect();
     } catch (_) {}
-    gatewaySocket = null;
+    socket = null;
   }
   lastToken = null;
 }
 
-export { gatewaySocket };
+export { socket as gatewaySocket };

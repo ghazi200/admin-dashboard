@@ -307,6 +307,16 @@ export default function ReportBuilder() {
     }
   }
 
+  // Initial load: show one loading state so we don't flash full UI then redirect on 401
+  if (templatesLoading && !templatesRaw) {
+    return (
+      <div className="container" style={{ padding: 48, textAlign: "center" }}>
+        <h1 style={{ margin: "0 0 12px 0", fontSize: 26 }}>📊 Report Builder</h1>
+        <p style={{ margin: 0, opacity: 0.8 }}>Loading reports…</p>
+      </div>
+    );
+  }
+
   if (templatesError && !templates?.length) {
     return (
       <div className="container">

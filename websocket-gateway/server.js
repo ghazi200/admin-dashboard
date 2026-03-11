@@ -58,10 +58,10 @@ app.get("/health", (req, res) => {
 
 const io = new Server(server, {
   cors: { origin: allowOrigin, credentials: true, methods: ["GET", "POST"] },
+  transports: ["websocket"],
   pingInterval: 25000,
-  pingTimeout: 120000,
+  pingTimeout: 60000,
   connectTimeout: 45000,
-  transports: ["polling", "websocket"],
   maxHttpBufferSize: 1e6,
 });
 
@@ -111,7 +111,11 @@ function toParticipantId(userType, userId) {
 
 io.on("connection", (socket) => {
   connectedClientCount++;
-  console.log("client connected", socket.id, "total:", connectedClientCount);
+  console.log("Admin connected:", socket.id, "total:", connectedClientCount);
+
+  socket.conn.on("close", (reason) => {
+    console.log("Transport closed:", socket.id, reason);
+  });
 
   socket.join("role:all");
   if (socket.admin) {
@@ -135,7 +139,8 @@ io.on("connection", (socket) => {
   }
 
   socket.on("disconnect", (reason) => {
-    console.log("disconnect:", socket.id, reason);
+    connectedClientCount = Math.max(0, connectedClientCount - 1);
+    console.log("Socket disconnected:", socket.id, reason, "total:", connectedClientCount);
   });
 
   // conversation:join — verify with Core API then join room
