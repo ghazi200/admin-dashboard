@@ -49,13 +49,20 @@ function allowOrigin(origin, cb) {
 
 app.use(cors({ origin: allowOrigin }));
 app.get("/", (req, res) => res.json({ service: "websocket-gateway", status: "OK" }));
-app.get("/health", (req, res) => res.json({ status: "OK" }));
+
+// Lightweight observability: connection count for monitoring
+let connectedClientCount = 0;
+app.get("/health", (req, res) => {
+  res.json({ status: "OK", connectedClients: connectedClientCount });
+});
 
 const io = new Server(server, {
   cors: { origin: allowOrigin, credentials: true, methods: ["GET", "POST"] },
-  pingInterval: 20000,
+  pingInterval: 25000,
   pingTimeout: 120000,
+  connectTimeout: 45000,
   transports: ["polling", "websocket"],
+  maxHttpBufferSize: 1e6,
 });
 
 // JWT auth (same as Core API)
@@ -103,6 +110,9 @@ function toParticipantId(userType, userId) {
 }
 
 io.on("connection", (socket) => {
+  connectedClientCount++;
+  console.log("client connected", socket.id, "total:", connectedClientCount);
+
   socket.join("role:all");
   if (socket.admin) {
     socket.join("role:admin");
@@ -164,8 +174,13 @@ io.on("connection", (socket) => {
 
 async function main() {
   const redisUrl = process.env.REDIS_URL;
+  const isProduction = process.env.NODE_ENV === "production";
+
   if (!redisUrl) {
     console.warn("REDIS_URL not set — Redis adapter disabled, single-instance only");
+    if (isProduction) {
+      console.warn("Production: set REDIS_URL (e.g. Railway Redis) so the gateway receives events from Core API and can scale horizontally.");
+    }
   } else {
     try {
       const pubClient = createClient({ url: redisUrl });

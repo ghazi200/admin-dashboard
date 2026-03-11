@@ -719,6 +719,19 @@ function withTimeout(promise, ms, label) {
         } catch (e) {
           logger.warn({ err: e?.message }, "Shift reminders init failed");
         }
+
+        // Realtime: log Redis publisher status so operators know events will reach the WebSocket Gateway
+        try {
+          const { getPublisher } = require("./src/services/realtime.service");
+          const pub = await getPublisher();
+          if (pub) {
+            logger.info("Realtime: Redis publisher connected (events will reach WebSocket Gateway)");
+          } else {
+            logger.warn("Realtime: REDIS_URL not set; realtime events disabled. Set REDIS_URL so Core API can publish to the gateway.");
+          }
+        } catch (e) {
+          logger.warn({ err: e?.message }, "Realtime: Redis publisher check failed (realtime events may be disabled)");
+        }
       })();
     });
   } catch (e) {

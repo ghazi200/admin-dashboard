@@ -12,26 +12,35 @@ function getGatewayUrl() {
   if (typeof window === "undefined") return null;
   const host = window.location?.hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
+  // Production (Vercel etc.): always use Railway gateway — never localhost (avoids blocked ws://localhost:4000)
+  if (!isLocal) return WS_GATEWAY_DEFAULT;
+  // Local only: optional env gateway; never use localhost URL from env when we're not on localhost
   const envUrl = process.env.REACT_APP_WS_GATEWAY_URL && String(process.env.REACT_APP_WS_GATEWAY_URL).replace(/[\/?]+$/, "");
-  if (envUrl && (isLocal || !/localhost|127\.0\.0\.1/.test(envUrl))) return envUrl;
-  if (isLocal) return null;
-  return WS_GATEWAY_DEFAULT;
+  if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) return envUrl;
+  return null;
 }
 
 let gatewaySocket = null;
 let lastToken = null;
 
-const OPTS = {
-  path: "/socket.io",
-  transports: ["polling", "websocket"],
-  autoConnect: true,
-  reconnection: true,
-  reconnectionAttempts: 10,
-  reconnectionDelay: 2000,
-  reconnectionDelayMax: 10000,
-  timeout: 20000,
-  withCredentials: true,
-};
+/** Polling-only in production avoids proxy/WebSocket disconnects (per WEBSOCKET_PRODUCTION_DISCONNECT_REVIEW). */
+function getSocketOpts() {
+  const isLocal =
+    typeof window !== "undefined" &&
+    (window.location?.hostname === "localhost" || window.location?.hostname === "127.0.0.1");
+  return {
+    path: "/socket.io",
+    transports: isLocal ? ["polling", "websocket"] : ["polling"],
+    upgrade: isLocal,
+    autoConnect: true,
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 2000,
+    reconnectionDelayMax: 10000,
+    timeout: 20000,
+    withCredentials: true,
+  };
+}
 
 /**
  * Connect to the WebSocket Gateway. Returns one shared socket for both "guard" and "admin" events.
@@ -66,7 +75,7 @@ function connectGateway() {
   lastToken = token;
   try {
     gatewaySocket = io(gatewayUrl, {
-      ...OPTS,
+      ...getSocketOpts(),
       auth: { token },
     });
 
