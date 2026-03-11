@@ -13,10 +13,17 @@ let clientSocket = null;
 let isConnected = false;
 
 /**
- * Initialize the socket client connection to abe-guard-ai
+ * Initialize the socket client connection to abe-guard-ai.
+ * Production: set ABE_GUARD_AI_URL; we never use localhost in production.
  */
 function initCalloutNotificationListener(app) {
-  const abeGuardAiUrl = process.env.ABE_GUARD_AI_URL || "http://localhost:4000";
+  const abeGuardAiUrl =
+    process.env.ABE_GUARD_AI_URL ||
+    (process.env.NODE_ENV !== "production" ? "http://localhost:4000" : null);
+  if (!abeGuardAiUrl) {
+    console.log("⚠️ ABE_GUARD_AI_URL not set in production; callout notification listener disabled.");
+    return;
+  }
   const { Notification } = app.locals.models;
   const emitToRealtime = app.locals.emitToRealtime;
 

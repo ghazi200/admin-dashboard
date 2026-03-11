@@ -4,6 +4,16 @@
 
 ---
 
+## Why login worked, then broke when we fixed “blocked pages”
+
+- **Before:** Login worked because the app was calling the **Railway URL** (e.g. from `localStorage.adminApiUrl` set by `index.html` or `/use-railway-backend.html`, or from an older build that used env/defaults pointing to Railway).
+- **What changed:** While fixing reports/inspections and “no localhost in production”, we changed **apiOrigin.js** so that on Vercel, when there was no stored URL, we returned **same-origin (`""`)** so requests would go through a Vercel proxy to Railway.
+- **Why that broke login:** The frontend then sent requests to `https://your-app.vercel.app/api/admin/login` instead of directly to Railway. That only works if the **Vercel serverless proxy** (`api/[...path].js`) is deployed and working. If the proxy isn’t there or the build isn’t from the right directory, the request never reaches Railway and login fails (or you get the SPA instead of JSON).
+- **Current code fix:** **apiOrigin.js** was updated so that in **production (including Vercel)** we no longer force same-origin. When there’s no valid stored URL, we return the **Railway URL** directly. So login no longer depends on the proxy; CORS must allow your Vercel origin on Railway (e.g. `CORS_ORIGINS=https://admin-dashboard-frontend-flax.vercel.app`).
+- **What you must do:** **Redeploy the frontend** on Vercel from the repo that contains this fix (so the built bundle uses the new apiOrigin logic). After deploy, do a hard refresh or use an incognito window so the browser doesn’t use an old cached bundle. If you still see requests to localhost, the deployed build is still old or from the wrong app.
+
+---
+
 ## Exact error (copy-paste)
 
 **Browser console / user-facing:**

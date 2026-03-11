@@ -363,10 +363,11 @@ const adminAuthController = require("./src/controllers/adminAuth.Controller");
 const { loginValidators, handleLoginValidation } = require("./src/middleware/validateLogin");
 const loginRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || "10", 10),
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || "30", 10),
   message: { message: "Too many login attempts; try again later." },
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: true, // only count failed attempts so successful login doesn't block
 });
 
 app.all("/api/admin/login", (req, res, next) => {
