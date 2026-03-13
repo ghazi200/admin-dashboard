@@ -466,7 +466,7 @@ export default function ReportBuilder() {
               <div>Loading templates...</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(Array.isArray(templatesSafe) ? templatesSafe : []).map((template) => (
+                {[].concat(templatesSafe || []).map((template) => (
                   <div
                     key={template?.id ?? template?.name ?? Math.random()}
                     style={{
@@ -967,7 +967,7 @@ function ScheduledReportsTab() {
                     required
                   >
                     <option value="">Select a template</option>
-                    {(Array.isArray(templatesList) ? templatesList : []).map((t) => (
+                    {[].concat(templatesList || []).map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
                       </option>

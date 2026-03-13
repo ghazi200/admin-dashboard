@@ -43,7 +43,9 @@ export function connectSocket() {
 
   lastToken = token;
 
-  const urlToConnect = getSocketUrl();
+  // Force production URL at call site when not on localhost (defeats any bad env baked into bundle).
+  const isProd = typeof window !== "undefined" && window.location && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+  const urlToConnect = isProd ? WS_GATEWAY_PRODUCTION : getSocketUrl();
   socket = io(urlToConnect, {
     path: "/socket.io",
     transports: ["websocket"],
