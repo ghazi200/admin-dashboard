@@ -1,13 +1,12 @@
 import axios from "axios";
 
-/** Production: always Railway. Local only: localhost:5000. Guarantees API never uses localhost in production. */
+/** No localhost in bundle: use env so Vercel builds use Railway. Local dev: set REACT_APP_API_URL=http://localhost:5000 */
 const PRODUCTION_API = "https://admin-dashboard-production-2596.up.railway.app/api/admin";
-const isLocal =
-  typeof window !== "undefined" &&
-  (window.location?.hostname === "localhost" || window.location?.hostname === "127.0.0.1");
+const fromEnv = (process.env.REACT_APP_API_URL || process.env.REACT_APP_ADMIN_API_URL || "").replace(/\/+$/, "");
+const baseURL = fromEnv ? (fromEnv.includes("/api") ? fromEnv : fromEnv + "/api/admin") : PRODUCTION_API;
 
 const axiosClient = axios.create({
-  baseURL: isLocal ? "http://localhost:5000/api/admin" : PRODUCTION_API,
+  baseURL,
   timeout: 30000,
   headers: { "Content-Type": "application/json" },
   withCredentials: true,

@@ -3,18 +3,14 @@ import { useNavigate } from "react-router-dom";
 
 /**
  * Admin Login FORM ONLY (no page wrapper!)
- * Handles optional MFA. API URL resolved at runtime so production (Vercel) uses Railway without env.
+ * No localhost in bundle — use REACT_APP_API_URL or REACT_APP_ADMIN_API_URL. Local dev: set to http://localhost:5000
  */
 const RAILWAY_API = "https://admin-dashboard-production-2596.up.railway.app/api/admin";
 
 function getLoginApiUrl() {
-  if (typeof window === "undefined") return "http://localhost:5000/api/admin";
-  const host = window.location?.hostname;
-  const isLocal = host === "localhost" || host === "127.0.0.1";
-  const envUrl = process.env.REACT_APP_ADMIN_API_URL && String(process.env.REACT_APP_ADMIN_API_URL).replace(/\/+$/, "");
-  if (envUrl && (isLocal || !/localhost|127\.0\.0\.1/.test(envUrl))) return envUrl;
-  if (isLocal) return "http://localhost:5000/api/admin";
-  return RAILWAY_API;
+  const envUrl = (process.env.REACT_APP_API_URL || process.env.REACT_APP_ADMIN_API_URL || "").replace(/\/+$/, "");
+  const base = envUrl ? (envUrl.includes("/api") ? envUrl : envUrl + "/api/admin") : RAILWAY_API;
+  return base;
 }
 
 /** Never send login to empty or relative URL (fixes deployed bundle where base was inlined as ""). */
@@ -23,8 +19,7 @@ function ensureLoginBase(base) {
   return RAILWAY_API;
 }
 
-const isProduction = typeof window !== "undefined" && window.location?.hostname !== "localhost" && window.location?.hostname !== "127.0.0.1";
-const showProductionApiWarning = false; // we always use Railway in production now
+const showProductionApiWarning = false;
 
 export default function Login() {
   const nav = useNavigate();

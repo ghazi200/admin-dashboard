@@ -1,6 +1,6 @@
 /**
  * Realtime: single connection to WebSocket Gateway.
- * Uses REACT_APP_SOCKET_URL (or REACT_APP_WS_GATEWAY_URL). Production fallback to Railway so we never use localhost.
+ * No localhost in bundle — use REACT_APP_SOCKET_URL or REACT_APP_WS_GATEWAY_URL. Local dev: set to your gateway URL.
  */
 
 import { io } from "socket.io-client";
@@ -10,15 +10,9 @@ const WS_GATEWAY_PRODUCTION = "https://generous-manifestation-production-dbd9.up
 let socket = null;
 let lastToken = null;
 
-function getGatewayUrl() {
-  if (typeof window === "undefined") return null;
-  const host = window.location?.hostname;
-  const isLocal = host === "localhost" || host === "127.0.0.1";
-  // Production: never read env for URL — always use Railway. Stops ws://localhost:4000 no matter what Vercel built with.
-  if (!isLocal) return WS_GATEWAY_PRODUCTION;
-  const envUrl = (process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_WS_GATEWAY_URL || "").replace(/[\/?]+$/, "");
-  if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) return envUrl;
-  return WS_GATEWAY_PRODUCTION;
+function getSocketUrl() {
+  const envUrl = (process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_WS_GATEWAY_URL || "").replace(/\/+$/, "");
+  return envUrl || WS_GATEWAY_PRODUCTION;
 }
 
 export function connectSocket() {
@@ -27,10 +21,6 @@ export function connectSocket() {
     console.warn("⚠️ Socket disabled: no adminToken");
     return null;
   }
-
-  const isLocal =
-    typeof window !== "undefined" &&
-    (window.location?.hostname === "localhost" || window.location?.hostname === "127.0.0.1");
 
   if (socket) {
     if (lastToken !== token) {
@@ -44,13 +34,7 @@ export function connectSocket() {
 
   lastToken = token;
 
-  // Production (vercel.app or any non-localhost): ONLY use this literal. Never attempt localhost (browser blocks ws:// from HTTPS).
-  const RAILWAY_GATEWAY = "https://generous-manifestation-production-dbd9.up.railway.app";
-  let urlToConnect = isLocal ? (getGatewayUrl() || RAILWAY_GATEWAY) : RAILWAY_GATEWAY;
-  if (!urlToConnect || /localhost|127\.0\.0\.1/i.test(String(urlToConnect))) {
-    urlToConnect = RAILWAY_GATEWAY;
-  }
-
+  const urlToConnect = getSocketUrl();
   socket = io(urlToConnect, {
     path: "/socket.io",
     transports: ["websocket"],

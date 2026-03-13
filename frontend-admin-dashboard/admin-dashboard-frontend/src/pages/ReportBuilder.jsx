@@ -45,6 +45,8 @@ export default function ReportBuilder() {
       return [];
     },
     retry: 1,
+    staleTime: 2 * 60 * 1000, // 2 min — avoid refetch on focus that can 401 and redirect
+    refetchOnWindowFocus: false,
   });
   // Always an array — never .map on non-array (avoids "y.map is not a function")
   function getTemplatesArray() {
@@ -122,6 +124,8 @@ export default function ReportBuilder() {
     },
     retry: 1,
     enabled: !!templatesSettled,
+    staleTime: 1 * 60 * 1000, // 1 min
+    refetchOnWindowFocus: false,
   });
   const reportRuns = Array.isArray(reportRunsRaw) ? reportRunsRaw : [];
 
@@ -321,7 +325,7 @@ export default function ReportBuilder() {
     );
   }
 
-  if (templatesError && !templates?.length) {
+  if (templatesError && !templatesSafe.length) {
     return (
       <div className="container">
         <div style={{ marginBottom: 20 }}>
