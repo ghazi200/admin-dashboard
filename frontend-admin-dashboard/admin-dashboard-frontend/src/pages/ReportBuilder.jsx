@@ -466,7 +466,7 @@ export default function ReportBuilder() {
               <div>Loading templates...</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {templatesSafe.map((template) => (
+                {(Array.isArray(templatesSafe) ? templatesSafe : []).map((template) => (
                   <div
                     key={template?.id ?? template?.name ?? Math.random()}
                     style={{
@@ -762,7 +762,7 @@ function ScheduledReportsTab() {
   });
   const templatesList = Array.isArray(templatesRaw)
     ? templatesRaw
-    : (templatesRaw && typeof templatesRaw === "object" && Array.isArray(templatesRaw.templates)
+    : (templatesRaw?.templates && Array.isArray(templatesRaw.templates)
         ? templatesRaw.templates
         : []);
 

@@ -10,7 +10,16 @@ const WS_GATEWAY_PRODUCTION = "https://generous-manifestation-production-dbd9.up
 let socket = null;
 let lastToken = null;
 
+/** True when the app is served from a real host (e.g. vercel.app), not local dev. */
+function isProductionOrigin() {
+  if (typeof window === "undefined" || !window.location || !window.location.hostname) return false;
+  const h = window.location.hostname.toLowerCase();
+  return h !== "localhost" && h !== "127.0.0.1";
+}
+
 function getSocketUrl() {
+  // When app is on Vercel (or any non-localhost host), always use Railway. Never use env here so a bad Vercel env can't inject localhost.
+  if (isProductionOrigin()) return WS_GATEWAY_PRODUCTION;
   const envUrl = (process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_WS_GATEWAY_URL || "").replace(/\/+$/, "");
   return envUrl || WS_GATEWAY_PRODUCTION;
 }
