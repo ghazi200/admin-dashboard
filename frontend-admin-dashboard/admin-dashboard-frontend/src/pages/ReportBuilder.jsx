@@ -58,6 +58,7 @@ export default function ReportBuilder() {
     return [];
   }
   const templates = getTemplatesArray();
+  const templatesSafe = Array.isArray(templates) ? templates : [];
 
   // Create template mutation
   const createMutation = useMutation({
@@ -105,7 +106,8 @@ export default function ReportBuilder() {
     },
   });
 
-  // Fetch report runs (history)
+  // Only fetch report runs after templates have settled (avoids double 401 / flash)
+  const templatesSettled = templatesRaw !== undefined || templatesError;
   const {
     data: reportRunsRaw,
     isLoading: runsLoading,
@@ -119,6 +121,7 @@ export default function ReportBuilder() {
       return Array.isArray(data) ? data : (data?.runs || data?.data || []);
     },
     retry: 1,
+    enabled: !!templatesSettled,
   });
   const reportRuns = Array.isArray(reportRunsRaw) ? reportRunsRaw : [];
 
@@ -307,8 +310,9 @@ export default function ReportBuilder() {
     }
   }
 
-  // Initial load: show one loading state so we don't flash full UI then redirect on 401
-  if (templatesLoading && !templatesRaw) {
+  // Initial load: show loading until we have data or error (avoids flash of full UI before 401 redirect)
+  const hasTemplatesData = templatesRaw !== undefined;
+  if (!hasTemplatesData && !templatesError) {
     return (
       <div className="container" style={{ padding: 48, textAlign: "center" }}>
         <h1 style={{ margin: "0 0 12px 0", fontSize: 26 }}>📊 Report Builder</h1>
@@ -458,7 +462,7 @@ export default function ReportBuilder() {
               <div>Loading templates...</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {(Array.isArray(templates) ? templates : []).map((template) => (
+                {templatesSafe.map((template) => (
                   <div
                     key={template?.id ?? template?.name ?? Math.random()}
                     style={{
@@ -865,7 +869,7 @@ function ScheduledReportsTab() {
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {scheduledReportsList.map((schedule) => (
+            {(Array.isArray(scheduledReportsList) ? scheduledReportsList : []).map((schedule) => (
               <div
                 key={schedule.id}
                 style={{
@@ -959,7 +963,7 @@ function ScheduledReportsTab() {
                     required
                   >
                     <option value="">Select a template</option>
-                    {templatesList.map((t) => (
+                    {(Array.isArray(templatesList) ? templatesList : []).map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
                       </option>

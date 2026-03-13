@@ -177,8 +177,21 @@ io.on("connection", (socket) => {
   });
 });
 
+function isRedisUrlValid(url) {
+  if (!url || typeof url !== "string") return false;
+  const u = url.trim();
+  if (!u) return false;
+  try {
+    const parsed = new URL(u);
+    return parsed.protocol === "redis:" || parsed.protocol === "rediss:";
+  } catch (_) {
+    return false;
+  }
+}
+
 async function main() {
-  const redisUrl = process.env.REDIS_URL;
+  const rawRedis = process.env.REDIS_URL || process.env.REDIS_PRIVATE_URL || "";
+  const redisUrl = rawRedis.trim();
   const isProduction = process.env.NODE_ENV === "production";
 
   if (!redisUrl) {
@@ -186,6 +199,8 @@ async function main() {
     if (isProduction) {
       console.warn("Production: set REDIS_URL (e.g. Railway Redis) so the gateway receives events from Core API and can scale horizontally.");
     }
+  } else if (!isRedisUrlValid(redisUrl)) {
+    console.warn("REDIS_URL is invalid (must be redis://... or rediss://...). Check Railway Variables. Redis adapter disabled.");
   } else {
     try {
       const pubClient = createClient({ url: redisUrl });
@@ -199,8 +214,9 @@ async function main() {
     }
   }
 
+  const redisOk = redisUrl && isRedisUrlValid(redisUrl);
   // Separate subscriber for app channel (adapter uses its own subClient)
-  if (redisUrl) {
+  if (redisOk) {
     try {
       const eventsSub = createClient({ url: redisUrl });
       await eventsSub.connect();

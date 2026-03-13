@@ -14,14 +14,10 @@ function getGatewayUrl() {
   if (typeof window === "undefined") return null;
   const host = window.location?.hostname;
   const isLocal = host === "localhost" || host === "127.0.0.1";
-  const envUrl = (process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_WS_GATEWAY_URL || "")
-    .replace(/[\/?]+$/, "");
-  // Production: never use localhost (browser blocks ws://localhost). Ignore env if it points to localhost.
-  if (!isLocal) {
-    if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) return envUrl;
-    return WS_GATEWAY_PRODUCTION;
-  }
-  if (envUrl) return envUrl;
+  // Production: never read env for URL — always use Railway. Stops ws://localhost:4000 no matter what Vercel built with.
+  if (!isLocal) return WS_GATEWAY_PRODUCTION;
+  const envUrl = (process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_WS_GATEWAY_URL || "").replace(/[\/?]+$/, "");
+  if (envUrl && !/localhost|127\.0\.0\.1/.test(envUrl)) return envUrl;
   return WS_GATEWAY_PRODUCTION;
 }
 
@@ -32,11 +28,9 @@ export function connectSocket() {
     return null;
   }
 
-  const gateway = getGatewayUrl();
-  if (!gateway) {
-    console.warn("⚠️ Socket disabled: missing gateway URL (set REACT_APP_SOCKET_URL or REACT_APP_WS_GATEWAY_URL)");
-    return null;
-  }
+  const isLocal =
+    typeof window !== "undefined" &&
+    (window.location?.hostname === "localhost" || window.location?.hostname === "127.0.0.1");
 
   if (socket) {
     if (lastToken !== token) {
@@ -50,7 +44,11 @@ export function connectSocket() {
 
   lastToken = token;
 
-  socket = io(gateway, {
+  // Production: use Railway only. Never use env or any URL that could be localhost (browser blocks ws:// from HTTPS).
+  const gatewayUrl = isLocal ? getGatewayUrl() : WS_GATEWAY_PRODUCTION;
+  const url = gatewayUrl && !/localhost|127\.0\.0\.1/i.test(gatewayUrl) ? gatewayUrl : WS_GATEWAY_PRODUCTION;
+
+  socket = io(url, {
     path: "/socket.io",
     transports: ["websocket"],
     upgrade: false,

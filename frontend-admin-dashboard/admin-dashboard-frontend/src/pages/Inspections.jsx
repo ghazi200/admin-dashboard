@@ -37,15 +37,20 @@ export default function Inspections() {
   // Selected request for update modal
   const [selectedRequest, setSelectedRequest] = useState(null);
 
-  useEffect(() => {
-    loadSites();
-    loadGuards();
-    loadRequests();
-  }, []);
+  // Guard AI origin: Inspections use abeGuardAiClient (sites, inspection requests). When empty in production, those calls would hit wrong host and can trigger 401 redirect — so skip them and show message.
+  const guardAiOrigin = getGuardAiOrigin();
 
   useEffect(() => {
-    loadRequests();
-  }, [filters]);
+    loadGuards(); // always from admin backend (axiosClient)
+    if (guardAiOrigin) {
+      loadSites();
+      loadRequests();
+    }
+  }, [guardAiOrigin]);
+
+  useEffect(() => {
+    if (guardAiOrigin) loadRequests();
+  }, [filters, guardAiOrigin]);
 
   async function loadSites() {
     try {
@@ -158,6 +163,13 @@ export default function Inspections() {
 
   return (
     <div>
+      {!guardAiOrigin && (
+        <div style={{ marginBottom: 16, padding: 16, background: "rgba(245, 158, 11, 0.15)", borderRadius: 8, border: "1px solid rgba(245,158,11,0.4)" }}>
+          <p style={{ margin: 0, color: "#f59e0b" }}>
+            Inspections require the Guard AI service. Set <strong>REACT_APP_GUARD_AI_URL</strong> in Vercel (and redeploy) to load sites and inspection requests.
+          </p>
+        </div>
+      )}
       <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8, color: "#ffffff" }}>
