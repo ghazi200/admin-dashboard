@@ -81,7 +81,7 @@ export default function Layout() {
   const [showPreferences, setShowPreferences] = useState(false);
   const notificationList = useMemo(() => (Array.isArray(items) ? items.slice(0, 25) : []), [items]);
 
-  // Live-updating total sites count for current tenant (refreshes every 20s)
+  // Live-updating total sites count for current tenant (avoid aggressive poll that can 401 and redirect)
   const { data: sitesData } = useQuery({
     queryKey: ["geographicSites"],
     queryFn: async () => {
@@ -89,8 +89,9 @@ export default function Layout() {
       const list = res.data?.data ?? res.data ?? [];
       return Array.isArray(list) ? list : [];
     },
-    refetchInterval: 20000,
-    refetchIntervalInBackground: true,
+    staleTime: 60 * 1000, // 1 min before refetch
+    refetchInterval: 60000, // poll every 60s instead of 20s
+    refetchIntervalInBackground: false,
   });
   const sitesCount = Array.isArray(sitesData) ? sitesData.length : 0;
 

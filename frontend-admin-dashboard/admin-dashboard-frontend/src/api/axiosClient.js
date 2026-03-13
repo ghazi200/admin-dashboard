@@ -23,17 +23,27 @@ axiosClient.interceptors.request.use(
   (e) => Promise.reject(e)
 );
 
-/** 401 → clear token and redirect to login */
+/** 401 → clear token and redirect to login, except for non-critical requests so the page doesn't "go away" (e.g. Reports). */
 axiosClient.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error?.response?.status === 401) {
       const msg = String(error?.response?.data?.message || "");
+      const url = (error?.config?.url || error?.config?.baseURL || "").toLowerCase();
+      const isNonCritical =
+        /\/reports\//.test(url) ||
+        /reports\/runs/.test(url) ||
+        /reports\/templates/.test(url) ||
+        /notifications/.test(url) ||
+        /geographic/.test(url) ||
+        /scheduled-reports/.test(url);
       if (/invalid signature|jwt expired|invalid token|session invalidated/i.test(msg)) {
-        localStorage.removeItem("adminToken");
-        localStorage.removeItem("adminInfo");
-        localStorage.removeItem("adminUser");
-        if (!window.location.pathname.includes("/login")) window.location.href = "/login";
+        if (!isNonCritical) {
+          localStorage.removeItem("adminToken");
+          localStorage.removeItem("adminInfo");
+          localStorage.removeItem("adminUser");
+          if (!window.location.pathname.includes("/login")) window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(error);
