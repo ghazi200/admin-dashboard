@@ -44,11 +44,14 @@ export function connectSocket() {
 
   lastToken = token;
 
-  // Production: use Railway only. Never use env or any URL that could be localhost (browser blocks ws:// from HTTPS).
-  const gatewayUrl = isLocal ? getGatewayUrl() : WS_GATEWAY_PRODUCTION;
-  const url = gatewayUrl && !/localhost|127\.0\.0\.1/i.test(gatewayUrl) ? gatewayUrl : WS_GATEWAY_PRODUCTION;
+  // Production (vercel.app or any non-localhost): ONLY use this literal. Never attempt localhost (browser blocks ws:// from HTTPS).
+  const RAILWAY_GATEWAY = "https://generous-manifestation-production-dbd9.up.railway.app";
+  let urlToConnect = isLocal ? (getGatewayUrl() || RAILWAY_GATEWAY) : RAILWAY_GATEWAY;
+  if (!urlToConnect || /localhost|127\.0\.0\.1/i.test(String(urlToConnect))) {
+    urlToConnect = RAILWAY_GATEWAY;
+  }
 
-  socket = io(url, {
+  socket = io(urlToConnect, {
     path: "/socket.io",
     transports: ["websocket"],
     upgrade: false,
