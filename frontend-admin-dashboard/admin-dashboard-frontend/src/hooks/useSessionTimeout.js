@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
+import socketManager from "../realtime/socketManager";
 
 const STORAGE_KEYS = ["adminToken", "adminUser", "adminInfo"];
 const MIN_MINUTES = 15;
@@ -13,6 +14,7 @@ function getTimeoutMinutes() {
 }
 
 export function clearSession() {
+  socketManager.disconnect();
   STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
   window.location.href = "/login";
 }
@@ -46,6 +48,9 @@ export function useSessionTimeout(options = {}) {
     const interval = setInterval(() => {
       const token = localStorage.getItem("adminToken");
       if (!token) return;
+      const pathname = (typeof window !== "undefined" && window.location?.pathname) ? window.location.pathname.toLowerCase() : "";
+      const onReportsOrInspections = pathname.indexOf("/reports") !== -1 || pathname.indexOf("/inspections") !== -1;
+      if (onReportsOrInspections) return; // never redirect away from Reports/Inspections
       const elapsed = Date.now() - lastActivityRef.current;
       if (elapsed >= timeoutMs) {
         clearInterval(interval);

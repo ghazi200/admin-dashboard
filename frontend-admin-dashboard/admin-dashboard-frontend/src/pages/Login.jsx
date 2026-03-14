@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import socketManager from "../realtime/socketManager";
 
 /**
  * Admin Login FORM ONLY (no page wrapper!)
@@ -68,6 +69,7 @@ export default function Login() {
           localStorage.setItem("adminUser", JSON.stringify(user));
           localStorage.setItem("adminInfo", JSON.stringify(user));
         }
+        socketManager.connect();
         nav("/", { replace: true });
       } catch (err) {
         setError(err?.message || "Network error");
@@ -124,6 +126,7 @@ export default function Login() {
         localStorage.setItem("adminInfo", JSON.stringify(user));
       }
 
+      socketManager.connect();
       nav("/", { replace: true });
     } catch (err) {
       setError(err?.message || "Network error");

@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { connectSocket } from "../realtime/socket";
+import socketManager from "../realtime/socketManager";
 import {
   fetchNotifications,
   fetchUnreadCount,
@@ -13,6 +13,8 @@ export function NotificationsProvider({ children }) {
   const location = useLocation();
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
+  const [isConnected, setIsConnected] = useState(false);
+  const mounted = useRef(true);
 
   const isReportsOrInspections =
     (location.pathname || "").toLowerCase().includes("/reports") ||
@@ -21,7 +23,7 @@ export function NotificationsProvider({ children }) {
   // initial load — skip on Reports/Inspections to avoid 401 that could affect page
   useEffect(() => {
     if (isReportsOrInspections) return;
-    let mounted = true;
+    mounted.current = true;
 
     (async () => {
       try {
@@ -30,7 +32,7 @@ export function NotificationsProvider({ children }) {
           fetchUnreadCount(),
         ]);
 
-        if (!mounted) return;
+        if (!mounted.current) return;
 
         const list = Array.isArray(listRes.data) ? listRes.data : (listRes.data?.notifications || []);
         const count =
@@ -58,40 +60,42 @@ export function NotificationsProvider({ children }) {
     })();
 
     return () => {
-      mounted = false;
+      mounted.current = false;
     };
   }, [isReportsOrInspections]);
 
-  // realtime (socket optional — Reports/Inspections work without it)
+  // Subscribe via Socket Manager (safe on/off; no disconnect on unmount)
   useEffect(() => {
-    let s;
-    try {
-      s = connectSocket();
-    } catch (_) {
-      return;
-    }
-    if (!s) return;
+    if (isReportsOrInspections) return;
 
+    const socket = socketManager.connect();
+    if (!socket) return;
+
+    const onConnect = () => {
+      if (mounted.current) setIsConnected(true);
+    };
+    const onDisconnect = () => {
+      if (mounted.current) setIsConnected(false);
+    };
     const onNew = (n) => {
+      if (!mounted.current) return;
       setItems((prev) => [n, ...prev].slice(0, 50));
       setUnread((u) => u + 1);
     };
 
-    try {
-      s.on("notification:new", onNew);
-    } catch (_) {
-      return;
-    }
+    setIsConnected(socketManager.isConnected());
+    socketManager.on("connect", onConnect);
+    socketManager.on("disconnect", onDisconnect);
+    socketManager.on("notification:new", onNew);
 
     return () => {
-      try {
-        if (s) s.off("notification:new", onNew);
-      } catch (_) {}
+      socketManager.off("connect", onConnect);
+      socketManager.off("disconnect", onDisconnect);
+      socketManager.off("notification:new", onNew);
     };
-  }, []);
+  }, [isReportsOrInspections]);
 
   const markRead = async (id) => {
-    // optimistic
     setItems((prev) => prev.map((x) => (x.id === id ? { ...x, read: true } : x)));
     setUnread((u) => Math.max(u - 1, 0));
 
@@ -99,11 +103,13 @@ export function NotificationsProvider({ children }) {
       await markNotificationRead(id);
     } catch (e) {
       console.warn("markNotificationRead failed:", e?.message);
-      // keep simple: no rollback
     }
   };
 
-  const value = useMemo(() => ({ items, unread, markRead }), [items, unread]);
+  const value = useMemo(
+    () => ({ items, unread, markRead, isConnected }),
+    [items, unread, isConnected]
+  );
 
   return (
     <NotificationsContext.Provider value={value}>

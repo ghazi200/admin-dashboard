@@ -5,6 +5,7 @@ import { useNotifications } from "../context/NotificationContext";
 import NotificationPreferences from "./NotificationPreferences";
 import { getGeographicSites, globalSearch, getSearchHistory } from "../services/api";
 import { useSessionTimeout } from "../hooks/useSessionTimeout";
+import socketManager from "../realtime/socketManager";
 
 export default function Layout() {
   const nav = useNavigate();
@@ -100,11 +101,9 @@ export default function Layout() {
   const sitesCount = Array.isArray(sitesData) ? sitesData.length : 0;
 
   const logout = () => {
-    // ✅ clear admin auth
+    socketManager.disconnect();
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminUser");
-
-    // ✅ FORCE full app reset (this is critical)
     window.location.href = "/login";
   };
 
