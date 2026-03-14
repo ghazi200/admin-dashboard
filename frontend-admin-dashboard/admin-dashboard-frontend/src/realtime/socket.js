@@ -43,9 +43,12 @@ export function connectSocket() {
 
   lastToken = token;
 
-  // Force production URL at call site when not on localhost (defeats any bad env baked into bundle).
-  const isProd = typeof window !== "undefined" && window.location && window.location.hostname && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
-  const urlToConnect = isProd ? WS_GATEWAY_PRODUCTION : getSocketUrl();
+  // Force Railway when on Vercel or any non-localhost host (defeats bad env or wrong build).
+  const host = typeof window !== "undefined" && window.location && window.location.hostname ? window.location.hostname.toLowerCase() : "";
+  const isVercel = host.indexOf("vercel.app") !== -1;
+  const isLocal = host === "localhost" || host === "127.0.0.1";
+  const urlToConnect = isVercel || !isLocal ? WS_GATEWAY_PRODUCTION : getSocketUrl();
+  if (typeof console !== "undefined" && isVercel) console.log("[socket] Using Railway gateway (Vercel build v2)");
   socket = io(urlToConnect, {
     path: "/socket.io",
     transports: ["websocket"],
