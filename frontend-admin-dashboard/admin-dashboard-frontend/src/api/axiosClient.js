@@ -23,20 +23,21 @@ axiosClient.interceptors.request.use(
   (e) => Promise.reject(e)
 );
 
-/** 401 → clear token and redirect to login, except for non-critical requests so the page doesn't "go away" (e.g. Reports). */
+/** 401 → clear token and redirect to login, except when on Reports or when the request is report/notification/geographic so the page doesn't "go away". */
 axiosClient.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error?.response?.status === 401) {
       const msg = String(error?.response?.data?.message || "");
       const url = (error?.config?.url || error?.config?.baseURL || "").toLowerCase();
+      const pathname = (typeof window !== "undefined" && window.location?.pathname) ? window.location.pathname.toLowerCase() : "";
+      const isReportPage = pathname.indexOf("/reports") !== -1;
       const isNonCritical =
-        /\/reports\//.test(url) ||
-        /reports\/runs/.test(url) ||
-        /reports\/templates/.test(url) ||
-        /notifications/.test(url) ||
+        isReportPage ||
+        /report/.test(url) ||
+        /notification/.test(url) ||
         /geographic/.test(url) ||
-        /scheduled-reports/.test(url);
+        /scheduled/.test(url);
       if (/invalid signature|jwt expired|invalid token|session invalidated/i.test(msg)) {
         if (!isNonCritical) {
           localStorage.removeItem("adminToken");
