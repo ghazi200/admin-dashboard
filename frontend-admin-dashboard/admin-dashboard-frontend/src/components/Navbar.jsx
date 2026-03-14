@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useNotifications } from "../context/NotificationContext";
 import { fetchSmartNotifications } from "../services/notifications";
 import NotificationPreferences from "./NotificationPreferences";
-import socketManager from "../realtime/socketManager";
+import { disconnectSocket } from "../realtime/socket";
 
 export default function Navbar({ onMenu }) {
   const nav = useNavigate();
@@ -113,7 +113,7 @@ export default function Navbar({ onMenu }) {
   };
 
   function logout() {
-    socketManager.disconnect();
+    disconnectSocket();
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminInfo");
     nav("/login", { replace: true });

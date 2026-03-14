@@ -16,41 +16,60 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("adminToken");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-    else delete config.headers.Authorization;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
+    }
     return config;
   },
-  (e) => Promise.reject(e)
+  (error) => Promise.reject(error)
 );
 
 /** 401 → clear token and redirect to login, except when on Reports/Inspections so the page never "disappears". */
 axiosClient.interceptors.response.use(
-  (res) => res,
+  (response) => response,
   (error) => {
-    if (error?.response?.status === 401) {
-      const pathname = (typeof window !== "undefined" && window.location?.pathname) ? window.location.pathname.toLowerCase() : "";
-      const isReportPage = pathname.indexOf("/reports") !== -1;
-      const isInspectionsPage = pathname.indexOf("/inspections") !== -1;
-      // Never clear token or redirect on Reports/Inspections — keeps page visible
-      if (isReportPage || isInspectionsPage) {
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
+
+    const status = error?.response?.status;
+
+    if (status === 401) {
+      const pathname = (typeof window !== "undefined" && window.location?.pathname)
+        ? window.location.pathname.toLowerCase()
+        : "";
+
+      const isReportPage = pathname.includes("/reports");
+      const isInspectionsPage = pathname.includes("/inspections");
+      const isLoginPage = pathname.includes("/login");
+
+      if (isReportPage || isInspectionsPage || isLoginPage) {
         return Promise.reject(error);
       }
-      const msg = String(error?.response?.data?.message || "");
-      const url = (error?.config?.url || error?.config?.baseURL || "").toLowerCase();
-      const isNonCritical =
-        /report/.test(url) ||
-        /notification/.test(url) ||
-        /geographic/.test(url) ||
-        /scheduled/.test(url) ||
-        /inspection/.test(url) ||
-        /sites/.test(url);
-      if (/invalid signature|jwt expired|invalid token|session invalidated/i.test(msg) && !isNonCritical) {
+
+      const msg = String(error?.response?.data?.message || error?.message || "").toLowerCase();
+      const isAuthError =
+        msg.includes("invalid signature") ||
+        msg.includes("jwt expired") ||
+        msg.includes("invalid token") ||
+        msg.includes("session invalidated") ||
+        msg.includes("unauthorized") ||
+        msg.includes("not authenticated");
+
+      if (isAuthError) {
         localStorage.removeItem("adminToken");
         localStorage.removeItem("adminInfo");
         localStorage.removeItem("adminUser");
-        if (!window.location.pathname.includes("/login")) window.location.href = "/login";
+        localStorage.removeItem("refreshToken");
+
+        if (!window.location.pathname.includes("/login")) {
+          window.location.href = "/login";
+        }
       }
     }
+
     return Promise.reject(error);
   }
 );

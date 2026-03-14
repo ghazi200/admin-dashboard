@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import socketManager from "../realtime/socketManager";
+import { disconnectSocket } from "../realtime/socket";
 
 const STORAGE_KEYS = ["adminToken", "adminUser", "adminInfo"];
 const MIN_MINUTES = 15;
@@ -14,7 +14,7 @@ function getTimeoutMinutes() {
 }
 
 export function clearSession() {
-  socketManager.disconnect();
+  disconnectSocket();
   STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
   window.location.href = "/login";
 }

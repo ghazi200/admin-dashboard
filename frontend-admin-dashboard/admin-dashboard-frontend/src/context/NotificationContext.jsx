@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import socketManager from "../realtime/socketManager";
+import { connectSocket, isSocketConnected } from "../realtime/socket";
 import {
   fetchNotifications,
   fetchUnreadCount,
   markNotificationRead,
+  markAllNotificationsRead,
 } from "../services/notifications";
 
 const NotificationsContext = createContext(null);
@@ -16,99 +17,160 @@ export function NotificationsProvider({ children }) {
   const [isConnected, setIsConnected] = useState(false);
   const mounted = useRef(true);
 
-  const isReportsOrInspections =
-    (location.pathname || "").toLowerCase().includes("/reports") ||
-    (location.pathname || "").toLowerCase().includes("/inspections");
+  const isReportsOrInspections = useMemo(() => {
+    const path = (location.pathname || "").toLowerCase();
+    return path.includes("/reports") || path.includes("/inspections");
+  }, [location.pathname]);
 
-  // initial load — skip on Reports/Inspections to avoid 401 that could affect page
+  useEffect(() => {
+    mounted.current = true;
+    const checkConnection = () => {
+      if (mounted.current) setIsConnected(isSocketConnected());
+    };
+    checkConnection();
+    const interval = setInterval(checkConnection, 2000);
+    return () => {
+      mounted.current = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   useEffect(() => {
     if (isReportsOrInspections) return;
-    mounted.current = true;
+    let isMounted = true;
 
-    (async () => {
+    const loadNotifications = async () => {
       try {
-        const [listRes, countRes] = await Promise.all([
+        const [listRes, countRes] = await Promise.allSettled([
           fetchNotifications(25),
           fetchUnreadCount(),
         ]);
 
-        if (!mounted.current) return;
+        if (!isMounted) return;
 
-        const list = Array.isArray(listRes.data) ? listRes.data : (listRes.data?.notifications || []);
-        const count =
-          typeof countRes.data?.unread === "number"
-            ? countRes.data.unread
-            : typeof countRes.data?.unreadCount === "number"
-            ? countRes.data.unreadCount
-            : 0;
+        if (listRes.status === "fulfilled" && listRes.value) {
+          const list = Array.isArray(listRes.value.data)
+            ? listRes.value.data
+            : (listRes.value.data?.notifications || []);
+          setItems(list);
+        }
 
-        setItems(list);
-        setUnread(count);
+        if (countRes.status === "fulfilled" && countRes.value) {
+          const count =
+            typeof countRes.value.data?.unread === "number"
+              ? countRes.value.data.unread
+              : typeof countRes.value.data?.unreadCount === "number"
+              ? countRes.value.data.unreadCount
+              : 0;
+          setUnread(count);
+        }
       } catch (e) {
         const msg = e?.message || "";
         const isTimeout = e?.code === "ECONNABORTED" || /timeout/i.test(msg);
         const isNetwork = msg === "Network Error" || !e?.response;
         if (isTimeout || isNetwork) {
-          console.warn(
-            "Notifications initial load failed: backend may be down or slow.",
-            msg
-          );
+          console.warn("⚠️ Notifications initial load failed: backend may be down or slow.", msg);
         } else {
-          console.warn("Notifications initial load failed:", msg);
+          console.warn("⚠️ Notifications initial load failed:", msg);
         }
       }
-    })();
+    };
 
+    loadNotifications();
     return () => {
-      mounted.current = false;
+      isMounted = false;
     };
   }, [isReportsOrInspections]);
 
-  // Subscribe via Socket Manager (safe on/off; no disconnect on unmount)
   useEffect(() => {
     if (isReportsOrInspections) return;
 
-    const socket = socketManager.connect();
-    if (!socket) return;
+    let s;
+    try {
+      s = connectSocket();
+    } catch (err) {
+      console.error("❌ Failed to connect socket:", err);
+      return;
+    }
+
+    if (!s) return;
+
+    setIsConnected(s.connected);
 
     const onConnect = () => {
       if (mounted.current) setIsConnected(true);
     };
+
     const onDisconnect = () => {
       if (mounted.current) setIsConnected(false);
     };
+
     const onNew = (n) => {
       if (!mounted.current) return;
       setItems((prev) => [n, ...prev].slice(0, 50));
       setUnread((u) => u + 1);
     };
 
-    setIsConnected(socketManager.isConnected());
-    socketManager.on("connect", onConnect);
-    socketManager.on("disconnect", onDisconnect);
-    socketManager.on("notification:new", onNew);
+    try {
+      s.on("connect", onConnect);
+      s.on("disconnect", onDisconnect);
+      s.on("notification:new", onNew);
+    } catch (err) {
+      console.error("❌ Failed to attach socket listeners:", err);
+      return;
+    }
 
     return () => {
-      socketManager.off("connect", onConnect);
-      socketManager.off("disconnect", onDisconnect);
-      socketManager.off("notification:new", onNew);
+      try {
+        if (s) {
+          s.off("connect", onConnect);
+          s.off("disconnect", onDisconnect);
+          s.off("notification:new", onNew);
+        }
+      } catch (_) {}
     };
   }, [isReportsOrInspections]);
 
-  const markRead = async (id) => {
+  const markRead = useCallback(async (id) => {
     setItems((prev) => prev.map((x) => (x.id === id ? { ...x, read: true } : x)));
     setUnread((u) => Math.max(u - 1, 0));
-
     try {
       await markNotificationRead(id);
     } catch (e) {
-      console.warn("markNotificationRead failed:", e?.message);
+      console.warn("⚠️ markNotificationRead failed:", e?.message);
+      setItems((prev) => prev.map((x) => (x.id === id ? { ...x, read: false } : x)));
+      setUnread((u) => u + 1);
     }
-  };
+  }, []);
+
+  const markAllRead = useCallback(async () => {
+    const currentUnread = unread;
+    setItems((prev) => prev.map((x) => ({ ...x, read: true })));
+    setUnread(0);
+    try {
+      await markAllNotificationsRead();
+    } catch (e) {
+      console.warn("⚠️ markAllNotificationsRead failed:", e?.message);
+      setItems((prev) => prev.map((x) => ({ ...x, read: false })));
+      setUnread(currentUnread);
+    }
+  }, [unread]);
+
+  const refresh = useCallback(() => {
+    if (isReportsOrInspections) return;
+    fetchNotifications(25).then((res) => {
+      const list = Array.isArray(res.data) ? res.data : (res.data?.notifications || []);
+      setItems(list);
+    }).catch(() => {});
+    fetchUnreadCount().then((res) => {
+      const count = typeof res.data?.unread === "number" ? res.data.unread : (res.data?.unreadCount ?? 0);
+      setUnread(count);
+    }).catch(() => {});
+  }, [isReportsOrInspections]);
 
   const value = useMemo(
-    () => ({ items, unread, markRead, isConnected }),
-    [items, unread, isConnected]
+    () => ({ items, unread, isConnected, markRead, markAllRead, refresh }),
+    [items, unread, isConnected, markRead, markAllRead, refresh]
   );
 
   return (

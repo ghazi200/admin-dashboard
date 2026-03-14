@@ -10,6 +10,7 @@ const abeGuardAiClient = axios.create({
   baseURL: "",
   headers: { "Content-Type": "application/json" },
   withCredentials: true,
+  timeout: 30000,
 });
 
 abeGuardAiClient.interceptors.request.use((config) => {
@@ -23,40 +24,44 @@ abeGuardAiClient.interceptors.request.use((config) => {
 });
 
 abeGuardAiClient.interceptors.request.use((config) => {
-  // Use adminToken for admin endpoints
   const token = localStorage.getItem("adminToken");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log("[abeGuardAiClient] Request with token:", config.method?.toUpperCase(), config.url);
   } else {
     delete config.headers.Authorization;
-    console.log("[abeGuardAiClient] Request WITHOUT token:", config.method?.toUpperCase(), config.url);
   }
   return config;
 });
 
 abeGuardAiClient.interceptors.response.use(
-  (res) => res,
+  (response) => response,
   (error) => {
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
+
     const status = error?.response?.status;
 
     if (status === 401) {
-      console.error("[abeGuardAiClient] 401 Unauthorized:", error.response?.data);
-      const pathname = (typeof window !== "undefined" && window.location?.pathname) ? window.location.pathname.toLowerCase() : "";
-      const onReportsOrInspections = pathname.indexOf("/reports") !== -1 || pathname.indexOf("/inspections") !== -1;
-      // Never clear token or redirect on Reports/Inspections — keeps page visible
+      const pathname = (typeof window !== "undefined" && window.location?.pathname)
+        ? window.location.pathname.toLowerCase()
+        : "";
+
+      const onReportsOrInspections = pathname.includes("/reports") || pathname.includes("/inspections");
+
       if (onReportsOrInspections) {
         return Promise.reject(error);
       }
-      const msg = String(error?.response?.data?.message || "");
+
+      const msg = String(error?.response?.data?.message || error?.message || "").toLowerCase();
       const looksLikeBadToken =
-        msg.toLowerCase().includes("invalid signature") ||
-        msg.toLowerCase().includes("jwt expired") ||
-        msg.toLowerCase().includes("invalid token") ||
-        msg.toLowerCase().includes("expired");
+        msg.includes("invalid signature") ||
+        msg.includes("jwt expired") ||
+        msg.includes("invalid token") ||
+        msg.includes("expired") ||
+        msg.includes("unauthorized");
 
       if (looksLikeBadToken) {
-        console.warn("[abeGuardAiClient] Token expired or invalid - clearing and redirecting to login");
         localStorage.removeItem("adminToken");
         localStorage.removeItem("adminInfo");
         localStorage.removeItem("adminUser");
@@ -66,12 +71,11 @@ abeGuardAiClient.interceptors.response.use(
         }
       }
     }
-    
+
     if (status === 400) {
       console.error("[abeGuardAiClient] 400 Bad Request:", error.response?.data);
-      console.error("[abeGuardAiClient] Error message:", error.response?.data?.message);
     }
-    
+
     return Promise.reject(error);
   }
 );

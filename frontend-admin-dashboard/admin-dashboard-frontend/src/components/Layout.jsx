@@ -5,7 +5,7 @@ import { useNotifications } from "../context/NotificationContext";
 import NotificationPreferences from "./NotificationPreferences";
 import { getGeographicSites, globalSearch, getSearchHistory } from "../services/api";
 import { useSessionTimeout } from "../hooks/useSessionTimeout";
-import socketManager from "../realtime/socketManager";
+import { disconnectSocket } from "../realtime/socket";
 
 export default function Layout() {
   const nav = useNavigate();
@@ -85,23 +85,29 @@ export default function Layout() {
   const [showPreferences, setShowPreferences] = useState(false);
   const notificationList = useMemo(() => (Array.isArray(items) ? items.slice(0, 25) : []), [items]);
 
-  // Live-updating total sites count; skip on Reports page to avoid any 401 that could affect the page
+  // Live-updating total sites count; skip on Reports/Inspections to avoid any 401 that could affect the page
   const { data: sitesData } = useQuery({
     queryKey: ["geographicSites"],
     queryFn: async () => {
-      const res = await getGeographicSites();
-      const list = res.data?.data ?? res.data ?? [];
-      return Array.isArray(list) ? list : [];
+      try {
+        const res = await getGeographicSites();
+        const list = res.data?.data ?? res.data ?? [];
+        return Array.isArray(list) ? list : [];
+      } catch (error) {
+        console.error("Failed to fetch geographic sites:", error);
+        return [];
+      }
     },
     enabled: !isReportsPage && !isInspectionsPage,
     staleTime: 60 * 1000,
     refetchInterval: 60000,
     refetchIntervalInBackground: false,
+    retry: 1,
   });
   const sitesCount = Array.isArray(sitesData) ? sitesData.length : 0;
 
   const logout = () => {
-    socketManager.disconnect();
+    disconnectSocket();
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminUser");
     window.location.href = "/login";

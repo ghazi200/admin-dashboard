@@ -13,6 +13,9 @@ export const fetchNotifications = (limit = 25) =>
 export const markNotificationRead = (id) =>
   axiosClient.post(`/notifications/${id}/read`);
 
+export const markAllNotificationsRead = () =>
+  axiosClient.post("/notifications/read-all");
+
 export const fetchUnreadCount = () =>
   axiosClient.get(`/notifications/unread-count`);
 
