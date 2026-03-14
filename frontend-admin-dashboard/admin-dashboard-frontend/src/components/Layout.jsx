@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useNotifications } from "../context/NotificationContext";
 import NotificationPreferences from "./NotificationPreferences";
@@ -8,6 +8,8 @@ import { useSessionTimeout } from "../hooks/useSessionTimeout";
 
 export default function Layout() {
   const nav = useNavigate();
+  const location = useLocation();
+  const isReportsPage = location.pathname === "/reports" || location.pathname.startsWith("/reports/");
 
   // Session timeout: 15–60 min inactivity (default 30). Set REACT_APP_SESSION_TIMEOUT_MINUTES in .env
   useSessionTimeout({ enabled: true });
@@ -81,7 +83,7 @@ export default function Layout() {
   const [showPreferences, setShowPreferences] = useState(false);
   const notificationList = useMemo(() => (Array.isArray(items) ? items.slice(0, 25) : []), [items]);
 
-  // Live-updating total sites count for current tenant (avoid aggressive poll that can 401 and redirect)
+  // Live-updating total sites count; skip on Reports page to avoid any 401 that could affect the page
   const { data: sitesData } = useQuery({
     queryKey: ["geographicSites"],
     queryFn: async () => {
@@ -89,8 +91,9 @@ export default function Layout() {
       const list = res.data?.data ?? res.data ?? [];
       return Array.isArray(list) ? list : [];
     },
-    staleTime: 60 * 1000, // 1 min before refetch
-    refetchInterval: 60000, // poll every 60s instead of 20s
+    enabled: !isReportsPage,
+    staleTime: 60 * 1000,
+    refetchInterval: 60000,
     refetchIntervalInBackground: false,
   });
   const sitesCount = Array.isArray(sitesData) ? sitesData.length : 0;
