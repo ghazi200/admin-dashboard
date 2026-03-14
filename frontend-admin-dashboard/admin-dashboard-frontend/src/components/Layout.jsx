@@ -10,6 +10,7 @@ export default function Layout() {
   const nav = useNavigate();
   const location = useLocation();
   const isReportsPage = location.pathname === "/reports" || location.pathname.startsWith("/reports/");
+  const isInspectionsPage = location.pathname === "/inspections" || location.pathname.startsWith("/inspections/");
 
   // Session timeout: 15–60 min inactivity (default 30). Set REACT_APP_SESSION_TIMEOUT_MINUTES in .env
   useSessionTimeout({ enabled: true });
@@ -91,7 +92,7 @@ export default function Layout() {
       const list = res.data?.data ?? res.data ?? [];
       return Array.isArray(list) ? list : [];
     },
-    enabled: !isReportsPage,
+    enabled: !isReportsPage && !isInspectionsPage,
     staleTime: 60 * 1000,
     refetchInterval: 60000,
     refetchIntervalInBackground: false,

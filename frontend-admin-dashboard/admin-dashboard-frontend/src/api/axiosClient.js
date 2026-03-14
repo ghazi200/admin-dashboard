@@ -32,12 +32,16 @@ axiosClient.interceptors.response.use(
       const url = (error?.config?.url || error?.config?.baseURL || "").toLowerCase();
       const pathname = (typeof window !== "undefined" && window.location?.pathname) ? window.location.pathname.toLowerCase() : "";
       const isReportPage = pathname.indexOf("/reports") !== -1;
+      const isInspectionsPage = pathname.indexOf("/inspections") !== -1;
       const isNonCritical =
         isReportPage ||
+        isInspectionsPage ||
         /report/.test(url) ||
         /notification/.test(url) ||
         /geographic/.test(url) ||
-        /scheduled/.test(url);
+        /scheduled/.test(url) ||
+        /inspection/.test(url) ||
+        /sites/.test(url);
       if (/invalid signature|jwt expired|invalid token|session invalidated/i.test(msg)) {
         if (!isNonCritical) {
           localStorage.removeItem("adminToken");
