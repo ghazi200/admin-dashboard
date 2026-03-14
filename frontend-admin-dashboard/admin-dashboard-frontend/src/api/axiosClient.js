@@ -23,32 +23,32 @@ axiosClient.interceptors.request.use(
   (e) => Promise.reject(e)
 );
 
-/** 401 → clear token and redirect to login, except when on Reports or when the request is report/notification/geographic so the page doesn't "go away". */
+/** 401 → clear token and redirect to login, except when on Reports/Inspections so the page never "disappears". */
 axiosClient.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error?.response?.status === 401) {
-      const msg = String(error?.response?.data?.message || "");
-      const url = (error?.config?.url || error?.config?.baseURL || "").toLowerCase();
       const pathname = (typeof window !== "undefined" && window.location?.pathname) ? window.location.pathname.toLowerCase() : "";
       const isReportPage = pathname.indexOf("/reports") !== -1;
       const isInspectionsPage = pathname.indexOf("/inspections") !== -1;
+      // Never clear token or redirect on Reports/Inspections — keeps page visible
+      if (isReportPage || isInspectionsPage) {
+        return Promise.reject(error);
+      }
+      const msg = String(error?.response?.data?.message || "");
+      const url = (error?.config?.url || error?.config?.baseURL || "").toLowerCase();
       const isNonCritical =
-        isReportPage ||
-        isInspectionsPage ||
         /report/.test(url) ||
         /notification/.test(url) ||
         /geographic/.test(url) ||
         /scheduled/.test(url) ||
         /inspection/.test(url) ||
         /sites/.test(url);
-      if (/invalid signature|jwt expired|invalid token|session invalidated/i.test(msg)) {
-        if (!isNonCritical) {
-          localStorage.removeItem("adminToken");
-          localStorage.removeItem("adminInfo");
-          localStorage.removeItem("adminUser");
-          if (!window.location.pathname.includes("/login")) window.location.href = "/login";
-        }
+      if (/invalid signature|jwt expired|invalid token|session invalidated/i.test(msg) && !isNonCritical) {
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminInfo");
+        localStorage.removeItem("adminUser");
+        if (!window.location.pathname.includes("/login")) window.location.href = "/login";
       }
     }
     return Promise.reject(error);

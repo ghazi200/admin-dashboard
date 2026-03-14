@@ -42,8 +42,12 @@ abeGuardAiClient.interceptors.response.use(
 
     if (status === 401) {
       console.error("[abeGuardAiClient] 401 Unauthorized:", error.response?.data);
-      
-      // Handle JWT expiration - same as axiosClient
+      const pathname = (typeof window !== "undefined" && window.location?.pathname) ? window.location.pathname.toLowerCase() : "";
+      const onReportsOrInspections = pathname.indexOf("/reports") !== -1 || pathname.indexOf("/inspections") !== -1;
+      // Never clear token or redirect on Reports/Inspections — keeps page visible
+      if (onReportsOrInspections) {
+        return Promise.reject(error);
+      }
       const msg = String(error?.response?.data?.message || "");
       const looksLikeBadToken =
         msg.toLowerCase().includes("invalid signature") ||

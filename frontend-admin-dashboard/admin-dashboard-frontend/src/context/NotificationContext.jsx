@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { connectSocket } from "../realtime/socket";
 import {
   fetchNotifications,
@@ -9,11 +10,17 @@ import {
 const NotificationsContext = createContext(null);
 
 export function NotificationsProvider({ children }) {
+  const location = useLocation();
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
 
-  // initial load
+  const isReportsOrInspections =
+    (location.pathname || "").toLowerCase().includes("/reports") ||
+    (location.pathname || "").toLowerCase().includes("/inspections");
+
+  // initial load — skip on Reports/Inspections to avoid 401 that could affect page
   useEffect(() => {
+    if (isReportsOrInspections) return;
     let mounted = true;
 
     (async () => {
@@ -53,7 +60,7 @@ export function NotificationsProvider({ children }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isReportsOrInspections]);
 
   // realtime (socket optional — Reports/Inspections work without it)
   useEffect(() => {
