@@ -1,0 +1,15 @@
+{
+  "buildCommand": "cd admin-dashboard-frontend && npm install --no-audit && npm run build:vercel",
+  "outputDirectory": "admin-dashboard-frontend/build",
+  "framework": "create-react-app",
+  "installCommand": "cd admin-dashboard-frontend && npm install --no-audit",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "headers": [
+    { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
+    { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }] },
+    { "source": "/static/js/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] }
+  ]
+}
