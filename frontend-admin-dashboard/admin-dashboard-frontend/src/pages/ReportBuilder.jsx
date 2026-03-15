@@ -24,6 +24,14 @@ export default function ReportBuilder() {
   const [activeTab, setActiveTab] = useState("builder"); // "builder" | "history" | "scheduled"
   const [lastGeneratedReport, setLastGeneratedReport] = useState(null);
 
+  // --- 2-minute test: track Reports page mount/unmount ---
+  useEffect(() => {
+    console.log("📊 Reports page mounted");
+    return () => {
+      console.log("📊 Reports page unmounted");
+    };
+  }, []);
+
   // Fetch templates
   const {
     data: templatesRaw,

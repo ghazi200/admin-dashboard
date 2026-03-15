@@ -59,8 +59,10 @@ app.get("/health", (req, res) => {
 const io = new Server(server, {
   cors: { origin: allowOrigin, credentials: true, methods: ["GET", "POST"] },
   transports: ["websocket"],
-  pingInterval: 25000,
-  pingTimeout: 60000,
+  // Shorter interval = connection looks "active" to proxies (Railway, etc.)
+  pingInterval: 15000,
+  // Long timeout so delayed pongs (proxy buffering, mobile) don't close the connection
+  pingTimeout: 120000,
   connectTimeout: 45000,
   maxHttpBufferSize: 1e6,
 });

@@ -37,6 +37,14 @@ export default function Inspections() {
   // Selected request for update modal
   const [selectedRequest, setSelectedRequest] = useState(null);
 
+  // --- 2-minute test: track Inspections page mount/unmount ---
+  useEffect(() => {
+    console.log("🔎 Inspections page mounted");
+    return () => {
+      console.log("🔎 Inspections page unmounted");
+    };
+  }, []);
+
   // Guard AI origin: Inspections use abeGuardAiClient (sites, inspection requests). When empty in production, those calls would hit wrong host and can trigger 401 redirect — so skip them and show message.
   const guardAiOrigin = getGuardAiOrigin();
 

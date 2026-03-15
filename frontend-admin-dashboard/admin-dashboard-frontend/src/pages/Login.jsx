@@ -8,15 +8,26 @@ import { connectSocket } from "../realtime/socket";
  */
 const RAILWAY_API = "https://admin-dashboard-production-2596.up.railway.app/api/admin";
 
+function isProductionHost() {
+  if (typeof window === "undefined" || !window.location?.hostname) return false;
+  const h = window.location.hostname.toLowerCase();
+  return h !== "localhost" && h !== "127.0.0.1";
+}
+
 function getLoginApiUrl() {
   const envUrl = (process.env.REACT_APP_API_URL || process.env.REACT_APP_ADMIN_API_URL || "").replace(/\/+$/, "");
-  const base = envUrl ? (envUrl.includes("/api") ? envUrl : envUrl + "/api/admin") : RAILWAY_API;
+  let base = envUrl ? (envUrl.includes("/api") ? envUrl : envUrl + "/api/admin") : RAILWAY_API;
+  if (isProductionHost() && /localhost|127\.0\.0\.1/.test(base)) base = RAILWAY_API;
   return base;
 }
 
-/** Never send login to empty or relative URL (fixes deployed bundle where base was inlined as ""). */
+/** Never send login to empty or relative URL; never use localhost when on production host. */
 function ensureLoginBase(base) {
-  if (base && base.startsWith("http")) return base.replace(/\/+$/, "");
+  if (base && base.startsWith("http")) {
+    const b = base.replace(/\/+$/, "");
+    if (isProductionHost() && /localhost|127\.0\.0\.1/.test(b)) return RAILWAY_API;
+    return b;
+  }
   return RAILWAY_API;
 }
 

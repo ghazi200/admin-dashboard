@@ -12,9 +12,18 @@ const axiosClient = axios.create({
   withCredentials: true,
 });
 
-/** Attach admin token */
+/** Never use localhost when app is on production host (guards against bad Vercel env). */
+function isProductionHost() {
+  if (typeof window === "undefined" || !window.location?.hostname) return false;
+  const h = window.location.hostname.toLowerCase();
+  return h !== "localhost" && h !== "127.0.0.1";
+}
+
 axiosClient.interceptors.request.use(
   (config) => {
+    if (isProductionHost() && config.baseURL && /localhost|127\.0\.0\.1/.test(config.baseURL)) {
+      config.baseURL = PRODUCTION_API;
+    }
     const token = localStorage.getItem("adminToken");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

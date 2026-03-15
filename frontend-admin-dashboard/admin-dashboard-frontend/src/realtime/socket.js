@@ -1,6 +1,7 @@
 /**
  * Realtime: single connection to WebSocket Gateway.
- * No localhost in bundle — use REACT_APP_SOCKET_URL or REACT_APP_WS_GATEWAY_URL. Local dev: set to your gateway URL.
+ * Production (Vercel): ALWAYS use Railway gateway — never localhost.
+ * Local dev: use REACT_APP_SOCKET_URL or REACT_APP_WS_GATEWAY_URL, or Railway URL.
  */
 
 import { io } from "socket.io-client";
@@ -18,10 +19,18 @@ function isProductionOrigin() {
   return h !== "localhost" && h !== "127.0.0.1";
 }
 
+/** Socket URL: production host ALWAYS gets Railway; localhost uses env or Railway. Never use localhost URL when not on localhost. */
 function getSocketUrl() {
-  if (isProductionOrigin()) return WS_GATEWAY_PRODUCTION;
-  const envUrl = (process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_WS_GATEWAY_URL || "").replace(/\/+$/, "");
-  return envUrl || WS_GATEWAY_PRODUCTION;
+  if (typeof window !== "undefined" && window.location && window.location.hostname) {
+    const h = window.location.hostname.toLowerCase();
+    const isProd = h !== "localhost" && h !== "127.0.0.1";
+    if (isProd) return WS_GATEWAY_PRODUCTION;
+    const envUrl = (process.env.REACT_APP_SOCKET_URL || process.env.REACT_APP_WS_GATEWAY_URL || "").replace(/\/+$/, "");
+    const url = envUrl || WS_GATEWAY_PRODUCTION;
+    if (/localhost|127\.0\.0\.1/.test(url)) return url;
+    return url;
+  }
+  return WS_GATEWAY_PRODUCTION;
 }
 
 export function connectSocket() {
@@ -52,22 +61,21 @@ export function connectSocket() {
 
   lastToken = token;
 
-  const host = typeof window !== "undefined" && window.location && window.location.hostname ? window.location.hostname.toLowerCase() : "";
-  const isVercel = host.indexOf("vercel.app") !== -1;
-  const isLocal = host === "localhost" || host === "127.0.0.1";
-  const urlToConnect = isVercel || !isLocal ? WS_GATEWAY_PRODUCTION : getSocketUrl();
-
-  if (typeof console !== "undefined" && isVercel) console.log("[socket] Using Railway gateway (Vercel build v2)");
+  const urlToConnect = getSocketUrl();
+  if (typeof console !== "undefined") {
+    const isProd = isProductionOrigin();
+    console.log("🔬 2-MIN SOCKET TEST ACTIVE — URL:", urlToConnect, isProd ? "(production)" : "(local)");
+  }
 
   socket = io(urlToConnect, {
     path: "/socket.io",
-    transports: ["websocket", "polling"],
-    upgrade: true,
+    transports: ["websocket"],
+    upgrade: false,
     auth: { token },
     reconnection: true,
     reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 10000,
+    reconnectionDelay: 3000,
+    reconnectionDelayMax: 15000,
     randomizationFactor: 0.5,
     timeout: 30000,
     withCredentials: true,
@@ -75,8 +83,9 @@ export function connectSocket() {
     forceNew: false,
   });
 
+  // --- 2-minute test: global socket debugging ---
   socket.on("connect", () => {
-    if (typeof console !== "undefined") console.log("✅ Socket connected:", socket.id);
+    if (typeof console !== "undefined") console.log("🟢 SOCKET CONNECTED", socket.id);
     socket.emit("join_admin");
   });
 
@@ -86,28 +95,19 @@ export function connectSocket() {
   });
 
   socket.on("disconnect", (reason) => {
-    if (typeof console !== "undefined") console.warn("⚠️ Socket disconnected:", reason);
-
-    if (reason === "io client disconnect") return;
-
-    if (socket && !socket.connected) {
-      reconnectTimer = setTimeout(() => {
-        if (socket && !socket.connected) {
-          socket.connect();
-        }
-        reconnectTimer = null;
-      }, 100);
-    }
+    if (typeof console !== "undefined") console.log("🔴 SOCKET DISCONNECTED:", reason);
+    // Rely on Socket.IO built-in reconnection only (reconnectionDelay 3s, reconnectionDelayMax 15s)
   });
 
   socket.on("connect_error", (err) => {
-    if (typeof console !== "undefined") console.error("❌ Socket connect_error:", err?.message);
+    if (typeof console !== "undefined") console.log("⚠️ SOCKET ERROR:", err?.message);
     if (err?.message === "Authentication error" || (err?.message && err.message.includes("auth"))) {
       if (typeof console !== "undefined") console.log("Auth error, will retry with current token");
     }
   });
 
-  socket.io.on("reconnect_attempt", () => {
+  socket.io.on("reconnect_attempt", (attempt) => {
+    if (typeof console !== "undefined") console.log("🔁 RECONNECT ATTEMPT:", attempt);
     const currentToken = typeof localStorage !== "undefined" ? localStorage.getItem("adminToken") || "" : "";
     if (currentToken && socket) socket.auth = { token: currentToken };
   });
