@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
  */
 exports.listTenants = async (req, res) => {
   try {
-    const { sequelize, Tenant } = req.app.locals.models;
+    const { sequelize } = req.app.locals.models;
 
     const [tenants] = await sequelize.query(`
       SELECT 
@@ -24,17 +24,21 @@ exports.listTenants = async (req, res) => {
     `);
 
     // Format monthly_amount as number
-    const formattedTenants = tenants.map(t => ({
+    const formattedTenants = (tenants || []).map(t => ({
       ...t,
       monthly_amount: t.monthly_amount ? parseFloat(t.monthly_amount) : 0,
     }));
 
     return res.json(formattedTenants);
   } catch (e) {
-    console.error("listTenants error:", e);
+    const msg = e?.message || String(e);
+    console.error("listTenants error:", msg);
+    if (msg.includes("does not exist") || msg.includes("relation")) {
+      return res.status(200).json([]);
+    }
     return res.status(500).json({
       message: "Failed to list tenants",
-      error: e.message,
+      error: msg,
     });
   }
 };
@@ -377,17 +381,35 @@ exports.getSuperAdminAnalytics = async (req, res) => {
       WHERE t.status != 'inactive'
     `);
 
-    const result = analytics[0] || {};
-    // Format decimal values
+    const result = analytics?.[0] || {};
     result.total_monthly_revenue = result.total_monthly_revenue ? parseFloat(result.total_monthly_revenue) : 0;
     result.avg_monthly_revenue = result.avg_monthly_revenue ? parseFloat(result.avg_monthly_revenue) : 0;
 
     return res.json(result);
   } catch (e) {
-    console.error("getSuperAdminAnalytics error:", e);
+    const msg = e?.message || String(e);
+    console.error("getSuperAdminAnalytics error:", msg);
+    if (msg.includes("does not exist") || msg.includes("relation")) {
+      return res.status(200).json({
+        total_tenants: 0,
+        active_tenants: 0,
+        trial_tenants: 0,
+        suspended_tenants: 0,
+        total_admins: 0,
+        total_guards: 0,
+        total_shifts: 0,
+        enterprise_tenants: 0,
+        pro_tenants: 0,
+        basic_tenants: 0,
+        free_tenants: 0,
+        total_monthly_revenue: 0,
+        avg_monthly_revenue: 0,
+        _message: "Tenants table not found. Run database migrations.",
+      });
+    }
     return res.status(500).json({
       message: "Failed to get analytics",
-      error: e.message,
+      error: msg,
     });
   }
 };

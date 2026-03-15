@@ -74,10 +74,20 @@ export default function Layout() {
 
   const user = (() => {
     try {
-      return JSON.parse(localStorage.getItem("adminUser") || "null");
+      const fromUser = JSON.parse(localStorage.getItem("adminUser") || "null");
+      if (fromUser && typeof fromUser === "object") return fromUser;
+      const fromInfo = JSON.parse(localStorage.getItem("adminInfo") || "null");
+      return fromInfo && typeof fromInfo === "object" ? fromInfo : null;
     } catch {
       return null;
     }
+  })();
+
+  const isSuperAdmin = (() => {
+    const role = user?.role;
+    if (!role || typeof role !== "string") return false;
+    const r = role.trim().toLowerCase().replace(/\s+/g, "_");
+    return r === "super_admin" || r === "superadmin";
   })();
 
   const { items, unread, markRead } = useNotifications();
@@ -192,7 +202,7 @@ export default function Layout() {
           📊 Reports
         </NavLink>
 
-        {user?.role === "super_admin" && (
+        {isSuperAdmin && (
           <NavLink
             to="/super-admin"
             className={({ isActive }) => (isActive ? "navLink navLinkActive" : "navLink")}
