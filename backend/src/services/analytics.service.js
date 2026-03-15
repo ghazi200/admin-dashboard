@@ -33,121 +33,37 @@ function formatDay(d) {
  */
 async function getRealTimeKPIs(models) {
   const { Shift, CallOut, Guard, AvailabilityLog, Notification } = models;
+  const crypto = require("crypto");
 
   try {
     const now = new Date();
     const today = startOfDay(now);
     const yesterday = addDays(today, -1);
     const last7Days = addDays(today, -7);
-    const last30Days = addDays(today, -30);
 
-    // Total Guards
-    const totalGuards = await Guard.count({ where: { active: true } });
-    
-    // Get available guards count from AvailabilityLog (availability is not a column in guards table)
-    const crypto = require('crypto');
+    const totalGuards = await Guard.count({ where: { active: true } }).catch(() => 0);
     const activeGuards = await Guard.findAll({
       where: { active: true },
-      attributes: ['id'],
-    });
-    
-    if (activeGuards.length === 0) {
-      return {
-        guards: {
-          total: 0,
-          available: 0,
-          unavailable: 0,
-          availabilityRate: 0,
-        },
-        shifts: {
-          openToday: openShiftsToday,
-          openTotal: openShiftsTotal,
-          filledToday: filledShiftsToday,
-          filledLast7Days: filledShiftsLast7Days,
-          coverageRate: coverageRateToday,
-        },
-        callouts: {
-          today: calloutsToday,
-          last7Days: calloutsLast7Days,
-          calloutRate: calloutRate,
-        },
-        notifications: {
-          unread: unreadNotifications,
-        },
-        activity: {
-          availabilityChanges24h: availabilityChanges,
-        },
-      };
-    }
-    
-    const guardIdInts = activeGuards.map(guard => {
-      const hash = crypto.createHash('md5').update(guard.id).digest('hex');
-      return parseInt(hash.substring(0, 8), 16) % 2147483647;
-    });
-    
-    const [recentLogs] = await models.sequelize.query(`
-      SELECT DISTINCT ON ("guardId")
-        "guardId",
-        "to"::boolean as is_available,
-        "createdAt"
-      FROM availability_logs
-      WHERE "guardId" = ANY($1::int[])
-        AND "guardId" > 1000
-      ORDER BY "guardId", "createdAt" DESC
-    `, {
-      bind: [guardIdInts]
-    });
-    
-    const availabilityByIntId = new Map();
-    recentLogs.forEach(log => {
-      if (log.guardId > 1000) {
-        availabilityByIntId.set(log.guardId, Boolean(log.is_available));
-      }
-    });
-    
-    let availableGuards = 0;
-    activeGuards.forEach(guard => {
-      const hash = crypto.createHash('md5').update(guard.id).digest('hex');
-      const guardIdInt = parseInt(hash.substring(0, 8), 16) % 2147483647;
-      const availability = availabilityByIntId.get(guardIdInt);
-      // Default to available if no log found
-      if (availability === true || availability === undefined) {
-        availableGuards++;
-      }
-    });
+      attributes: ["id"],
+    }).catch(() => []);
 
     // Open Shifts
     const openShiftsToday = await Shift.count({
-      where: {
-        status: "OPEN",
-        shift_date: { [Op.gte]: formatDate(today) },
-      },
-    });
-    const openShiftsTotal = await Shift.count({
-      where: { status: "OPEN" },
-    });
-
-    // Callouts
+      where: { status: "OPEN", shift_date: { [Op.gte]: formatDate(today) } },
+    }).catch(() => 0);
+    const openShiftsTotal = await Shift.count({ where: { status: "OPEN" } }).catch(() => 0);
     const calloutsToday = await CallOut.count({
       where: { created_at: { [Op.gte]: today } },
-    });
+    }).catch(() => 0);
     const calloutsLast7Days = await CallOut.count({
       where: { created_at: { [Op.gte]: last7Days } },
-    });
-
-    // Filled Shifts
+    }).catch(() => 0);
     const filledShiftsToday = await Shift.count({
-      where: {
-        status: "CLOSED",
-        shift_date: { [Op.gte]: formatDate(today) },
-      },
-    });
+      where: { status: "CLOSED", shift_date: { [Op.gte]: formatDate(today) } },
+    }).catch(() => 0);
     const filledShiftsLast7Days = await Shift.count({
-      where: {
-        status: "CLOSED",
-        shift_date: { [Op.gte]: formatDate(last7Days) },
-      },
-    });
+      where: { status: "CLOSED", shift_date: { [Op.gte]: formatDate(last7Days) } },
+    }).catch(() => 0);
 
     // Coverage Rate
     const totalShiftsToday = openShiftsToday + filledShiftsToday;
@@ -156,31 +72,61 @@ async function getRealTimeKPIs(models) {
         ? Math.round((filledShiftsToday / totalShiftsToday) * 100)
         : 0;
 
-    // Unread Notifications
-    const unreadNotifications = await Notification.count({
-      where: {
-        createdAt: { [Op.gte]: last7Days },
-      },
-    });
-
     // Callout Rate (callouts per shift)
     const totalShiftsLast7Days = await Shift.count({
-      where: {
-        shift_date: { [Op.gte]: formatDate(last7Days) },
-      },
-    });
+      where: { shift_date: { [Op.gte]: formatDate(last7Days) } },
+    }).catch(() => 0);
     const calloutRate =
       totalShiftsLast7Days > 0
         ? Math.round((calloutsLast7Days / totalShiftsLast7Days) * 100)
         : 0;
 
-    // Availability Changes (last 24h)
-    // Note: AvailabilityLog uses createdAt (camelCase) because timestamps: true
     const availabilityChanges = await AvailabilityLog.count({
-      where: {
-        createdAt: { [Op.gte]: yesterday },
-      },
-    });
+      where: { createdAt: { [Op.gte]: yesterday } },
+    }).catch(() => 0);
+
+    let availableGuards = totalGuards;
+    if (activeGuards.length === 0) {
+      availableGuards = 0;
+    } else {
+      try {
+        const guardIdInts = activeGuards.map((guard) => {
+          const hash = crypto.createHash("md5").update(String(guard.id)).digest("hex");
+          return parseInt(hash.substring(0, 8), 16) % 2147483647;
+        });
+        const [recentLogs] = await models.sequelize.query(
+          `
+          SELECT DISTINCT ON ("guardId")
+            "guardId",
+            "to"::boolean as is_available,
+            "createdAt"
+          FROM availability_logs
+          WHERE "guardId" = ANY($1::int[])
+            AND "guardId" > 1000
+          ORDER BY "guardId", "createdAt" DESC
+        `,
+          { bind: [guardIdInts] }
+        );
+        const availabilityByIntId = new Map();
+        (recentLogs || []).forEach((log) => {
+          if (log.guardId > 1000) availabilityByIntId.set(log.guardId, Boolean(log.is_available));
+        });
+        availableGuards = 0;
+        activeGuards.forEach((guard) => {
+          const hash = crypto.createHash("md5").update(String(guard.id)).digest("hex");
+          const guardIdInt = parseInt(hash.substring(0, 8), 16) % 2147483647;
+          const availability = availabilityByIntId.get(guardIdInt);
+          if (availability === true || availability === undefined) availableGuards++;
+        });
+      } catch (e) {
+        console.warn("getRealTimeKPIs: availability_logs optional query failed:", e.message);
+        availableGuards = totalGuards;
+      }
+    }
+
+    const unreadNotificationsSafe = await Notification.count({
+      where: { createdAt: { [Op.gte]: last7Days } },
+    }).catch(() => 0);
 
     return {
       guards: {
@@ -205,7 +151,7 @@ async function getRealTimeKPIs(models) {
         calloutRate: calloutRate,
       },
       notifications: {
-        unread: unreadNotifications,
+        unread: unreadNotificationsSafe,
       },
       activity: {
         availabilityChanges24h: availabilityChanges,
@@ -248,13 +194,12 @@ async function getTrendAnalysis(models, days = 30) {
       return Math.floor((d0 - start) / (24 * 60 * 60 * 1000));
     };
 
-    // Get shifts by day
     const shifts = await Shift.findAll({
       where: {
         shift_date: { [Op.gte]: formatDate(start), [Op.lt]: formatDate(end) },
       },
       attributes: ["shift_date", "status", "created_at"],
-    });
+    }).catch(() => []);
 
     const openShiftsByDay = Array(days).fill(0);
     const filledShiftsByDay = Array(days).fill(0);
@@ -274,11 +219,10 @@ async function getTrendAnalysis(models, days = 30) {
       }
     });
 
-    // Get callouts by day
     const callouts = await CallOut.findAll({
       where: { created_at: { [Op.gte]: start, [Op.lt]: end } },
       attributes: ["created_at"],
-    });
+    }).catch(() => []);
 
     const calloutsByDay = Array(days).fill(0);
     callouts.forEach((callout) => {
@@ -294,45 +238,40 @@ async function getTrendAnalysis(models, days = 30) {
     const crypto = require('crypto');
     const activeGuardsForTrend = await Guard.findAll({
       where: { active: true },
-      attributes: ['id'],
-    });
+      attributes: ["id"],
+    }).catch(() => []);
     
     let availableNow = 0;
     if (activeGuardsForTrend.length > 0) {
-      const guardIdInts = activeGuardsForTrend.map(guard => {
-        const hash = crypto.createHash('md5').update(guard.id).digest('hex');
-        return parseInt(hash.substring(0, 8), 16) % 2147483647;
-      });
-      
-      const [recentLogs] = await models.sequelize.query(`
-        SELECT DISTINCT ON ("guardId")
-          "guardId",
-          "to"::boolean as is_available,
-          "createdAt"
-        FROM availability_logs
-        WHERE "guardId" = ANY($1::int[])
-          AND "guardId" > 1000
-        ORDER BY "guardId", "createdAt" DESC
-      `, {
-        bind: [guardIdInts]
-      });
-      
-      const availabilityByIntId = new Map();
-      recentLogs.forEach(log => {
-        if (log.guardId > 1000) {
-          availabilityByIntId.set(log.guardId, Boolean(log.is_available));
-        }
-      });
-      
-      activeGuardsForTrend.forEach(guard => {
-        const hash = crypto.createHash('md5').update(guard.id).digest('hex');
-        const guardIdInt = parseInt(hash.substring(0, 8), 16) % 2147483647;
-        const availability = availabilityByIntId.get(guardIdInt);
-        // Default to available if no log found
-        if (availability === true || availability === undefined) {
-          availableNow++;
-        }
-      });
+      try {
+        const guardIdInts = activeGuardsForTrend.map((guard) => {
+          const hash = crypto.createHash("md5").update(String(guard.id)).digest("hex");
+          return parseInt(hash.substring(0, 8), 16) % 2147483647;
+        });
+        const [recentLogs] = await models.sequelize.query(
+          `
+          SELECT DISTINCT ON ("guardId")
+            "guardId", "to"::boolean as is_available, "createdAt"
+          FROM availability_logs
+          WHERE "guardId" = ANY($1::int[]) AND "guardId" > 1000
+          ORDER BY "guardId", "createdAt" DESC
+        `,
+          { bind: [guardIdInts] }
+        );
+        const availabilityByIntId = new Map();
+        (recentLogs || []).forEach((log) => {
+          if (log.guardId > 1000) availabilityByIntId.set(log.guardId, Boolean(log.is_available));
+        });
+        activeGuardsForTrend.forEach((guard) => {
+          const hash = crypto.createHash("md5").update(String(guard.id)).digest("hex");
+          const guardIdInt = parseInt(hash.substring(0, 8), 16) % 2147483647;
+          const availability = availabilityByIntId.get(guardIdInt);
+          if (availability === true || availability === undefined) availableNow++;
+        });
+      } catch (e) {
+        console.warn("getTrendAnalysis: availability_logs skipped:", e.message);
+        availableNow = activeGuardsForTrend.length;
+      }
     }
     
     const availableGuardsByDay = Array(days).fill(availableNow);

@@ -16,9 +16,13 @@ exports.getKPIs = async (req, res) => {
     return res.json(kpis);
   } catch (error) {
     console.error("Error getting KPIs:", error);
-    return res.status(500).json({
-      message: "Failed to load KPIs",
-      error: error.message,
+    return res.status(200).json({
+      guards: { total: 0, available: 0, unavailable: 0, availabilityRate: 0 },
+      shifts: { openToday: 0, openTotal: 0, filledToday: 0, filledLast7Days: 0, coverageRate: 0 },
+      callouts: { today: 0, last7Days: 0, calloutRate: 0 },
+      notifications: { unread: 0 },
+      activity: { availabilityChanges24h: 0 },
+      _fallback: true,
     });
   }
 };
@@ -35,9 +39,27 @@ exports.getTrends = async (req, res) => {
     return res.json(trends);
   } catch (error) {
     console.error("Error getting trends:", error);
-    return res.status(500).json({
-      message: "Failed to load trend analysis",
-      error: error.message,
+    const days = Math.max(7, Math.min(90, Number(req.query.days || 30)));
+    const empty = Array(days).fill(0);
+    const labels = [];
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    for (let i = days - 1; i >= 0; i--) {
+      const x = new Date(d);
+      x.setDate(x.getDate() - i);
+      labels.push(x.toISOString().split("T")[0]);
+    }
+    return res.status(200).json({
+      labels,
+      data: {
+        openShifts: empty,
+        filledShifts: empty,
+        callouts: empty,
+        availableGuards: empty,
+        coverageRate: empty,
+      },
+      summary: { avgOpenShifts: 0, avgFilledShifts: 0, avgCallouts: 0, avgCoverageRate: 0 },
+      _fallback: true,
     });
   }
 };
