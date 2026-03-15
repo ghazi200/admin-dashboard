@@ -423,13 +423,23 @@ exports.createGuard = async (req, res) => {
     const guard = await Guard.create(guardData);
     console.log("✅ createGuard - Guard created:", guard.id, guard.name);
 
-    // ✅ Create availability log if availability is provided and guard is active
+    // ✅ Every active guard gets an availability log so dashboard KPI stays correct.
+    // Default: available (true). Only false if client explicitly sends availability: false.
     const availabilityInRequest = req.body.availability !== undefined;
-    const shouldCreateLog = availabilityInRequest && guard.active;
-    
-    console.log("🔍 createGuard - availabilityInRequest:", availabilityInRequest, "guard.active:", guard.active, "shouldCreateLog:", shouldCreateLog);
+    const shouldCreateLog = guard.active === true;
+    const availabilityValue = availabilityInRequest ? Boolean(req.body.availability) : true;
 
-    // Calculate guardIdInt outside try block so it's accessible in catch block
+    console.log(
+      "🔍 createGuard - availabilityInRequest:",
+      availabilityInRequest,
+      "guard.active:",
+      guard.active,
+      "shouldCreateLog:",
+      shouldCreateLog,
+      "availabilityValue:",
+      availabilityValue
+    );
+
     let guardIdInt = null;
     if (shouldCreateLog) {
       try {
@@ -437,7 +447,6 @@ exports.createGuard = async (req, res) => {
         const hash = crypto.createHash('md5').update(guard.id).digest('hex');
         guardIdInt = parseInt(hash.substring(0, 8), 16) % 2147483647;
 
-        const availabilityValue = Boolean(req.body.availability);
         console.log("🔍 createGuard - Creating log with availability:", availabilityValue);
 
         // Create availability log entry using raw SQL
@@ -499,9 +508,7 @@ exports.createGuard = async (req, res) => {
 
     // Return guard with availability in response
     const guardResponse = guard.toJSON();
-    if (availabilityInRequest) {
-      guardResponse.availability = Boolean(req.body.availability);
-    }
+    guardResponse.availability = shouldCreateLog ? availabilityValue : undefined;
 
     return res.status(201).json(guardResponse);
   } catch (e) {

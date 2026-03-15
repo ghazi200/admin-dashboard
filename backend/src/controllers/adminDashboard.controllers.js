@@ -403,91 +403,68 @@ exports.getGuardAvailability = async (req, res) => {
       });
     }
     
-    // Calculate the hashed integer IDs for all guards in this tenant
-    const guardIdInts = guardUuids.map(uuid => {
-      const hash = crypto.createHash('md5').update(uuid).digest('hex');
+    const guardIdInts = guardUuids.map((uuid) => {
+      const hash = crypto.createHash("md5").update(String(uuid)).digest("hex");
       return parseInt(hash.substring(0, 8), 16) % 2147483647;
     });
-    
+
     if (debugAvailability) console.log("🔍 getGuardAvailability - guardIdInts sample:", guardIdInts.slice(0, 5));
 
-    // Query availability logs only for guards in this tenant
-    // Use 90-day window to catch guards that were inactive and became active again
-    // This ensures guards that were temporarily inactive still have their availability status preserved
-    // Explicitly cast to boolean to ensure proper type
-    const [recentLogs] = await sequelize.query(`
-      SELECT DISTINCT ON ("guardId")
-        "guardId",
-        "to"::boolean as is_available,
-        "createdAt"
-      FROM availability_logs
-      WHERE "createdAt" >= $1
-        AND "guardId" = ANY($2::int[])
-        AND "guardId" > 1000
-      ORDER BY "guardId", "createdAt" DESC
-    `, { 
-      bind: [ninetyDaysAgo, guardIdInts]
-    });
-    
-    // Also query ALL logs (no time limit) for guards that don't have recent logs
-    // This catches guards that were inactive for more than 90 days but had availability set before
-    // Explicitly cast to boolean to ensure proper type
-    const [allLogs] = await sequelize.query(`
-      SELECT DISTINCT ON ("guardId")
-        "guardId",
-        "to"::boolean as is_available,
-        "createdAt"
-      FROM availability_logs
-      WHERE "guardId" = ANY($1::int[])
-        AND "guardId" > 1000
-      ORDER BY "guardId", "createdAt" DESC
-    `, { 
-      bind: [guardIdInts]
-    });
-    
-    if (debugAvailability) {
-      console.log("🔍 getGuardAvailability - Recent logs (90 days):", recentLogs.length, "All logs:", allLogs.length);
+    let recentLogs = [];
+    let allLogs = [];
+    let veryRecentLogs = [];
+    try {
+      const [r1] = await sequelize.query(
+        `SELECT DISTINCT ON ("guardId") "guardId", "to"::boolean as is_available, "createdAt"
+         FROM availability_logs WHERE "createdAt" >= $1 AND "guardId" = ANY($2::int[])
+         ORDER BY "guardId", "createdAt" DESC`,
+        { bind: [ninetyDaysAgo, guardIdInts] }
+      );
+      recentLogs = r1 || [];
+      const [r2] = await sequelize.query(
+        `SELECT DISTINCT ON ("guardId") "guardId", "to"::boolean as is_available, "createdAt"
+         FROM availability_logs WHERE "guardId" = ANY($1::int[])
+         ORDER BY "guardId", "createdAt" DESC`,
+        { bind: [guardIdInts] }
+      );
+      allLogs = r2 || [];
+      const fiveMinutesAgo = new Date();
+      fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
+      const [r3] = await sequelize.query(
+        `SELECT DISTINCT ON ("guardId") "guardId", "to"::boolean as is_available, "createdAt"
+         FROM availability_logs WHERE "createdAt" >= $1 AND "guardId" = ANY($2::int[])
+         ORDER BY "guardId", "createdAt" DESC`,
+        { bind: [fiveMinutesAgo, guardIdInts] }
+      );
+      veryRecentLogs = r3 || [];
+    } catch (sqlErr) {
+      console.warn("getGuardAvailability: availability_logs query failed, defaulting all active to available:", sqlErr.message);
+      return res.json({ total, active, available: active, unavailable: 0 });
     }
 
-    // Also check for very recent logs (last 5 minutes) to catch just-created entries
-    // Use DISTINCT ON to get the most recent log per guard
-    // Explicitly cast to boolean to ensure proper type
-    const fiveMinutesAgo = new Date();
-    fiveMinutesAgo.setMinutes(fiveMinutesAgo.getMinutes() - 5);
-    const [veryRecentLogs] = await sequelize.query(`
-      SELECT DISTINCT ON ("guardId")
-        "guardId", 
-        "to"::boolean as is_available, 
-        "createdAt"
-      FROM availability_logs
-      WHERE "createdAt" >= $1
-        AND "guardId" = ANY($2::int[])
-        AND "guardId" > 1000
-      ORDER BY "guardId", "createdAt" DESC
-    `, { 
-      bind: [fiveMinutesAgo, guardIdInts]
-    });
-    
-    if (debugAvailability) console.log("🔍 getGuardAvailability - Very recent logs (last 5 min):", veryRecentLogs.length);
+    if (debugAvailability) {
+      console.log(
+        "🔍 getGuardAvailability - Recent:",
+        recentLogs.length,
+        "All:",
+        allLogs.length,
+        "Very recent:",
+        veryRecentLogs.length
+      );
+    }
 
     // Create a map of integer guardId -> availability (same hash function as updateGuardAvailability)
     const availabilityByIntId = new Map();
 
-    allLogs.forEach(log => {
-      if (log.guardId > 1000 && !availabilityByIntId.has(log.guardId)) {
-        availabilityByIntId.set(log.guardId, Boolean(log.is_available));
-      }
+    allLogs.forEach((log) => {
+      availabilityByIntId.set(Number(log.guardId), Boolean(log.is_available));
     });
-    recentLogs.forEach(log => {
-      if (log.guardId > 1000) {
-        availabilityByIntId.set(log.guardId, Boolean(log.is_available));
-      }
+    recentLogs.forEach((log) => {
+      availabilityByIntId.set(Number(log.guardId), Boolean(log.is_available));
     });
     veryRecentLogs.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    veryRecentLogs.forEach(log => {
-      if (log.guardId > 1000) {
-        availabilityByIntId.set(log.guardId, Boolean(log.is_available));
-      }
+    veryRecentLogs.forEach((log) => {
+      availabilityByIntId.set(Number(log.guardId), Boolean(log.is_available));
     });
 
     if (debugAvailability) {
@@ -499,8 +476,8 @@ exports.getGuardAvailability = async (req, res) => {
     let unavailable = 0;
     const unmatchedGuards = [];
 
-    activeGuards.forEach(guard => {
-      const hash = crypto.createHash('md5').update(guard.id).digest('hex');
+    activeGuards.forEach((guard) => {
+      const hash = crypto.createHash("md5").update(String(guard.id)).digest("hex");
       const guardIdInt = parseInt(hash.substring(0, 8), 16) % 2147483647;
       const availability = availabilityByIntId.get(guardIdInt);
       const boolAvailability = availability === true || availability === 'true' || availability === 1;
