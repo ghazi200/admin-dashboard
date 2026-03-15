@@ -61,6 +61,8 @@ export default function Payroll() {
       loadPendingAdjustments();
       loadGuards();
       loadPayStubs();
+    } else {
+      loadGuards();
     }
   }, [tenantId]);
 
@@ -81,9 +83,12 @@ export default function Payroll() {
     setLoadingAdjustments(true);
     try {
       const res = await listPendingAdjustments();
-      setPendingAdjustments(res.data || []);
+      const raw = res?.data;
+      const list = Array.isArray(raw) ? raw : (raw?.items ?? raw?.rows ?? []);
+      setPendingAdjustments(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("Failed to load adjustments:", err);
+      setPendingAdjustments([]);
     } finally {
       setLoadingAdjustments(false);
     }
@@ -92,18 +97,24 @@ export default function Payroll() {
   async function loadGuards() {
     try {
       const res = await listGuards();
-      setGuards(Array.isArray(res.data) ? res.data : []);
+      const raw = res?.data;
+      const list = Array.isArray(raw) ? raw : (raw?.guards ?? raw?.rows ?? []);
+      setGuards(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("Failed to load guards:", err);
+      setGuards([]);
     }
   }
 
   async function loadPayStubs() {
     try {
       const res = await listPayStubs();
-      setPayStubs(res.data || []);
+      const raw = res?.data;
+      const list = Array.isArray(raw) ? raw : (raw?.items ?? raw?.rows ?? []);
+      setPayStubs(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("Failed to load pay stubs:", err);
+      setPayStubs([]);
     }
   }
 
@@ -231,6 +242,11 @@ export default function Payroll() {
 
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
+  // Guarantee arrays so .map never throws (API can return object instead of array)
+  const safePendingAdjustments = Array.isArray(pendingAdjustments) ? pendingAdjustments : [];
+  const safePayStubs = Array.isArray(payStubs) ? payStubs : [];
+  const safeGuards = Array.isArray(guards) ? guards : [];
+
   return (
     <div style={{ padding: "24px" }}>
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>💰 Payroll Management</h1>
@@ -341,8 +357,8 @@ export default function Payroll() {
                 border: "none",
                 borderRadius: 6,
                 fontWeight: 600,
-                cursor: aiLoading || !question.trim() ? "not-allowed" : "pointer",
-                opacity: aiLoading || !question.trim() ? 0.6 : 1,
+              cursor: aiLoading || !question.trim() ? "not-allowed" : "pointer",
+              opacity: aiLoading || !question.trim() ? 0.6 : 1,
               }}
             >
               {aiLoading ? "Asking..." : "Ask Question"}
@@ -367,15 +383,15 @@ export default function Payroll() {
       {/* Pending Adjustments */}
       <Card style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>
-          ⚠️ Pending Adjustments ({pendingAdjustments.length})
+          ⚠️ Pending Adjustments ({safePendingAdjustments.length})
         </h2>
         {loadingAdjustments ? (
           <div>Loading...</div>
-        ) : pendingAdjustments.length === 0 ? (
+        ) : safePendingAdjustments.length === 0 ? (
           <div style={{ color: "#666" }}>No pending adjustments</div>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
-            {pendingAdjustments.map((adj) => (
+            {safePendingAdjustments.map((adj) => (
               <div
                 key={adj.id}
                 style={{
@@ -456,11 +472,11 @@ export default function Payroll() {
           </button>
         </div>
 
-        {payStubs.length === 0 ? (
+        {safePayStubs.length === 0 ? (
           <div style={{ color: "#666" }}>No pay stubs uploaded yet</div>
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
-            {payStubs.slice(0, 10).map((stub) => (
+            {safePayStubs.slice(0, 10).map((stub) => (
               <div
                 key={stub.id}
                 style={{
@@ -512,7 +528,7 @@ export default function Payroll() {
                 style={{ width: "100%", padding: 8, borderRadius: 6, border: "1px solid #ccc" }}
               >
                 <option value="">Select Guard</option>
-                {guards.map((g) => (
+                {safeGuards.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.name}
                   </option>

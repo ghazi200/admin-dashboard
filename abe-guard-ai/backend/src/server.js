@@ -5,7 +5,7 @@ const logger = require("./logger");
 
 if (process.env.NODE_ENV === "production") {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
-    logger.error("JWT_SECRET is required in production and must be at least 16 characters");
+    logger.error("JWT_SECRET is required in production and must be at least 16 characters. In Railway: open this service → Variables → add JWT_SECRET with a long random string (e.g. 32+ chars). See backend/RAILWAY_VARIABLES.txt");
     process.exit(1);
   }
 }

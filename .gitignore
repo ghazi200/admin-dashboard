@@ -6,6 +6,7 @@ node_modules/
 .env.backup
 .env.local
 .env.*.local
+.env.railway.migrate
 
 # Build output
 build/

@@ -4,4 +4,6 @@
 NODE_ENV=production
 DATABASE_URL=${{ Postgres.DATABASE_URL }}
 JWT_SECRET=your-secret-at-least-16-characters-long
+# Comma-separated; include the EXACT URL your dashboard loads from (no trailing slash).
+# If you see "access control checks" or "network connection lost", add your Vercel URL here and redeploy.
 CORS_ORIGINS=https://admin-dashboard-frontend-flax.vercel.app,https://admin-dashboard-frontend-techworldstarzllcs-projects.vercel.app,https://frontend-guard-ui.vercel.app

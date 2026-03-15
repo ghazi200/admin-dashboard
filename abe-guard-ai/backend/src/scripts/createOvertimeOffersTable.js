@@ -21,7 +21,7 @@ if (!connectionString) {
 }
 
 const { Sequelize } = require("sequelize");
-const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard"];
+const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard", "railway"];
 
 const sequelize = new Sequelize(connectionString, {
   dialect: "postgres",
@@ -34,9 +34,9 @@ const sequelize = new Sequelize(connectionString, {
     const [rows] = await sequelize.query("SELECT current_database() AS db_name");
     const dbName = rows?.[0]?.db_name;
     if (!dbName || !REQUIRED_DB_NAMES.includes(dbName)) {
-      console.error("❌ Wrong database. This script must use abe_guard (same as admin-dashboard).");
+      console.error("❌ Wrong database. This script must use abe_guard, abe-guard, or railway.");
       console.error(`   Current: ${dbName || "(unknown)"}`);
-      console.error("   Set DATABASE_URL in abe-guard-ai/backend/.env to postgresql://.../abe_guard");
+      console.error("   Set DATABASE_URL to postgresql://.../abe_guard or .../railway");
       process.exit(1);
     }
     console.log(`✅ Database connected (${dbName})`);

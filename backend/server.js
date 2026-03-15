@@ -78,7 +78,7 @@ Sequelize.prototype.sync = async function (options) {
 // Require JWT_SECRET in production so the app never runs with a weak/missing secret
 if (process.env.NODE_ENV === "production") {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
-    logger.error("JWT_SECRET is required in production and must be at least 16 characters");
+    logger.error("JWT_SECRET is required in production and must be at least 16 characters. In Railway: open this service → Variables → add JWT_SECRET with a long random string (e.g. 32+ chars). See backend/RAILWAY_VARIABLES.txt");
     process.exit(1);
   }
   if (!process.env.DATABASE_URL || !process.env.DATABASE_URL.includes("://")) {
@@ -173,10 +173,11 @@ app.use(
         return callback(null, true);
       }
       if (corsOrigins.includes(origin)) return callback(null, true);
-      // Allow any Vercel deployment (*.vercel.app)
+      // Allow any Vercel deployment (*.vercel.app) and Railway frontends (*.railway.app)
       try {
         const u = new URL(origin);
-        if (u.hostname.endsWith(".vercel.app")) return callback(null, true);
+        const h = u.hostname || "";
+        if (h.endsWith(".vercel.app") || h.endsWith(".up.railway.app") || h.includes(".railway.app")) return callback(null, true);
       } catch (_) {}
       if (origin.startsWith("http://10.0.2.2") || origin.startsWith("http://localhost") || origin.startsWith("capacitor://") || origin.startsWith("file://")) {
         return callback(null, true);
