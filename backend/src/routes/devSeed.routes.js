@@ -71,4 +71,64 @@ router.post("/seed-admin", async (req, res) => {
   }
 });
 
+/** POST /api/dev/seed-superadmin — create/update super admin (same DB as seed-admin). No auth. */
+router.post("/seed-superadmin", async (req, res) => {
+  try {
+    const { Admin } = req.app.locals.models;
+    const email = (req.body?.email || "superadmin@example.com").trim().toLowerCase();
+    const password = String(req.body?.password || "superadmin123");
+    const name = (req.body?.name || "Super Admin").trim() || "Super Admin";
+
+    if (!email) {
+      return res.status(400).json({ message: "email is required" });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+    let user = await Admin.findOne({ where: { email } });
+
+    const payload = {
+      name,
+      email,
+      role: "super_admin",
+      permissions: [],
+      password: hashed,
+      password_hash: hashed,
+      tenant_id: null,
+    };
+
+    if (!user) {
+      user = await Admin.create(payload);
+      return res.json({
+        ok: true,
+        created: true,
+        email: user.email,
+        role: user.role,
+        creds: { email, password },
+        note: "Super admin created. Use the credentials to log in.",
+      });
+    }
+
+    await user.update({
+      name,
+      role: "super_admin",
+      permissions: user.permissions || [],
+      password: hashed,
+      password_hash: hashed,
+      tenant_id: null,
+    });
+
+    return res.json({
+      ok: true,
+      created: false,
+      email: user.email,
+      role: user.role,
+      creds: { email, password },
+      note: "Existing admin updated to super_admin. Use the credentials to log in.",
+    });
+  } catch (e) {
+    console.error("seed-superadmin failed:", e);
+    return res.status(500).json({ message: "Seed failed", error: e.message });
+  }
+});
+
 module.exports = router;
