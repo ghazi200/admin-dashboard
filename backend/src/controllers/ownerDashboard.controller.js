@@ -179,12 +179,13 @@ exports.getSummary = async (req, res) => {
 /**
  * GET /api/admin/owner-dashboard/staff
  * List staff directory for the admin's tenant (for admin management page).
+ * Super admin has no tenant → returns empty list so the page loads.
  */
 exports.listStaff = async (req, res) => {
   try {
     const tenantId = getTenantFilter(req.admin);
     if (!tenantId) {
-      return res.status(403).json({ message: "Tenant context required" });
+      return res.json({ data: [] });
     }
     const Staff = req.app?.locals?.models?.Staff;
     if (!Staff) {
