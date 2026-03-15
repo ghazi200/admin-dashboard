@@ -663,6 +663,18 @@ export default function GeographicDashboard() {
                 ×
               </button>
             </div>
+            {deleteError && <p style={{ color: "#dc2626", fontSize: 14, margin: "0 0 8px 0" }}>{deleteError}</p>}
+            <div style={{ marginBottom: 16 }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleDeleteSite()}
+                disabled={deleting}
+                style={{ background: "#dc2626", color: "#fff", border: "none", padding: "8px 16px", borderRadius: 8, cursor: deleting ? "wait" : "pointer", fontWeight: 600 }}
+              >
+                {deleting ? "Deleting…" : "Delete site"}
+              </button>
+            </div>
             {siteDetailsLoading && <p style={{ color: "var(--muted)", margin: 0 }}>Loading…</p>}
             {siteDetailsError && (
               <p style={{ color: "#dc2626", margin: 0 }}>
