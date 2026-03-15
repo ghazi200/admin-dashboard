@@ -1,9 +1,8 @@
 /**
- * Socket Manager — one connection for the entire app.
- * Fixes token timing race, multiple-connection bug, and silent auth failures.
- * - Connect after login; disconnect on logout.
- * - Reuse or cleanly replace socket (never leave disconnected instance around).
- * - Refresh auth on reconnect_attempt; handle auth errors and token expiry.
+ * Socket Manager — alternative socket layer (NOT USED by the app; app uses socket.js).
+ * Kept in sync with socket.js so if anything imports this, it uses same URL and transport.
+ * - Production: always Railway gateway (no localhost).
+ * - Transport: websocket only (gateway does not support polling).
  */
 
 import { io } from "socket.io-client";
@@ -85,13 +84,14 @@ class SocketManager {
 
     this.socket = io(url, {
       path: "/socket.io",
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
+      upgrade: false,
       auth: { token },
       reconnection: true,
       reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
+      reconnectionDelay: 3000,
+      reconnectionDelayMax: 15000,
+      timeout: 30000,
       withCredentials: true,
     });
 

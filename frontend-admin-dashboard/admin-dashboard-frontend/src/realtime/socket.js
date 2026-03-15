@@ -2,10 +2,11 @@
  * Realtime: single connection to WebSocket Gateway.
  * Production (Vercel): ALWAYS use Railway gateway — never localhost.
  * Local dev: use REACT_APP_SOCKET_URL or REACT_APP_WS_GATEWAY_URL, or Railway URL.
+ * BUILD_ID: change this when you want to confirm a new deploy (e.g. "2025-02-06-v3")
  */
-
 import { io } from "socket.io-client";
 
+const SOCKET_BUILD_ID = "2025-02-06-railway-only-v1";
 const WS_GATEWAY_PRODUCTION = "https://generous-manifestation-production-dbd9.up.railway.app";
 
 let socket = null;
@@ -61,10 +62,13 @@ export function connectSocket() {
 
   lastToken = token;
 
-  const urlToConnect = getSocketUrl();
+  let urlToConnect = getSocketUrl();
+  if (isProductionOrigin() && /localhost|127\.0\.0\.1/.test(String(urlToConnect))) {
+    urlToConnect = WS_GATEWAY_PRODUCTION;
+    if (typeof console !== "undefined") console.warn("[socket] Forced Railway URL (production host cannot use localhost)");
+  }
   if (typeof console !== "undefined") {
-    const isProd = isProductionOrigin();
-    console.log("🔬 2-MIN SOCKET TEST ACTIVE — URL:", urlToConnect, isProd ? "(production)" : "(local)");
+    console.log("🔬 SOCKET BUILD:", SOCKET_BUILD_ID, "| URL:", urlToConnect, isProductionOrigin() ? "(production)" : "(local)");
   }
 
   socket = io(urlToConnect, {
