@@ -87,6 +87,40 @@ exports.getSites = async (req, res) => {
   }
 };
 
+/**
+ * DELETE /api/admin/geographic/sites/:siteId
+ * Delete a site. Tenant-scoped: only sites belonging to the admin's tenant (or global) can be deleted.
+ */
+exports.deleteSite = async (req, res) => {
+  try {
+    const siteIdParam = (req.params.siteId || "").trim();
+    if (!siteIdParam) {
+      return res.status(400).json({ message: "siteId is required" });
+    }
+    const { Site } = req.app.locals.models;
+    if (!Site) {
+      return res.status(500).json({ message: "Models not available" });
+    }
+    const site = await Site.findOne({
+      where: { id: siteIdParam },
+      attributes: ["id", "tenant_id"],
+    });
+    if (!site) {
+      return res.status(404).json({ message: "Site not found." });
+    }
+    const siteRow = site && typeof site.toJSON === "function" ? site.toJSON() : site;
+    const siteTenantId = siteRow?.tenant_id ?? null;
+    if (!canAccessSite(req.admin, siteTenantId)) {
+      return res.status(403).json({ message: "You don't have access to delete this site." });
+    }
+    await Site.destroy({ where: { id: siteIdParam } });
+    return res.status(204).send();
+  } catch (e) {
+    console.error("deleteSite error:", e);
+    return res.status(500).json({ message: e.message || "Failed to delete site" });
+  }
+};
+
 exports.createSite = async (req, res) => {
   try {
     const { Site } = req.app.locals.models;

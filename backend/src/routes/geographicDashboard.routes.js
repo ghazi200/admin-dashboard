@@ -13,7 +13,7 @@ router.get("/", (req, res) => {
   res.json({
     ok: true,
     service: "geographic-dashboard",
-    routes: ["GET /sites", "POST /sites", "POST /route-optimize", "GET /analytics"],
+    routes: ["GET /sites", "POST /sites", "DELETE /sites/:siteId", "POST /route-optimize", "GET /analytics"],
   });
 });
 
@@ -46,6 +46,13 @@ router.post(
   authAdmin,
   requireAccess("dashboard:read"),
   geographicDashboardController.createSite
+);
+
+router.delete(
+  "/sites/:siteId",
+  authAdmin,
+  requireAccess("dashboard:read"),
+  geographicDashboardController.deleteSite
 );
 
 router.post(

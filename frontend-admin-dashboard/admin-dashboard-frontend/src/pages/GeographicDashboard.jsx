@@ -9,6 +9,7 @@ import {
   getGeographicSites,
   getGeographicSiteDetails,
   createGeographicSite,
+  deleteGeographicSite,
   getGeographicAnalytics,
   getGeographicRouteOptimize,
 } from "../services/api";
@@ -33,6 +34,8 @@ export default function GeographicDashboard() {
   const [routeError, setRouteError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSiteId, setSelectedSiteId] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const qc = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -140,6 +143,25 @@ export default function GeographicDashboard() {
     }
   };
 
+  const handleDeleteSite = async (siteId) => {
+    const id = siteId || selectedSiteId;
+    if (!id) return;
+    const siteName = sites.find((s) => s.id === id)?.name || "This site";
+    if (!window.confirm(`Delete "${siteName}"? This cannot be undone.`)) return;
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      await deleteGeographicSite(id);
+      if (selectedSiteId === id) setSelectedSiteId(null);
+      qc.invalidateQueries({ queryKey: ["geographicSites"] });
+      qc.invalidateQueries({ queryKey: ["geographicAnalytics"] });
+    } catch (err) {
+      setDeleteError(err?.response?.data?.message || err?.message || "Failed to delete site");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // Load Google Maps script
   useEffect(() => {
     const key = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
@@ -201,7 +223,7 @@ export default function GeographicDashboard() {
     };
   }, [scriptLoaded]);
 
-  // Update markers when sites change
+  // Update markers when sites with coordinates change (original pin logic)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !window.google?.maps) return;
@@ -377,6 +399,49 @@ export default function GeographicDashboard() {
         </button>
       </div>
 
+      {/* Delete site — always visible when there are sites */}
+      {sites.length > 0 && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: 16,
+            borderRadius: 12,
+            border: "2px solid #dc2626",
+            background: "rgba(220, 38, 38, 0.08)",
+          }}
+        >
+          <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, color: "#b91c1c" }}>Delete a site</div>
+          <p style={{ fontSize: 14, color: "var(--muted)", margin: "0 0 12px 0" }}>
+            Select a site and click Delete to remove it from the map.
+          </p>
+          {deleteError && <div style={{ color: "#dc2626", fontSize: 14, marginBottom: 8 }}>{deleteError}</div>}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            {sites.map((site) => (
+              <span key={site.id} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 14 }}>{site.name || site.id}</span>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSite(site.id)}
+                  disabled={deleting}
+                  style={{
+                    background: "#dc2626",
+                    color: "#fff",
+                    border: "none",
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    cursor: deleting ? "wait" : "pointer",
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Delete
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Site search / lookup */}
       <div
         style={{
@@ -396,30 +461,52 @@ export default function GeographicDashboard() {
           style={{ width: "100%", maxWidth: 400, padding: "10px 14px", borderRadius: 8, marginBottom: 12 }}
         />
         <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
-          {filteredSites.length} site(s) {searchLower ? "matching search" : "total"} — click a site to see staff, supervisor, and guards
+          {filteredSites.length} site(s) {searchLower ? "matching search" : "total"} — click a site for details, or use <strong>Delete</strong> to remove it
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {deleteError && (
+          <div style={{ color: "#dc2626", fontSize: 14, marginBottom: 8 }}>{deleteError}</div>
+        )}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           {filteredSites.map((site) => {
             const isSelected = selectedSiteId === site.id;
             return (
-              <button
-                key={site.id}
-                type="button"
-                onClick={() => setSelectedSiteId(site.id)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  border: isSelected ? "2px solid #2563eb" : "1px solid #94a3b8",
-                  background: isSelected ? "#2563eb" : "#e2e8f0",
-                  color: isSelected ? "#fff" : "#1e293b",
-                  cursor: "pointer",
-                  fontSize: 14,
-                  fontWeight: isSelected ? 600 : 500,
-                  boxShadow: isSelected ? "0 1px 3px rgba(37, 99, 235, 0.3)" : "0 1px 2px rgba(0,0,0,0.06)",
-                }}
-              >
-                {site.name || site.id}
-              </button>
+              <span key={site.id} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSiteId(site.id)}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: isSelected ? "2px solid #2563eb" : "1px solid #94a3b8",
+                    background: isSelected ? "#2563eb" : "#e2e8f0",
+                    color: isSelected ? "#fff" : "#1e293b",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: isSelected ? 600 : 500,
+                    boxShadow: isSelected ? "0 1px 3px rgba(37, 99, 235, 0.3)" : "0 1px 2px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  {site.name || site.id}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleDeleteSite(site.id); }}
+                  disabled={deleting}
+                  title={`Delete ${site.name || site.id}`}
+                  style={{
+                    background: "#dc2626",
+                    color: "#fff",
+                    border: "none",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    cursor: deleting ? "wait" : "pointer",
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Delete
+                </button>
+              </span>
             );
           })}
         </div>
@@ -636,6 +723,18 @@ export default function GeographicDashboard() {
                 aria-label="Close"
               >
                 ×
+              </button>
+            </div>
+            {deleteError && <p style={{ color: "#dc2626", fontSize: 14, margin: "0 0 8px 0" }}>{deleteError}</p>}
+            <div style={{ marginBottom: 16 }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => handleDeleteSite()}
+                disabled={deleting}
+                style={{ background: "#dc2626", color: "#fff", border: "none", padding: "8px 16px", borderRadius: 8, cursor: deleting ? "wait" : "pointer", fontWeight: 600 }}
+              >
+                {deleting ? "Deleting…" : "Delete site"}
               </button>
             </div>
             {siteDetailsLoading && <p style={{ color: "var(--muted)", margin: 0 }}>Loading…</p>}

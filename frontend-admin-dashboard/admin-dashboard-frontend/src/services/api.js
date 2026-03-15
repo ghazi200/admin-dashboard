@@ -69,6 +69,7 @@ export const getGeographicSites = () => axiosClient.get("/geographic/sites");
 export const getGeographicSiteDetails = (siteId) =>
   axiosClient.get(`/geographic/sites/${encodeURIComponent(siteId)}/details`);
 export const createGeographicSite = (data) => axiosClient.post("/geographic/sites", data);
+export const deleteGeographicSite = (siteId) => axiosClient.delete(`/geographic/sites/${encodeURIComponent(siteId)}`);
 export const getGeographicAnalytics = () => axiosClient.get("/geographic/analytics");
 export const getGeographicRouteOptimize = (body) => axiosClient.post("/geographic/route-optimize", body);
 

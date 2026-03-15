@@ -60,8 +60,25 @@ exports.getSummary = async (req, res) => {
     const tenantWhere = { [Op.or]: [{ tenant_id: tenantId }, { tenant_id: null }] };
     const tenantOnly = { tenant_id: tenantId };
 
-    // Total locations (sites) for this tenant
-    const totalLocations = await Site.count({ where: tenantWhere });
+    // Total locations: sites table count, or distinct locations from shifts (so 1+ shows when shifts have location but no sites yet)
+    let siteCount = 0;
+    try {
+      siteCount = await Site.count({ where: tenantWhere });
+    } catch (e) {
+      // Site table may not exist in some deploys
+    }
+    let distinctShiftLocations = 0;
+    try {
+      const locRows = await sequelize.query(
+        `SELECT COUNT(DISTINCT TRIM(location)) AS cnt FROM shifts WHERE tenant_id = :tenantId AND location IS NOT NULL AND TRIM(location) != ''`,
+        { replacements: { tenantId }, type: sequelize.QueryTypes.SELECT }
+      );
+      const first = Array.isArray(locRows) ? locRows[0] : locRows;
+      distinctShiftLocations = Number(first?.cnt ?? 0) || 0;
+    } catch (e) {
+      // non-fatal
+    }
+    const totalLocations = Math.max(siteCount, distinctShiftLocations);
 
     // Total guards for this tenant
     const totalGuards = await Guard.count({ where: tenantOnly });
