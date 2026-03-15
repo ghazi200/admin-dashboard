@@ -47,6 +47,39 @@ export default function Shifts() {
     load();
   }, []);
 
+  /** Normalize time for display (Postgres may return "15:00:00" or Date/ISO string) */
+  function toTimeDisplay(v) {
+    if (v == null || v === "") return null;
+    const s = typeof v === "string" ? v : (v && v.toISOString ? v.toISOString() : String(v));
+    const match = s.match(/T(\d{2}:\d{2}(?::\d{2})?)/);
+    if (match) return match[1];
+    if (/^\d{1,2}:\d{2}(?::\d{2})?/.test(s)) return s.trim().substring(0, 8);
+    return s;
+  }
+
+  /** Normalize shift from API (snake_case) so table and form have guard_id, shift_start, shift_end and camelCase equivalents */
+  function normalizeShift(shift) {
+    if (!shift || typeof shift !== "object") return shift;
+    const guardId = shift.guard_id ?? shift.assignedGuardId ?? shift.guardId;
+    const shiftStart = shift.shift_start ?? shift.startTime ?? shift.shiftStart;
+    const shiftEnd = shift.shift_end ?? shift.endTime ?? shift.shiftEnd;
+    const shiftDate = shift.shift_date ?? shift.shiftDate ?? shift.date;
+    return {
+      ...shift,
+      id: shift.id,
+      guard_id: guardId,
+      assignedGuardId: guardId,
+      guardId,
+      shift_start: shiftStart,
+      shift_end: shiftEnd,
+      startTime: toTimeDisplay(shiftStart) ?? shiftStart,
+      endTime: toTimeDisplay(shiftEnd) ?? shiftEnd,
+      shift_date: shiftDate,
+      shiftDate: shiftDate,
+      location: shift.location ?? "",
+    };
+  }
+
   async function load() {
     setLoading(true);
     setErr("");
@@ -55,7 +88,8 @@ export default function Shifts() {
       const [g, s] = await Promise.all([listGuards(), listShifts()]);
 
       const guardsData = Array.isArray(g.data) ? g.data : g.data?.guards || [];
-      const shiftsData = Array.isArray(s.data) ? s.data : s.data?.shifts || [];
+      const rawShifts = Array.isArray(s.data) ? s.data : s.data?.shifts || [];
+      const shiftsData = rawShifts.map(normalizeShift);
 
       setGuards(guardsData);
       setShifts(shiftsData);
@@ -163,12 +197,16 @@ export default function Shifts() {
         const createdShift = response.data;
 
         // If shift created without guard, show AI recommendations
-        if (createdShift && !createdShift.guard_id && createdShift.aiRecommendations) {
+        if (createdShift && !createdShift.guard_id && !createdShift.assignedGuardId && createdShift.aiRecommendations) {
           setLastCreatedShift(createdShift);
           setRecommendations(createdShift.aiRecommendations || []);
           setShowRecommendations(true);
         }
 
+        // Prepend created shift with normalized fields so table shows guard and times immediately
+        if (createdShift && createdShift.id) {
+          setShifts((prev) => [normalizeShift(createdShift), ...prev]);
+        }
         reset();
         await load();
       }
@@ -357,18 +395,22 @@ export default function Shifts() {
                 </tr>
               </thead>
               <tbody>
-                {shifts.map((sh) => (
+                {shifts.map((sh) => {
+                  const guardId = sh.assignedGuardId ?? sh.guard_id;
+                  const startTime = sh.startTime ?? sh.shift_start ?? "—";
+                  const endTime = sh.endTime ?? sh.shift_end ?? "—";
+                  return (
                   <tr key={sh.id}>
-                    <td>{sh.assignedGuardId ? guardName(sh.assignedGuardId) : "Unassigned"}</td>
+                    <td>{guardId ? guardName(guardId) : "Unassigned"}</td>
                     <td>{sh.location || "—"}</td>
-                    <td>{sh.startTime || "—"}</td>
-                    <td>{sh.endTime || "—"}</td>
+                    <td>{startTime}</td>
+                    <td>{endTime}</td>
                     <td>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         <button className="btn" onClick={() => startEdit(sh)} disabled={!canWrite}>
                           Edit
                         </button>
-                        {!sh.assignedGuardId && canWrite && (
+                        {!guardId && canWrite && (
                           <button
                             className="btn"
                             onClick={() => loadRecommendations(sh.id)}
@@ -391,7 +433,8 @@ export default function Shifts() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           )}
