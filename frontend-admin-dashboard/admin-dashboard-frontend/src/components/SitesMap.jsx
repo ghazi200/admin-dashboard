@@ -19,7 +19,7 @@ export default function SitesMap({ sites = [], style = {}, height = 400 }) {
     : [];
 
   useEffect(() => {
-    const key = (process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "").trim();
+    const key = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
     if (!key) {
       setMapError("REACT_APP_GOOGLE_MAPS_API_KEY is not set");
       return;
@@ -37,17 +37,13 @@ export default function SitesMap({ sites = [], style = {}, height = 400 }) {
       check();
       return;
     }
-    const callbackName = "__sitesMapMapsReady";
-    window[callbackName] = () => {
-      window[callbackName] = null;
-      setScriptLoaded(true);
-    };
     const script = document.createElement("script");
     script.id = id;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=${callbackName}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
     script.async = true;
     script.defer = true;
-    script.onerror = () => setMapError("Failed to load Google Maps. Enable Maps JavaScript API and check key restrictions (e.g. http://localhost:3000/*).");
+    script.onerror = () => setMapError("Failed to load Google Maps");
+    script.onload = () => setScriptLoaded(true);
     document.head.appendChild(script);
   }, []);
 

@@ -52,9 +52,10 @@ axiosClient.interceptors.response.use(
 
       const isReportPage = pathname.includes("/reports");
       const isInspectionsPage = pathname.includes("/inspections");
+      const isMapPage = pathname.includes("/map");
       const isLoginPage = pathname.includes("/login");
 
-      if (isReportPage || isInspectionsPage || isLoginPage) {
+      if (isReportPage || isInspectionsPage || isMapPage || isLoginPage) {
         return Promise.reject(error);
       }
 

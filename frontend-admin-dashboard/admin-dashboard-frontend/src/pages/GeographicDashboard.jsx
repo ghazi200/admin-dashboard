@@ -140,9 +140,9 @@ export default function GeographicDashboard() {
     }
   };
 
-  // Load Google Maps script (use callback so we know when the API is ready)
+  // Load Google Maps script
   useEffect(() => {
-    const key = (process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "").trim();
+    const key = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
     if (!key) {
       setMapError("REACT_APP_GOOGLE_MAPS_API_KEY is not set in .env");
       return;
@@ -160,28 +160,22 @@ export default function GeographicDashboard() {
       check();
       return;
     }
-    const callbackName = "__geoDashboardMapsReady";
-    window[callbackName] = () => {
-      window[callbackName] = null;
-      setScriptLoaded(true);
-    };
     const script = document.createElement("script");
     script.id = id;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=${callbackName}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
     script.async = true;
     script.defer = true;
-    script.onerror = () => {
-      setMapError("Failed to load Google Maps. Check: (1) Key is valid, (2) Maps JavaScript API is enabled in Google Cloud, (3) For localhost add http://localhost:3000/* to API key restrictions.");
-    };
+    script.onerror = () => setMapError("Failed to load Google Maps");
+    script.onload = () => setScriptLoaded(true);
     document.head.appendChild(script);
   }, []);
 
-  // Init map and markers when script and container are ready
+  // Init map and markers when script and container are ready (rAF so container has size)
   useEffect(() => {
     if (!scriptLoaded || !window.google?.maps || !mapRef.current || mapInstanceRef.current) return;
 
     let cancelled = false;
-    const t = setTimeout(() => {
+    const id = requestAnimationFrame(() => {
       if (cancelled || !mapRef.current || mapInstanceRef.current) return;
       const map = new window.google.maps.Map(mapRef.current, {
         center: DEFAULT_CENTER,
@@ -192,11 +186,15 @@ export default function GeographicDashboard() {
         zoomControl: true,
       });
       mapInstanceRef.current = map;
-    }, 100);
-
+      requestAnimationFrame(() => {
+        if (mapInstanceRef.current === map && window.google?.maps?.event) {
+          window.google.maps.event.trigger(map, "resize");
+        }
+      });
+    });
     return () => {
       cancelled = true;
-      clearTimeout(t);
+      cancelAnimationFrame(id);
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
       mapInstanceRef.current = null;
