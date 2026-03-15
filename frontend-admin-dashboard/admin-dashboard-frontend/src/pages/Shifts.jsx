@@ -173,7 +173,10 @@ export default function Shifts() {
         await load();
       }
     } catch (e) {
-      setErr(e?.response?.data?.message || e.message || "Save failed");
+      const data = e?.response?.data;
+      const msg = data?.message || data?.error || e.message || "Save failed";
+      const hint = data?.hint ? ` ${data.hint}` : "";
+      setErr(msg + hint);
     }
   }
 

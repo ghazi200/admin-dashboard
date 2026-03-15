@@ -66,7 +66,8 @@ axiosClient.interceptors.response.use(
         msg.includes("invalid token") ||
         msg.includes("session invalidated") ||
         msg.includes("unauthorized") ||
-        msg.includes("not authenticated");
+        msg.includes("not authenticated") ||
+        msg.includes("missing authorization");
 
       if (isAuthError) {
         localStorage.removeItem("adminToken");

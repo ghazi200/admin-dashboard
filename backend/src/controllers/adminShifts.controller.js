@@ -25,6 +25,30 @@ function normStatus(v) {
   return s === "CLOSED" ? "CLOSED" : "OPEN";
 }
 
+/** Normalize to HH:MM:SS for PostgreSQL TIME (24h + 12h e.g. 3:00pm, 03:00 PM) */
+function normTime(v) {
+  if (v == null || String(v).trim() === "") return null;
+  const s = String(v).trim();
+  const m12 = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?|am|pm)\s*$/i);
+  if (m12) {
+    let h = parseInt(m12[1], 10);
+    const mm = m12[2].padStart(2, "0");
+    const ss = (m12[3] != null ? m12[3] : "00").padStart(2, "0");
+    const mer = m12[4].replace(/\./g, "").toLowerCase();
+    const isPm = mer.startsWith("p");
+    if (isPm && h < 12) h += 12;
+    if (!isPm && h === 12) h = 0;
+    return `${String(h).padStart(2, "0")}:${mm}:${ss}`;
+  }
+  const match = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return s;
+  const [, h, m, sec] = match;
+  const hh = h.padStart(2, "0");
+  const mm = m.padStart(2, "0");
+  const ss = (sec != null ? sec : "00").padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
 /**
  * IMPORTANT:
  * - returns `undefined` if key not present (so update won't wipe columns)
@@ -177,10 +201,14 @@ exports.createShift = async (req, res) => {
     if (!shiftStart) return res.status(400).json({ message: "shift_start (time) is required" });
     if (!shiftEnd) return res.status(400).json({ message: "shift_end (time) is required" });
 
+    const startTime = normTime(shiftStart) || String(shiftStart).trim();
+    const endTime = normTime(shiftEnd) || String(shiftEnd).trim();
+
+    // Generate id in DB so it's never null (table may lack DEFAULT)
     const [rows] = await sequelize.query(
       `
-      INSERT INTO shifts (tenant_id, guard_id, shift_date, shift_start, shift_end, status, location)
-      VALUES ($1, $2, $3::date, $4::time, $5::time, $6, $7)
+      INSERT INTO shifts (id, tenant_id, guard_id, shift_date, shift_start, shift_end, status, location)
+      VALUES (gen_random_uuid(), $1, $2, $3::date, $4::time, $5::time, $6, $7)
       RETURNING *
       `,
       {
@@ -188,8 +216,8 @@ exports.createShift = async (req, res) => {
           tenantId ? String(tenantId).trim() : null,
           guardId ? String(guardId).trim() : null,
           String(shiftDate).trim(),
-          String(shiftStart).trim(),
-          String(shiftEnd).trim(),
+          startTime,
+          endTime,
           status,
           location ? String(location).trim() : null,
         ],
@@ -307,7 +335,7 @@ exports.createShift = async (req, res) => {
               shiftEnd: created.shift_end,
               location: created.location,
             },
-            io,
+            app: req.app,
           });
         } catch (notificationError) {
           console.warn("⚠️ Failed to create guard notification for new shift:", notificationError.message);
@@ -362,8 +390,14 @@ exports.createShift = async (req, res) => {
 
     return res.status(201).json(response);
   } catch (e) {
-    console.error("createShift error:", e?.message || e);
-    return res.status(500).json({ message: "Failed to create shift", error: e.message });
+    const msg = e?.message || String(e);
+    console.error("createShift error:", msg);
+    const hint = msg.includes("does not exist") ? " Shifts table may be missing — ensure migrations or DB sync has run." : "";
+    return res.status(500).json({
+      message: "Failed to create shift",
+      error: msg,
+      hint: hint || undefined,
+    });
   }
 };
 

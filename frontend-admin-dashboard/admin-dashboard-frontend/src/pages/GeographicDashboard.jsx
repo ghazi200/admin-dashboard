@@ -144,7 +144,7 @@ export default function GeographicDashboard() {
   useEffect(() => {
     const key = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
     if (!key) {
-      setMapError("REACT_APP_GOOGLE_MAPS_API_KEY is not set in .env");
+      setMapError("MISSING_KEY");
       return;
     }
     if (window.google?.maps) {
@@ -283,11 +283,50 @@ export default function GeographicDashboard() {
   }, [routeResult]);
 
   if (mapError) {
+    const isVercel =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "vercel.app" || window.location.hostname.endsWith(".vercel.app"));
     return (
       <div style={{ padding: 24 }}>
         <h1 style={{ marginTop: 0 }}>Geographic Dashboard</h1>
-        <div className="notice" style={{ background: "#fef2f2", color: "#b91c1c" }}>
-          {mapError}. Add it to <code>.env</code> and restart the dev server.
+        <div
+          className="notice"
+          style={{ background: "#fef2f2", color: "#b91c1c", maxWidth: 640, lineHeight: 1.5 }}
+        >
+          {mapError === "MISSING_KEY" ? (
+            <>
+              <strong>Google Maps key is missing in this build.</strong>
+              <br />
+              <br />
+              <strong>Why you see this on Vercel even though .env has the key:</strong> Your laptop’s{" "}
+              <code>.env</code> file is <strong>not</strong> used when Vercel builds the site. Vercel never
+              sees that file (it’s usually not in git).
+              <br />
+              <br />
+              <strong>Fix on Vercel:</strong>
+              <br />
+              1. Vercel → your project → <strong>Settings</strong> →{" "}
+              <strong>Environment Variables</strong>
+              <br />
+              2. Add name: <code>REACT_APP_GOOGLE_MAPS_API_KEY</code> — value: same key as in your local
+              .env
+              <br />
+              3. Save, then <strong>Deployments → Redeploy</strong> (new build bakes the key in).
+              <br />
+              <br />
+              <strong>Local dev only:</strong> put the key in <code>admin-dashboard-frontend/.env</code>{" "}
+              and restart <code>npm start</code>.
+            </>
+          ) : (
+            <>
+              {mapError}.{" "}
+              {isVercel ? (
+                <>See above if the key is missing after setting it in Vercel — redeploy is required.</>
+              ) : (
+                <>Add <code>REACT_APP_GOOGLE_MAPS_API_KEY</code> to <code>.env</code> and restart the dev server.</>
+              )}
+            </>
+          )}
         </div>
       </div>
     );
