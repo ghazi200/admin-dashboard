@@ -25,7 +25,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "build:vercel": "CI=false GENERATE_SOURCEMAP=false react-scripts build",
+    "build:vercel": "node scripts/inject-maps-key.js && CI=false GENERATE_SOURCEMAP=false react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "cap:sync": "cap sync",
