@@ -140,9 +140,9 @@ export default function GeographicDashboard() {
     }
   };
 
-  // Load Google Maps script
+  // Load Google Maps script (use callback so we know when the API is ready)
   useEffect(() => {
-    const key = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+    const key = (process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "").trim();
     if (!key) {
       setMapError("REACT_APP_GOOGLE_MAPS_API_KEY is not set in .env");
       return;
@@ -160,13 +160,19 @@ export default function GeographicDashboard() {
       check();
       return;
     }
+    const callbackName = "__geoDashboardMapsReady";
+    window[callbackName] = () => {
+      window[callbackName] = null;
+      setScriptLoaded(true);
+    };
     const script = document.createElement("script");
     script.id = id;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=${callbackName}`;
     script.async = true;
     script.defer = true;
-    script.onerror = () => setMapError("Failed to load Google Maps");
-    script.onload = () => setScriptLoaded(true);
+    script.onerror = () => {
+      setMapError("Failed to load Google Maps. Check: (1) Key is valid, (2) Maps JavaScript API is enabled in Google Cloud, (3) For localhost add http://localhost:3000/* to API key restrictions.");
+    };
     document.head.appendChild(script);
   }, []);
 
@@ -174,17 +180,23 @@ export default function GeographicDashboard() {
   useEffect(() => {
     if (!scriptLoaded || !window.google?.maps || !mapRef.current || mapInstanceRef.current) return;
 
-    const map = new window.google.maps.Map(mapRef.current, {
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
-      mapTypeControl: true,
-      streetViewControl: false,
-      fullscreenControl: true,
-      zoomControl: true,
-    });
-    mapInstanceRef.current = map;
+    let cancelled = false;
+    const t = setTimeout(() => {
+      if (cancelled || !mapRef.current || mapInstanceRef.current) return;
+      const map = new window.google.maps.Map(mapRef.current, {
+        center: DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
+        mapTypeControl: true,
+        streetViewControl: false,
+        fullscreenControl: true,
+        zoomControl: true,
+      });
+      mapInstanceRef.current = map;
+    }, 100);
 
     return () => {
+      cancelled = true;
+      clearTimeout(t);
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
       mapInstanceRef.current = null;
