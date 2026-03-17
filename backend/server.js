@@ -162,29 +162,22 @@ const corsOrigins = [
   .flatMap((s) => s.split(",").map((o) => o.trim().replace(/[\/?]+$/, "")).filter(Boolean))
   .forEach((o) => { if (o && !corsOrigins.includes(o)) corsOrigins.push(o); });
 
-let productionCorsBlockWarningLogged = false;
+// Allow all origins so guard mobile app (Capacitor/WebView) can reach /health and /auth/login.
+// Set CORS_ORIGINS_ONLY=true in .env to restrict to CORS_ORIGINS list instead.
+const allowAllOrigins = process.env.CORS_ORIGINS_ONLY !== "true";
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || origin === "null") {
-        return callback(null, true);
-      }
-      if (process.env.NODE_ENV !== "production") {
-        return callback(null, true);
-      }
+      if (allowAllOrigins) return callback(null, true);
+      if (!origin || origin === "null") return callback(null, true);
       if (corsOrigins.includes(origin)) return callback(null, true);
-      // Allow any Vercel deployment (*.vercel.app) and Railway frontends (*.railway.app)
       try {
         const u = new URL(origin);
         const h = u.hostname || "";
         if (h.endsWith(".vercel.app") || h.endsWith(".up.railway.app") || h.includes(".railway.app")) return callback(null, true);
       } catch (_) {}
-      if (origin.startsWith("http://10.0.2.2") || origin.startsWith("http://localhost") || origin.startsWith("capacitor://") || origin.startsWith("file://")) {
+      if (origin.startsWith("http://10.0.2.2") || origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1") || origin.startsWith("capacitor://") || origin.startsWith("file://")) {
         return callback(null, true);
-      }
-      if (!productionCorsBlockWarningLogged) {
-        productionCorsBlockWarningLogged = true;
-        logger.warn({ origin }, "Production CORS: request blocked; set CORS_ORIGINS in .env to allow this origin");
       }
       callback(null, false);
     },
