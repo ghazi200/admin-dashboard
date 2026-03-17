@@ -15,9 +15,9 @@ function guardAuthHeaders() {
 
 /* ================= AUTH ================= */
 
-// Guard login (guard backend mounts auth at /auth)
+// Guard login (guard backend mounts auth at /auth). Longer timeout for cold start.
 export const loginGuard = (email, password) =>
-  guardClient.post("/auth/login", { email, password });
+  guardClient.post("/auth/login", { email, password }, { timeout: 60000 });
 
 /* ================= SHIFTS ================= */
 

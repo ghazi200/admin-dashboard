@@ -166,7 +166,7 @@ let productionCorsBlockWarningLogged = false;
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) {
+      if (!origin || origin === "null") {
         return callback(null, true);
       }
       if (process.env.NODE_ENV !== "production") {
@@ -511,6 +511,8 @@ app.use("/api/guard/messages", guardMessagesRoutes);
 
 const guardAuthRoutes = require("./src/routes/guardAuth.routes");
 app.use("/api/guard", guardAuthRoutes);
+// Alias so guard-ui can use admin backend for login when REACT_APP_GUARD_API_URL points here
+app.use("/auth", guardAuthRoutes);
 
 const geographicDashboardRoutes = require("./src/routes/geographicDashboard.routes");
 app.use("/api/admin/geographic", geographicDashboardRoutes);

@@ -6,7 +6,7 @@ import { getGuardApiUrl, getAdminApiUrl } from "../config/apiUrls";
  * localStorage override (guardApiUrl) is used – no rebuild needed on phone.
  */
 export const guardClient = axios.create({
-  timeout: 20000, // 20s for mobile/slow networks
+  timeout: 45000, // 45s for mobile/slow networks and backend cold start (e.g. Railway)
 });
 
 /**

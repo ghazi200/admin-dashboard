@@ -89,7 +89,7 @@ export default function Login() {
       // ✅ Always store the real guard token key
       localStorage.setItem("guardToken", token);
 
-      loginWithToken(token, res?.data?.user || null);
+      loginWithToken(token, res?.data?.guard || res?.data?.user || null);
       window.location.href = "/";
     } catch (e2) {
       console.error("Login error:", e2);
@@ -114,7 +114,7 @@ export default function Login() {
           const retryToken = retryRes?.data?.token;
           if (retryToken) {
             localStorage.setItem("guardToken", retryToken);
-            loginWithToken(retryToken, retryRes?.data?.user || null);
+            loginWithToken(retryToken, retryRes?.data?.guard || retryRes?.data?.user || null);
             window.location.href = "/";
             return;
           }
@@ -126,11 +126,13 @@ export default function Login() {
       const msg = e2?.response?.data?.message || e2?.response?.data?.error || e2?.message;
       const status = e2?.response?.status;
       if (isNetworkError) {
-        setErr("Cannot reach server. Tap 'Changed location? Reset URLs' above, then set Server URL to this computer's IP (e.g. http://192.168.x.x:4000). Emulator: tap 'Use emulator URL'. Ensure Guard API is running: cd abe-guard-ai/backend && node src/server.js");
+        setErr("Cannot reach server. 1) Tap 'Use Railway backend' to set the URL. 2) On this device, open Chrome and go to the same URL – if it does not load, the device cannot reach the server (try another Wi‑Fi or mobile data).");
       } else if (isTimeout) {
-        setErr("Request timed out (often after changing location). Tap 'Changed location? Reset URLs', then set Server URL to this computer's IP. Ensure Guard API is running on this machine.");
+        setErr("Request timed out. Tap 'Changed location? Reset URLs', then set Server URL to your backend API URL (same as Admin API; e.g. https://your-backend.railway.app).");
       } else if (status === 401) {
         setErr(msg || "Invalid email or password");
+      } else if (status === 423) {
+        setErr(msg || "Account locked. Contact an administrator to unlock.");
       } else if (status === 400) {
         setErr(msg || "Email and password required");
       } else if (status === 500) {
@@ -205,6 +207,11 @@ export default function Login() {
                 setAdminApiUrl("");
                 setConnectionStatus(null);
                 setAdminConnectionStatus(null);
+                try {
+                  localStorage.removeItem("guardToken");
+                  localStorage.removeItem("guardUser");
+                  localStorage.removeItem("guardDevToken");
+                } catch (_) {}
                 if (isAndroidApp()) {
                   setServerUrl(EMULATOR_GUARD_URL);
                   setAdminApiUrlState("http://10.0.2.2:5000");
@@ -273,6 +280,24 @@ export default function Login() {
                 }}
               >
                 Use emulator URL
+              </button>
+              <button
+                type="button"
+                className="linkBtn"
+                style={{ fontSize: 11, fontWeight: 600 }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const railwayUrl = (typeof process !== "undefined" && process.env?.REACT_APP_DEFAULT_BACKEND_URL) || "https://admin-dashboard-production-2596.up.railway.app";
+                  const u = String(railwayUrl).replace(/\/+$/, "");
+                  setServerUrl(u);
+                  setAdminApiUrlState(u);
+                  setGuardApiUrl(u);
+                  setAdminApiUrl(u);
+                  setErr("");
+                }}
+              >
+                Use Railway backend
               </button>
               <button
                 type="button"
