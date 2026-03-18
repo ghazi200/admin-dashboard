@@ -103,9 +103,7 @@ const rateLimit = require("express-rate-limit");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Root and health registered first so GET / never 404s (Railway/load balancer)
-app.get("/", (req, res) => res.json({ service: "admin-dashboard-backend", status: "OK", health: "/health", ready: "/health/ready" }));
-app.get("/health", (req, res) => res.json({ status: "OK" }));
+// Root + /health are registered AFTER CORS below so guard mobile WebView fetch() gets ACAO headers.
 
 // Cron endpoint: run shift reminders (for external cron when process may have been sleeping)
 // Call: GET /api/cron/shift-reminders?secret=YOUR_CRON_SECRET or Header: X-Cron-Secret: YOUR_CRON_SECRET
@@ -189,6 +187,12 @@ app.use(
 
 app.options("*", cors());
 
+// After CORS: WebView/Capacitor "Test connection" and cross-origin reads work
+app.get("/", (req, res) =>
+  res.json({ service: "admin-dashboard-backend", status: "OK", health: "/health", ready: "/health/ready" })
+);
+app.get("/health", (req, res) => res.json({ status: "OK" }));
+
 // Request ID for structured logs (attach to req and to logger child)
 app.use((req, res, next) => {
   req.id = req.headers["x-request-id"] || crypto.randomBytes(8).toString("hex");
@@ -197,7 +201,13 @@ app.use((req, res, next) => {
 });
 
 // Security headers (production-ready)
-app.use(helmet({ contentSecurityPolicy: false })); // CSP often needs tuning per app; disable by default
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    // Required for guard mobile app (Capacitor WebView) to read fetch() responses from this API
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 // General API rate limit (per IP). Default 500/15min so AI Agent 24 / assistant use doesn't hit limit.
 const generalLimiter = rateLimit({
