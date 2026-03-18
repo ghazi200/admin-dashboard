@@ -131,4 +131,48 @@ router.post("/seed-superadmin", async (req, res) => {
   }
 });
 
+/** POST /api/dev/seed-guard-bob — create/update guard bob@abe.com with password123 (for guard app login). No auth. */
+router.post("/seed-guard-bob", async (req, res) => {
+  try {
+    const { Guard } = req.app.locals.models;
+    const email = "bob@abe.com";
+    const password = "password123";
+    const hashed = await bcrypt.hash(password, 10);
+
+    let guard = await Guard.findOne({ where: { email } });
+    if (guard) {
+      await guard.update({
+        password_hash: hashed,
+        failed_login_attempts: 0,
+        locked_until: null,
+        name: guard.name || "Bob Smith",
+        tenant_id: guard.tenant_id || DEFAULT_TEST_TENANT_ID,
+      });
+      return res.json({
+        ok: true,
+        created: false,
+        email,
+        creds: { email, password },
+        note: "Guard bob@abe.com password set to password123. Use in guard app login.",
+      });
+    }
+    guard = await Guard.create({
+      name: "Bob Smith",
+      email,
+      password_hash: hashed,
+      tenant_id: DEFAULT_TEST_TENANT_ID,
+    });
+    return res.json({
+      ok: true,
+      created: true,
+      email,
+      creds: { email, password },
+      note: "Guard bob@abe.com created. Use in guard app login.",
+    });
+  } catch (e) {
+    console.error("seed-guard-bob failed:", e);
+    return res.status(500).json({ message: "Seed failed", error: e.message });
+  }
+});
+
 module.exports = router;
