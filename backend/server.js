@@ -539,6 +539,51 @@ app.get("/api/admin/login-debug", (req, res) => {
   });
 });
 
+// Guard app login: create/update bob@abe.com — MUST be before catch-all /api (otherwise 404)
+const bcryptSeedBob = require("bcryptjs");
+const { DEFAULT_TEST_TENANT_ID: TENANT_SEED_BOB } = require("./src/config/tenantConfig");
+app.post("/api/dev/seed-guard-bob", async (req, res) => {
+  try {
+    const { Guard } = req.app.locals.models;
+    const email = "bob@abe.com";
+    const password = "password123";
+    const hashed = await bcryptSeedBob.hash(password, 10);
+    let guard = await Guard.findOne({ where: { email } });
+    if (guard) {
+      await guard.update({
+        password_hash: hashed,
+        failed_login_attempts: 0,
+        locked_until: null,
+        name: guard.name || "Bob Smith",
+        tenant_id: guard.tenant_id || TENANT_SEED_BOB,
+      });
+      return res.json({
+        ok: true,
+        created: false,
+        email,
+        creds: { email, password },
+        note: "Guard bob@abe.com password set to password123.",
+      });
+    }
+    guard = await Guard.create({
+      name: "Bob Smith",
+      email,
+      password_hash: hashed,
+      tenant_id: TENANT_SEED_BOB,
+    });
+    return res.json({
+      ok: true,
+      created: true,
+      email,
+      creds: { email, password },
+      note: "Guard bob@abe.com created.",
+    });
+  } catch (e) {
+    console.error("seed-guard-bob failed:", e);
+    return res.status(500).json({ message: "Seed failed", error: e.message });
+  }
+});
+
 // Catch ALL /api requests — handle OPTIONS (CORS preflight) and login/register
 app.use("/api", (req, res, next) => {
   if (res.headersSent) return next();
