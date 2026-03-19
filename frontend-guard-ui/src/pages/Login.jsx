@@ -8,9 +8,12 @@ import {
   getAdminApiUrl,
   setAdminApiUrl,
   isAndroidApp,
+  isProbablyAndroidEmulator,
   EMULATOR_GUARD_URL,
   isLanIpUrl,
+  DEFAULT_CLOUD_BACKEND,
 } from "../config/apiUrls";
+import { nativeGet, nativePost, isNativeCapable } from "../utils/nativeHttp";
 import "./Login.css";
 
 const WHY_CHANGE_LOCATION =
@@ -32,6 +35,26 @@ export default function Login() {
   const [adminApiUrl, setAdminApiUrlState] = useState(() => getAdminApiUrl());
   const [adminConnectionStatus, setAdminConnectionStatus] = useState(null);
   const [showStaleUrlHint, setShowStaleUrlHint] = useState(false);
+  const [connectionHint, setConnectionHint] = useState("");
+
+  /** What you see in Server URL is what we use — avoids testing stale localStorage. */
+  const persistGuardUrlFromField = () => {
+    const u = serverUrl.trim().replace(/\/+$/, "");
+    if (u.startsWith("http://") || u.startsWith("https://")) {
+      setGuardApiUrl(u);
+      return u;
+    }
+    return getGuardApiUrl();
+  };
+
+  const persistAdminUrlFromField = () => {
+    const u = adminApiUrl.trim().replace(/\/+$/, "");
+    if (u.startsWith("http://") || u.startsWith("https://")) {
+      setAdminApiUrl(u);
+      return u;
+    }
+    return getAdminApiUrl();
+  };
 
   // Sync displayed URLs with effective API URLs (e.g. after Android overrides)
   useEffect(() => {
@@ -40,6 +63,22 @@ export default function Login() {
     setServerUrl(guardUrl);
     setAdminApiUrlState(adminUrl);
     if (isLanIpUrl(guardUrl)) setShowStaleUrlHint(true);
+  }, []);
+
+  // Real phone cannot reach 10.0.2.2 — replace saved emulator URL with cloud backend once.
+  useEffect(() => {
+    try {
+      if (!isAndroidApp() || isProbablyAndroidEmulator()) return;
+      const g = (localStorage.getItem("guardApiUrl") || "").trim();
+      if (g.includes("10.0.2.2")) {
+        const cloud = String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
+        setGuardApiUrl(cloud);
+        setAdminApiUrl(cloud);
+        setServerUrl(cloud);
+        setAdminApiUrlState(cloud);
+        setConnectionHint("Updated emulator-only URL to cloud backend for this device.");
+      }
+    } catch (_) {}
   }, []);
 
   // ✅ When user just logged out, clear the flag only (don't auto-login)
@@ -81,15 +120,33 @@ export default function Login() {
       const em = email.trim();
       const pw = password;
 
-      const res = await loginGuard(em, pw);
-      const token = res?.data?.token;
+      const baseUrl = persistGuardUrlFromField();
+
+      let token;
+      let guardUser;
+
+      if (isNativeCapable()) {
+        const res = await nativePost(`${baseUrl}/auth/login`, { email: em, password: pw });
+        if (!res.ok) {
+          const err = new Error(res.data?.message || res.data?.error || "Login failed");
+          err.response = { status: res.status, data: res.data || {} };
+          err.code = res.status === 0 ? "ERR_NETWORK" : undefined;
+          throw err;
+        }
+        token = res.data?.token;
+        guardUser = res.data?.guard || res.data?.user || null;
+      } else {
+        const res = await loginGuard(em, pw);
+        token = res?.data?.token;
+        guardUser = res?.data?.guard || res?.data?.user || null;
+      }
 
       if (!token) throw new Error("No token returned");
 
       // ✅ Always store the real guard token key
       localStorage.setItem("guardToken", token);
 
-      loginWithToken(token, res?.data?.guard || res?.data?.user || null);
+      loginWithToken(token, guardUser);
       window.location.href = "/";
     } catch (e2) {
       console.error("Login error:", e2);
@@ -110,11 +167,21 @@ export default function Login() {
         setGuardApiUrl(EMULATOR_GUARD_URL);
         setServerUrl(EMULATOR_GUARD_URL);
         try {
-          const retryRes = await loginGuard(email.trim(), password);
-          const retryToken = retryRes?.data?.token;
+          let retryToken, retryUser;
+          if (isNativeCapable()) {
+            const res = await nativePost(`${EMULATOR_GUARD_URL}/auth/login`, { email: email.trim(), password });
+            if (res.ok && res.data?.token) {
+              retryToken = res.data.token;
+              retryUser = res.data?.guard || res.data?.user || null;
+            }
+          } else {
+            const retryRes = await loginGuard(email.trim(), password);
+            retryToken = retryRes?.data?.token;
+            retryUser = retryRes?.data?.guard || retryRes?.data?.user || null;
+          }
           if (retryToken) {
             localStorage.setItem("guardToken", retryToken);
-            loginWithToken(retryToken, retryRes?.data?.guard || retryRes?.data?.user || null);
+            loginWithToken(retryToken, retryUser);
             window.location.href = "/";
             return;
           }
@@ -319,12 +386,13 @@ export default function Login() {
             className="linkBtn"
             style={{ marginBottom: 8, fontSize: 12 }}
             onClick={async () => {
-              const url = getGuardApiUrl();
+              const url = persistGuardUrlFromField();
               setConnectionStatus("checking");
+              setConnectionHint("");
               try {
-                let r = await fetch(`${url}/health`);
+                let r = await nativeGet(`${url}/health`);
                 if (!r.ok && isAndroidApp() && url !== EMULATOR_GUARD_URL && isLanIpUrl(url)) {
-                  const fallback = await fetch(`${EMULATOR_GUARD_URL}/health`);
+                  const fallback = await nativeGet(`${EMULATOR_GUARD_URL}/health`);
                   if (fallback.ok) {
                     setGuardApiUrl(EMULATOR_GUARD_URL);
                     setServerUrl(EMULATOR_GUARD_URL);
@@ -333,10 +401,15 @@ export default function Login() {
                   }
                 }
                 setConnectionStatus(r.ok ? "ok" : "fail");
+                if (!r.ok) {
+                  setConnectionHint(
+                    `Could not reach ${url}/health${r.error ? ` — ${r.error}` : ""}. Tap "Use Railway backend" or fix Server URL, then Save URL.`
+                  );
+                }
               } catch (e) {
                 if (isAndroidApp() && getGuardApiUrl() !== EMULATOR_GUARD_URL && isLanIpUrl(getGuardApiUrl())) {
                   try {
-                    const fallback = await fetch(`${EMULATOR_GUARD_URL}/health`);
+                    const fallback = await nativeGet(`${EMULATOR_GUARD_URL}/health`);
                     if (fallback.ok) {
                       setGuardApiUrl(EMULATOR_GUARD_URL);
                       setServerUrl(EMULATOR_GUARD_URL);
@@ -346,11 +419,15 @@ export default function Login() {
                   } catch (_) {}
                 }
                 setConnectionStatus("fail");
+                setConnectionHint(`Error: ${e?.message || e}. Tried ${url}/health`);
               }
             }}
           >
             {connectionStatus === "checking" ? "Checking…" : connectionStatus === "ok" ? "✓ Connection OK" : connectionStatus === "fail" ? "✗ Connection failed" : "Test connection"}
           </button>
+          {connectionHint ? (
+            <p style={{ fontSize: 11, color: "var(--muted, #aaa)", margin: "6px 0 12px", lineHeight: 1.4 }}>{connectionHint}</p>
+          ) : null}
 
           {/* Admin API URL – required for shift swap & availability on emulator/phone */}
           <div className="field" style={{ marginBottom: 8 }}>
@@ -404,10 +481,10 @@ export default function Login() {
                 className="linkBtn"
                 style={{ fontSize: 11 }}
                 onClick={async () => {
-                  const url = getAdminApiUrl();
+                  const url = persistAdminUrlFromField();
                   setAdminConnectionStatus("checking");
                   try {
-                    const r = await fetch(`${url}/health`);
+                    const r = await nativeGet(`${url}/health`);
                     setAdminConnectionStatus(r.ok ? "ok" : "fail");
                   } catch (e) {
                     setAdminConnectionStatus("fail");

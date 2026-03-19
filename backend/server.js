@@ -512,6 +512,13 @@ app.use("/api/guards", guardShiftManagementRoutes);
 const guardMessagesRoutes = require("./src/routes/guardMessages.routes");
 app.use("/api/guard/messages", guardMessagesRoutes);
 
+// Guard personal dashboard (guard-ui) — MUST be registered BEFORE app.use("/api/guard", ...).
+// The /api/guard mount matches all /api/guard/* paths; the auth router only has POST /login, so GET /dashboard
+// would otherwise fall through to the catch-all /api handler and return 404.
+const authGuard = require("./src/middleware/authGuard");
+const { getGuardDashboard } = require("./src/controllers/guardDashboard.controller");
+app.get("/api/guard/dashboard", authGuard, getGuardDashboard);
+
 const guardAuthRoutes = require("./src/routes/guardAuth.routes");
 app.use("/api/guard", guardAuthRoutes);
 // Alias so guard-ui can use admin backend for login when REACT_APP_GUARD_API_URL points here

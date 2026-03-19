@@ -1,5 +1,7 @@
 // src/services/guardApi.js
 import { guardClient } from "../api/axiosClients";
+import { getGuardApiUrl } from "../config/apiUrls";
+import { isNativeCapable, nativeGetJson } from "../utils/nativeHttp";
 
 /**
  * Always send guardToken for guard backend calls
@@ -321,9 +323,24 @@ export const markAnnouncementAsRead = (announcementId) =>
 
 /**
  * Get comprehensive dashboard data (Personal Dashboard + Performance + Achievements)
+ * Uses native HTTP on Capacitor so Android/iOS avoid WebView CORS on authenticated GET.
  */
-export const getGuardDashboard = () =>
-  guardClient.get("/api/guard/dashboard");
+export async function getGuardDashboard() {
+  if (isNativeCapable()) {
+    const base = getGuardApiUrl().replace(/\/+$/, "");
+    const token = localStorage.getItem("guardToken") || localStorage.getItem("token") || "";
+    const res = await nativeGetJson(`${base}/api/guard/dashboard`, {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    });
+    if (!res.ok) {
+      const err = new Error(res.data?.message || res.data?.error || res.error || "Failed to load dashboard");
+      err.response = { status: res.status, data: res.data || {} };
+      throw err;
+    }
+    return { data: res.data };
+  }
+  return guardClient.get("/api/guard/dashboard");
+}
 
 /* ================= OVERTIME ================= */
 

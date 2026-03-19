@@ -4,6 +4,21 @@ const STORAGE_ADMIN_API = "adminApiUrl";
 const EMULATOR_GUARD_URL = "http://10.0.2.2:4000";
 const EMULATOR_ADMIN_URL = "http://10.0.2.2:5000";
 
+/** Single Railway (or cloud) backend — guard + admin on same host. */
+const DEFAULT_CLOUD_BACKEND =
+  (typeof process !== "undefined" && process.env?.REACT_APP_DEFAULT_BACKEND_URL) ||
+  "https://admin-dashboard-production-2596.up.railway.app";
+
+/** Android emulator user agents usually contain these; real phones do not. */
+function isProbablyAndroidEmulator() {
+  try {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+    return /sdk_gphone|sdk_google|generic_x86|generic_x86_64|emulator|Android SDK built for x86/i.test(ua);
+  } catch (_) {
+    return false;
+  }
+}
+
 /** True when running inside Android (Capacitor or WebView user-agent + file/capacitor origin). */
 function isAndroidApp() {
   if (typeof window === "undefined") return false;
@@ -59,7 +74,10 @@ function getGuardApiUrl() {
   if (typeof process !== "undefined" && process.env?.REACT_APP_GUARD_API_URL) {
     return String(process.env.REACT_APP_GUARD_API_URL).replace(/\/+$/, "");
   }
-  if (isAndroidApp()) return EMULATOR_GUARD_URL;
+  if (isAndroidApp()) {
+    // Real phone: 10.0.2.2 only works on emulator — default to cloud so login works without extra taps.
+    return isProbablyAndroidEmulator() ? EMULATOR_GUARD_URL : String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
+  }
   return "http://localhost:4000";
 }
 
@@ -76,7 +94,9 @@ function getAdminApiUrl() {
   if (typeof process !== "undefined" && process.env?.REACT_APP_ADMIN_API_URL) {
     return String(process.env.REACT_APP_ADMIN_API_URL).replace(/\/+$/, "");
   }
-  if (isAndroidApp()) return EMULATOR_ADMIN_URL;
+  if (isAndroidApp()) {
+    return isProbablyAndroidEmulator() ? EMULATOR_ADMIN_URL : String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
+  }
   return "http://localhost:5000";
 }
 
@@ -121,6 +141,8 @@ export {
   setGuardApiUrl,
   setAdminApiUrl,
   isAndroidApp,
+  isProbablyAndroidEmulator,
   EMULATOR_GUARD_URL,
   isLanIpUrl,
+  DEFAULT_CLOUD_BACKEND,
 };

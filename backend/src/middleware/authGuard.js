@@ -2,16 +2,9 @@ const jwt = require("jsonwebtoken");
 const { Op } = require("sequelize");
 
 /**
- * Guard Authentication Middleware
- *
- * Verifies JWT tokens for guards (from guard-ui or abe-guard-ai).
- * Token should contain: { guardId, tenant_id, role: "guard" } and optionally email.
- *
- * Resolves the guard from the SAME database (abe_guard) via req.app.locals.models.
- * No second database is used: we only look up Guard by id or email in the existing
- * Sequelize models so messaging participant_id matches the conversation we created.
+ * Guard JWT middleware — sets req.guard before calling next() (async/await, no race with route handlers).
  */
-module.exports = function authGuard(req, res, next) {
+module.exports = async function authGuard(req, res, next) {
   const hdr = req.headers.authorization || "";
   if (!hdr.startsWith("Bearer ")) {
     return res.status(401).json({ message: "Missing Authorization header" });
@@ -32,19 +25,16 @@ module.exports = function authGuard(req, res, next) {
 
   const role = String(decoded.role || "").toLowerCase();
 
-  // Resolve guard from admin-dashboard DB so messaging participant_id matches
-  (async () => {
-    try {
-      const { Guard } = req.app.locals.models || {};
-      if (!Guard) {
-        req.guard = {
-          id: guardIdFromToken,
-          role: role || "guard",
-          tenant_id: decoded.tenant_id || null,
-        };
-        return setAdminAndNext();
-      }
+  try {
+    const { Guard } = req.app.locals.models || {};
 
+    if (!Guard) {
+      req.guard = {
+        id: guardIdFromToken,
+        role: role || "guard",
+        tenant_id: decoded.tenant_id || null,
+      };
+    } else {
       let guard = await Guard.findByPk(guardIdFromToken, {
         attributes: ["id", "tenant_id"],
       });
@@ -70,35 +60,33 @@ module.exports = function authGuard(req, res, next) {
           tenant_id: decoded.tenant_id || null,
         };
       }
+    }
 
-      function setAdminAndNext() {
-        if (decoded.adminId || (role && (role === "admin" || role === "super_admin"))) {
-          req.admin = {
-            id: decoded.adminId || decoded.id,
-            role: role,
-            permissions: Array.isArray(decoded.permissions) ? decoded.permissions : [],
-            tenant_id: decoded.tenant_id || null,
-          };
-        }
-        return next();
-      }
-      return setAdminAndNext();
-    } catch (err) {
-      console.error("authGuard resolve guard:", err?.message || err);
-      req.guard = {
-        id: guardIdFromToken,
-        role: role || "guard",
+    if (decoded.adminId || (role && (role === "admin" || role === "super_admin"))) {
+      req.admin = {
+        id: decoded.adminId || decoded.id,
+        role,
+        permissions: Array.isArray(decoded.permissions) ? decoded.permissions : [],
         tenant_id: decoded.tenant_id || null,
       };
-      if (decoded.adminId || (role && (role === "admin" || role === "super_admin"))) {
-        req.admin = {
-          id: decoded.adminId || decoded.id,
-          role: role,
-          permissions: Array.isArray(decoded.permissions) ? decoded.permissions : [],
-          tenant_id: decoded.tenant_id || null,
-        };
-      }
-      return next();
     }
-  })();
+
+    return next();
+  } catch (err) {
+    console.error("authGuard resolve guard:", err?.message || err);
+    req.guard = {
+      id: guardIdFromToken,
+      role: role || "guard",
+      tenant_id: decoded.tenant_id || null,
+    };
+    if (decoded.adminId || (role && (role === "admin" || role === "super_admin"))) {
+      req.admin = {
+        id: decoded.adminId || decoded.id,
+        role,
+        permissions: Array.isArray(decoded.permissions) ? decoded.permissions : [],
+        tenant_id: decoded.tenant_id || null,
+      };
+    }
+    return next();
+  }
 };

@@ -79,6 +79,19 @@ See `.env.example`. For local device testing you can leave these unset (defaults
 
 ---
 
+## Android: Test connection / login failing (CORS)
+
+On Android, the WebView can block API calls due to CORS. The app uses **Capacitor native HTTP** for the login screen (Test connection, Test Admin, and login) so those calls bypass CORS.
+
+- **Config:** `capacitor.config.json` has `plugins.CapacitorHttp.enabled: true`. Do not remove it.
+- After changing `capacitor.config.json`, run a **full build and sync** so the native project picks up the config:
+  ```bash
+  npm run build:mobile
+  ```
+  Then run the app again from Android Studio.
+
+---
+
 ## Phone app freezing / “App isn’t responding”
 
 On a **physical phone** (or emulator), the app is built with API URLs. If it still uses **localhost**, the phone tries to reach itself, so API calls hang and the app can freeze or show “App isn’t responding”.
