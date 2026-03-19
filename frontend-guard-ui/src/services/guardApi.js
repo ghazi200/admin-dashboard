@@ -23,11 +23,45 @@ export const loginGuard = (email, password) =>
 
 /* ================= SHIFTS ================= */
 
-export const listShifts = () =>
-  guardClient.get("/shifts", { headers: guardAuthHeaders() });
+/**
+ * List shifts for the logged-in guard (OPEN + assigned). Uses admin-dashboard /api/guard/shifts
+ * — do not call GET /shifts (admin JWT only on this backend).
+ */
+export async function listShifts() {
+  if (isNativeCapable()) {
+    const base = getGuardApiUrl().replace(/\/+$/, "");
+    const token = localStorage.getItem("guardToken") || localStorage.getItem("token") || "";
+    const res = await nativeGetJson(`${base}/api/guard/shifts`, {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    });
+    if (!res.ok) {
+      const err = new Error(res.data?.message || res.data?.error || res.error || "Failed to load shifts");
+      err.response = { status: res.status, data: res.data || {} };
+      throw err;
+    }
+    return { data: res.data };
+  }
+  return guardClient.get("/api/guard/shifts", { headers: guardAuthHeaders() });
+}
 
-export const getShiftState = (shiftId) =>
-  guardClient.get(`/shifts/${shiftId}/state`, { headers: guardAuthHeaders() });
+export async function getShiftState(shiftId) {
+  if (isNativeCapable()) {
+    const base = getGuardApiUrl().replace(/\/+$/, "");
+    const token = localStorage.getItem("guardToken") || localStorage.getItem("token") || "";
+    const res = await nativeGetJson(`${base}/api/guard/shifts/${encodeURIComponent(shiftId)}/state`, {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    });
+    if (!res.ok) {
+      const err = new Error(res.data?.message || res.data?.error || res.error || "Failed to load shift state");
+      err.response = { status: res.status, data: res.data || {} };
+      throw err;
+    }
+    return { data: res.data };
+  }
+  return guardClient.get(`/api/guard/shifts/${encodeURIComponent(shiftId)}/state`, {
+    headers: guardAuthHeaders(),
+  });
+}
 
 /**
  * Clock in with geolocation data
@@ -222,23 +256,48 @@ export const getUnreadAnnouncementsCount = () =>
  * @param {number} options.limit - Maximum number of notifications to return (default: 50)
  * @param {boolean} options.unreadOnly - If true, only return unread notifications
  */
-export const getGuardNotifications = (options = {}) => {
+export async function getGuardNotifications(options = {}) {
   const params = new URLSearchParams();
   if (options.limit) params.append("limit", options.limit);
   if (options.unreadOnly) params.append("unreadOnly", "true");
-  
   const queryString = params.toString();
-  const url = `/api/guard/notifications${queryString ? `?${queryString}` : ""}`;
-  
-  // guardClient interceptor already adds token
-  return guardClient.get(url);
-};
+  const path = `/api/guard/notifications${queryString ? `?${queryString}` : ""}`;
+
+  if (isNativeCapable()) {
+    const base = getGuardApiUrl().replace(/\/+$/, "");
+    const token = localStorage.getItem("guardToken") || localStorage.getItem("token") || "";
+    const res = await nativeGetJson(`${base}${path}`, {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    });
+    if (!res.ok) {
+      const err = new Error(res.data?.message || res.error || "Notifications failed");
+      err.response = { status: res.status, data: res.data || {} };
+      throw err;
+    }
+    return { data: res.data };
+  }
+  return guardClient.get(path);
+}
 
 /**
  * Get count of unread notifications
  */
-export const getUnreadNotificationsCount = () =>
-  guardClient.get("/api/guard/notifications/unread-count");
+export async function getUnreadNotificationsCount() {
+  if (isNativeCapable()) {
+    const base = getGuardApiUrl().replace(/\/+$/, "");
+    const token = localStorage.getItem("guardToken") || localStorage.getItem("token") || "";
+    const res = await nativeGetJson(`${base}/api/guard/notifications/unread-count`, {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    });
+    if (!res.ok) {
+      const err = new Error(res.data?.message || res.error || "Unread count failed");
+      err.response = { status: res.status, data: res.data || {} };
+      throw err;
+    }
+    return { data: res.data };
+  }
+  return guardClient.get("/api/guard/notifications/unread-count");
+}
 
 /**
  * Mark a notification as read
@@ -287,13 +346,37 @@ export const getTransitAlert = (shiftId, origin) =>
  * @param {string} shiftId - Shift ID
  * @param {Object} options - { origin, includeTransit }
  */
-export const getCombinedAlert = (shiftId, options = {}) =>
-  guardClient.get(`/api/guard/alerts/combined/${shiftId}`, {
+export async function getCombinedAlert(shiftId, options = {}) {
+  const params = {
+    origin: options.origin,
+    includeTransit: options.includeTransit !== false,
+  };
+  const qs = new URLSearchParams();
+  if (params.origin != null && params.origin !== "") qs.set("origin", String(params.origin));
+  if (params.includeTransit !== false) qs.set("includeTransit", "true");
+  const q = qs.toString();
+  const path = `/api/guard/alerts/combined/${encodeURIComponent(shiftId)}${q ? `?${q}` : ""}`;
+
+  if (isNativeCapable()) {
+    const base = getGuardApiUrl().replace(/\/+$/, "");
+    const token = localStorage.getItem("guardToken") || localStorage.getItem("token") || "";
+    const res = await nativeGetJson(`${base}${path}`, {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    });
+    if (!res.ok) {
+      const err = new Error(res.data?.message || res.error || "Alerts request failed");
+      err.response = { status: res.status, data: res.data || {} };
+      throw err;
+    }
+    return { data: res.data };
+  }
+  return guardClient.get(`/api/guard/alerts/combined/${encodeURIComponent(shiftId)}`, {
     params: {
       origin: options.origin,
       includeTransit: options.includeTransit !== false,
     },
   });
+}
 
 /**
  * Get alerts for all upcoming shifts

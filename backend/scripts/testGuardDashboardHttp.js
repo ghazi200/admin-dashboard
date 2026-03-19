@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Integration check: POST /auth/login then GET /api/guard/dashboard
+ * Integration check: guard login + dashboard + shifts + notifications + alerts stubs
  *
  * Usage:
  *   cd backend && node scripts/testGuardDashboardHttp.js
@@ -52,6 +52,47 @@ async function main() {
   console.log("Dashboard OK — keys:", keys.join(", "));
   console.log("  upcomingShifts:", Array.isArray(d.upcomingShifts) ? d.upcomingShifts.length : "?");
   console.log("  performance.overallScore:", d.performance?.overallScore);
+
+  const auth = { headers: { Authorization: `Bearer ${token}` }, validateStatus: () => true, timeout: 60000 };
+
+  const shiftsRes = await axios.get(`${BASE}/api/guard/shifts`, auth);
+  if (shiftsRes.status !== 200 || !Array.isArray(shiftsRes.data)) {
+    console.error("GET /api/guard/shifts failed:", shiftsRes.status, shiftsRes.data);
+    process.exit(1);
+  }
+  console.log("Shifts OK — count:", shiftsRes.data.length);
+
+  if (shiftsRes.data.length > 0) {
+    const sid = shiftsRes.data[0].id;
+    const stateRes = await axios.get(`${BASE}/api/guard/shifts/${sid}/state`, auth);
+    if (stateRes.status !== 200 || stateRes.data?.ok !== true) {
+      console.error("GET /api/guard/shifts/:id/state failed:", stateRes.status, stateRes.data);
+      process.exit(1);
+    }
+    console.log("Shift state OK — status:", stateRes.data?.status);
+  }
+
+  const notifRes = await axios.get(`${BASE}/api/guard/notifications`, auth);
+  if (notifRes.status !== 200) {
+    console.error("GET /api/guard/notifications failed:", notifRes.status, notifRes.data);
+    process.exit(1);
+  }
+  const unreadRes = await axios.get(`${BASE}/api/guard/notifications/unread-count`, auth);
+  if (unreadRes.status !== 200) {
+    console.error("GET /api/guard/notifications/unread-count failed:", unreadRes.status, unreadRes.data);
+    process.exit(1);
+  }
+  console.log("Notifications OK — unread:", unreadRes.data?.unreadCount);
+
+  const alertShiftId =
+    shiftsRes.data.length > 0 ? shiftsRes.data[0].id : "00000000-0000-4000-8000-000000000001";
+  const alertRes = await axios.get(`${BASE}/api/guard/alerts/combined/${alertShiftId}`, auth);
+  if (alertRes.status !== 200) {
+    console.error("GET /api/guard/alerts/combined failed:", alertRes.status, alertRes.data);
+    process.exit(1);
+  }
+  console.log("Alerts stub OK");
+
   process.exit(0);
 }
 

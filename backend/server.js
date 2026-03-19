@@ -517,7 +517,19 @@ app.use("/api/guard/messages", guardMessagesRoutes);
 // would otherwise fall through to the catch-all /api handler and return 404.
 const authGuard = require("./src/middleware/authGuard");
 const { getGuardDashboard } = require("./src/controllers/guardDashboard.controller");
+const guardShiftsController = require("./src/controllers/guardShifts.controller");
+const guardUiStubs = require("./src/controllers/guardUiStubs.controller");
+
 app.get("/api/guard/dashboard", authGuard, getGuardDashboard);
+// Guard Home: shifts + state (never use GET /shifts — that is admin JWT only on this server)
+app.get("/api/guard/shifts/:shiftId/state", authGuard, guardShiftsController.getGuardShiftState);
+app.get("/api/guard/shifts", authGuard, guardShiftsController.listGuardShifts);
+// Notifications / alerts stubs (guard JWT) — avoids hitting admin-only routes or 404
+app.get("/api/guard/notifications/unread-count", authGuard, guardUiStubs.guardNotificationsUnreadCount);
+app.get("/api/guard/notifications", authGuard, guardUiStubs.listGuardNotifications);
+app.post("/api/guard/notifications/mark-all-read", authGuard, guardUiStubs.markAllGuardNotificationsRead);
+app.post("/api/guard/notifications/:id/read", authGuard, guardUiStubs.markGuardNotificationRead);
+app.get("/api/guard/alerts/combined/:shiftId", authGuard, guardUiStubs.getCombinedAlerts);
 
 const guardAuthRoutes = require("./src/routes/guardAuth.routes");
 app.use("/api/guard", guardAuthRoutes);
