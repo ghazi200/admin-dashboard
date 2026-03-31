@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-export default function Clock() {
+export default function Clock({ compact = false }) {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -35,8 +35,8 @@ export default function Clock() {
         display: "flex",
         flexDirection: "column",
         alignItems: "flex-end",
-        marginRight: 16,
-        padding: "8px 12px",
+        marginRight: compact ? 8 : 16,
+        padding: compact ? "4px 8px" : "8px 12px",
         background: "rgba(255, 255, 255, 0.1)",
         borderRadius: 8,
         border: "1px solid rgba(255, 255, 255, 0.2)",
@@ -44,24 +44,26 @@ export default function Clock() {
     >
       <div
         style={{
-          fontSize: 18,
+          fontSize: compact ? 14 : 18,
           fontWeight: 600,
           color: "#fff",
           fontFamily: "monospace",
-          letterSpacing: 1,
+          letterSpacing: compact ? 0.5 : 1,
         }}
       >
         {formatTime(time)}
       </div>
-      <div
-        style={{
-          fontSize: 11,
-          color: "rgba(255, 255, 255, 0.8)",
-          marginTop: 2,
-        }}
-      >
-        {formatDate(time)}
-      </div>
+      {!compact && (
+        <div
+          style={{
+            fontSize: 11,
+            color: "rgba(255, 255, 255, 0.8)",
+            marginTop: 2,
+          }}
+        >
+          {formatDate(time)}
+        </div>
+      )}
     </div>
   );
 }

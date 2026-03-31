@@ -12,8 +12,10 @@ import {
   EMULATOR_GUARD_URL,
   isLanIpUrl,
   DEFAULT_CLOUD_BACKEND,
+  rewriteLocalhostForAndroidEmulator,
 } from "../config/apiUrls";
-import { nativeGet, nativePost, isNativeCapable } from "../utils/nativeHttp";
+import { nativePost, isNativeCapable, probeBackendBase } from "../utils/nativeHttp";
+import { appHardNavigate } from "../utils/appNavigation";
 import "./Login.css";
 
 const WHY_CHANGE_LOCATION =
@@ -39,17 +41,32 @@ export default function Login() {
 
   /** What you see in Server URL is what we use — avoids testing stale localStorage. */
   const persistGuardUrlFromField = () => {
-    const u = serverUrl.trim().replace(/\/+$/, "");
+    let u = serverUrl.trim().replace(/\/+$/, "");
     if (u.startsWith("http://") || u.startsWith("https://")) {
+      const rw = rewriteLocalhostForAndroidEmulator(u);
+      if (rw !== u) {
+        setServerUrl(rw);
+        u = rw;
+      }
       setGuardApiUrl(u);
+      // Single Railway / one Node host: schedule & messages need the same origin. Legacy split stack uses :4000 for guard only.
+      if (!/:4000(\/|$)/.test(u)) {
+        setAdminApiUrl(u);
+        setAdminApiUrlState(u);
+      }
       return u;
     }
     return getGuardApiUrl();
   };
 
   const persistAdminUrlFromField = () => {
-    const u = adminApiUrl.trim().replace(/\/+$/, "");
+    let u = adminApiUrl.trim().replace(/\/+$/, "");
     if (u.startsWith("http://") || u.startsWith("https://")) {
+      const rw = rewriteLocalhostForAndroidEmulator(u);
+      if (rw !== u) {
+        setAdminApiUrlState(rw);
+        u = rw;
+      }
       setAdminApiUrl(u);
       return u;
     }
@@ -113,7 +130,7 @@ export default function Login() {
         localStorage.setItem("guardToken", t);
 
         loginWithToken(t);
-        window.location.href = "/";
+        appHardNavigate("/");
         return;
       }
 
@@ -147,7 +164,7 @@ export default function Login() {
       localStorage.setItem("guardToken", token);
 
       loginWithToken(token, guardUser);
-      window.location.href = "/";
+      appHardNavigate("/");
     } catch (e2) {
       console.error("Login error:", e2);
       const isNetworkError =
@@ -182,7 +199,7 @@ export default function Login() {
           if (retryToken) {
             localStorage.setItem("guardToken", retryToken);
             loginWithToken(retryToken, retryUser);
-            window.location.href = "/";
+            appHardNavigate("/");
             return;
           }
         } catch (_) {
@@ -281,7 +298,7 @@ export default function Login() {
                 } catch (_) {}
                 if (isAndroidApp()) {
                   setServerUrl(EMULATOR_GUARD_URL);
-                  setAdminApiUrlState("http://10.0.2.2:5000");
+                  setAdminApiUrlState(EMULATOR_GUARD_URL);
                 } else {
                   setServerUrl("http://localhost:4000");
                   setAdminApiUrlState("http://localhost:5000");
@@ -297,21 +314,18 @@ export default function Login() {
             </span>
           </div>
 
-          {/* Editable Server URL – on phone set to http://YOUR_MAC_IP:4000 (same Wi‑Fi), then Test connection */}
+          {/* Editable Server URL – unified backend default port 5000; legacy split guard-only may use 4000 */}
           <div className="field" style={{ marginBottom: 8 }}>
-            <label className="fieldLabel">Server URL (emulator: 10.0.2.2:4000; phone: Mac IP — update if you changed Wi‑Fi)</label>
+            <label className="fieldLabel">
+              Server URL (emulator: {EMULATOR_GUARD_URL.replace(/^https?:\/\//, "")}; phone: your Mac/PC LAN IP — update after changing Wi‑Fi)
+            </label>
             <div className="fieldControl">
               <input
                 className="fieldInput"
                 type="url"
                 value={serverUrl}
                 onChange={(e) => setServerUrl(e.target.value)}
-                onBlur={() => {
-                  const u = serverUrl.trim().replace(/\/+$/, "");
-                  if (u && (u.startsWith("http://") || u.startsWith("https://"))) {
-                    setGuardApiUrl(u);
-                  }
-                }}
+                onBlur={() => persistGuardUrlFromField()}
                 placeholder="http://localhost:4000"
                 style={{ fontSize: 12 }}
               />
@@ -321,18 +335,13 @@ export default function Login() {
                 type="button"
                 className="linkBtn"
                 style={{ fontSize: 11 }}
-                onClick={() => {
-                  const u = serverUrl.trim().replace(/\/+$/, "");
-                  if (u && (u.startsWith("http://") || u.startsWith("https://"))) {
-                    setGuardApiUrl(u);
-                  }
-                }}
+                onClick={() => persistGuardUrlFromField()}
               >
                 Save URL
               </button>
               <span style={{ fontSize: 11, color: "var(--muted, #888)" }}>Emulator:</span>
               <code style={{ fontSize: 11, padding: "2px 6px", background: "rgba(255,255,255,0.08)", borderRadius: 6 }}>
-                http://10.0.2.2:4000
+                {EMULATOR_GUARD_URL}
               </code>
               <button
                 type="button"
@@ -341,9 +350,11 @@ export default function Login() {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  const emulatorUrl = "http://10.0.2.2:4000";
+                  const emulatorUrl = EMULATOR_GUARD_URL;
                   setServerUrl(emulatorUrl);
                   setGuardApiUrl(emulatorUrl);
+                  setAdminApiUrlState(emulatorUrl);
+                  setAdminApiUrl(emulatorUrl);
                 }}
               >
                 Use emulator URL
@@ -371,9 +382,8 @@ export default function Login() {
                 className="linkBtn"
                 style={{ fontSize: 11 }}
                 onClick={() => {
-                  const emulatorUrl = "http://10.0.2.2:4000";
                   if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(emulatorUrl).catch(() => {});
+                    navigator.clipboard.writeText(EMULATOR_GUARD_URL).catch(() => {});
                   }
                 }}
               >
@@ -390,34 +400,40 @@ export default function Login() {
               setConnectionStatus("checking");
               setConnectionHint("");
               try {
-                let r = await nativeGet(`${url}/health`);
+                let r = await probeBackendBase(url);
                 if (!r.ok && isAndroidApp() && url !== EMULATOR_GUARD_URL && isLanIpUrl(url)) {
-                  const fallback = await nativeGet(`${EMULATOR_GUARD_URL}/health`);
+                  const fallback = await probeBackendBase(EMULATOR_GUARD_URL);
                   if (fallback.ok) {
                     setGuardApiUrl(EMULATOR_GUARD_URL);
+                    setAdminApiUrl(EMULATOR_GUARD_URL);
                     setServerUrl(EMULATOR_GUARD_URL);
+                    setAdminApiUrlState(EMULATOR_GUARD_URL);
                     setConnectionStatus("ok");
+                    setConnectionHint(`Switched to emulator URL (${EMULATOR_GUARD_URL}).`);
                     return;
                   }
                 }
                 setConnectionStatus(r.ok ? "ok" : "fail");
                 if (!r.ok) {
-                  setConnectionHint(
-                    `Could not reach ${url}/health${r.error ? ` — ${r.error}` : ""}. Tap "Use Railway backend" or fix Server URL, then Save URL.`
-                  );
+                  const parts = [
+                    `Tried ${r.lastUrl || `${url}/health`}${r.alsoTried ? ` and ${r.alsoTried}` : ""}.`,
+                    r.error || (r.status ? `status ${r.status}` : "No response"),
+                  ];
+                  if (isAndroidApp() && !isProbablyAndroidEmulator() && url.includes("10.0.2.2")) {
+                    parts.push(
+                      "10.0.2.2 only works on the emulator. On a real phone use http://YOUR_PC_IP:5000 (same Wi‑Fi)."
+                    );
+                  } else if (isAndroidApp() && isProbablyAndroidEmulator()) {
+                    parts.push(
+                      "Emulator: start backend with npm start (port 5000), bind 0.0.0.0. On Mac, allow incoming connections for Node if the firewall asks."
+                    );
+                  } else if (isLanIpUrl(url)) {
+                    parts.push("After changing Wi‑Fi, your PC’s IP changed — update Server URL to the new IP.");
+                  }
+                  parts.push('Or tap "Use Railway backend" if you use cloud.');
+                  setConnectionHint(parts.join(" "));
                 }
               } catch (e) {
-                if (isAndroidApp() && getGuardApiUrl() !== EMULATOR_GUARD_URL && isLanIpUrl(getGuardApiUrl())) {
-                  try {
-                    const fallback = await nativeGet(`${EMULATOR_GUARD_URL}/health`);
-                    if (fallback.ok) {
-                      setGuardApiUrl(EMULATOR_GUARD_URL);
-                      setServerUrl(EMULATOR_GUARD_URL);
-                      setConnectionStatus("ok");
-                      return;
-                    }
-                  } catch (_) {}
-                }
                 setConnectionStatus("fail");
                 setConnectionHint(`Error: ${e?.message || e}. Tried ${url}/health`);
               }
@@ -431,7 +447,10 @@ export default function Login() {
 
           {/* Admin API URL – required for shift swap & availability on emulator/phone */}
           <div className="field" style={{ marginBottom: 8 }}>
-            <label className="fieldLabel">Admin API URL (shift swap &amp; availability — emulator: 10.0.2.2:5000)</label>
+            <label className="fieldLabel">
+              Admin API URL (same host as Server URL on Railway / unified local — emulator:{" "}
+              {EMULATOR_GUARD_URL.replace(/^https?:\/\//, "")})
+            </label>
             <div className="fieldControl">
               <input
                 className="fieldInput"
@@ -469,12 +488,12 @@ export default function Login() {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  const u = "http://10.0.2.2:5000";
+                  const u = EMULATOR_GUARD_URL;
                   setAdminApiUrlState(u);
                   setAdminApiUrl(u);
                 }}
               >
-                Use emulator (10.0.2.2:5000)
+                Use emulator ({EMULATOR_GUARD_URL.replace(/^https?:\/\//, "")})
               </button>
               <button
                 type="button"
@@ -484,7 +503,7 @@ export default function Login() {
                   const url = persistAdminUrlFromField();
                   setAdminConnectionStatus("checking");
                   try {
-                    const r = await nativeGet(`${url}/health`);
+                    const r = await probeBackendBase(url);
                     setAdminConnectionStatus(r.ok ? "ok" : "fail");
                   } catch (e) {
                     setAdminConnectionStatus("fail");

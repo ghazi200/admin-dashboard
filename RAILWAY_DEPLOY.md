@@ -21,9 +21,7 @@ Deploy the **Admin backend** and **Guard backend** as two Railway services. Rail
    ```text
    postgresql://postgres:PASSWORD@HOST:PORT/railway
    ```
-   The app expects a database named **`abe_guard`**. If your URL ends with `/railway`, either:
-   - In Railway’s PostgreSQL data tab (or with `psql`), create a database named `abe_guard`, then set `DATABASE_URL` to the same URL but with `/abe_guard` at the end (e.g. `.../railway` → `.../abe_guard`), or
-   - Run your migrations against the default DB and use that name in `DATABASE_URL`.
+   The backend allows database names: **`abe_guard`**, **`abe-guard`**, **`railway`**, and **`postgres`** (Railway’s default). If your URL ends with something else (e.g. a custom name), either point `DATABASE_URL` at an allowed database name or set **`EXTRA_ALLOWED_DB_NAMES=your_db_name`** on the service. Emergency bypass: **`SKIP_DB_NAME_CHECK=true`** (not recommended long-term).
 
 ---
 

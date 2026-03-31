@@ -1,9 +1,63 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import NavBar from "../components/NavBar";
-import { clockIn, clockOut, breakStart, breakEnd } from "../services/guardApi";
+import {
+  clockIn,
+  clockOut,
+  breakStart,
+  breakEnd,
+  listShifts,
+  formatGuardApiError,
+} from "../services/guardApi";
+import { GEO_GET_CURRENT_RELAXED } from "../utils/geolocationOptions";
+
+function formatShiftDate(d) {
+  if (d == null || d === "") return "?";
+  if (typeof d === "string") return d.length >= 10 ? d.slice(0, 10) : d;
+  try {
+    const t = new Date(d);
+    if (!Number.isNaN(t.getTime())) return t.toISOString().slice(0, 10);
+  } catch (_) {}
+  return String(d).slice(0, 10);
+}
 
 export default function TimeClock() {
   const [shiftId, setShiftId] = useState("");
+  /** When false and shiftId came from dropdown, UUID is read-only so it can’t be mistyped in the text field. */
+  const [uuidEditUnlocked, setUuidEditUnlocked] = useState(false);
+  const [myShifts, setMyShifts] = useState([]);
+  const [shiftsLoading, setShiftsLoading] = useState(false);
+  const [shiftsHint, setShiftsHint] = useState("");
+
+  const idFromList = Boolean(shiftId && myShifts.some((s) => s.id === shiftId));
+  const lockUuid = idFromList && !uuidEditUnlocked;
+
+  const loadMyShifts = useCallback(async () => {
+    const token = localStorage.getItem("guardToken") || localStorage.getItem("token");
+    if (!token) {
+      setShiftsHint("Log in first, then refresh this list.");
+      setMyShifts([]);
+      return;
+    }
+    setShiftsLoading(true);
+    setShiftsHint("");
+    try {
+      const res = await listShifts();
+      const rows = Array.isArray(res?.data) ? res.data : [];
+      setMyShifts(rows);
+      if (rows.length === 0) {
+        setShiftsHint("No shifts returned — check Server URL matches the DB where shifts were created.");
+      }
+    } catch (e) {
+      setMyShifts([]);
+      setShiftsHint(e?.response?.data?.message || e?.message || "Could not load shifts");
+    } finally {
+      setShiftsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMyShifts();
+  }, [loadMyShifts]);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
   const [locationStatus, setLocationStatus] = useState("");
@@ -64,11 +118,7 @@ export default function TimeClock() {
       setLocationStatus("Getting your location...");
       setLocationError("");
 
-      const options = {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0, // Don't use cached location
-      };
+      const options = { ...GEO_GET_CURRENT_RELAXED };
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -93,7 +143,8 @@ export default function TimeClock() {
               errorMessage = "Location information unavailable.";
               break;
             case error.TIMEOUT:
-              errorMessage = "Location request timed out. Please try again.";
+              errorMessage =
+                "Location timed out (common on emulators or indoors). You can still clock in without GPS — choose OK on the next prompt.";
               break;
             default:
               errorMessage = "An unknown error occurred while getting location.";
@@ -158,8 +209,7 @@ export default function TimeClock() {
       setCurrentLocation(null);
     } catch (e) {
       setLocationStatus("");
-      const errorMessage = e?.response?.data?.message || e.message || "Request failed";
-      setErr(errorMessage);
+      setErr(formatGuardApiError(e));
 
       // Check if it's a geofencing error
       if (e?.response?.data?.geofence) {
@@ -181,7 +231,7 @@ export default function TimeClock() {
       const res = await fn(shiftId.trim());
       setMsg(JSON.stringify(res?.data || { ok: true }));
     } catch (e) {
-      setErr(e?.response?.data?.message || e.message || "Request failed");
+      setErr(formatGuardApiError(e));
     }
   };
 
@@ -193,8 +243,75 @@ export default function TimeClock() {
           <h2>Timeclock</h2>
 
           <div className="field">
-            <label>Shift ID (temporary)</label>
-            <input value={shiftId} onChange={(e) => setShiftId(e.target.value)} placeholder="Paste shift UUID" />
+            <label>Your shifts (from API — avoids typos)</label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 8 }}>
+              <select
+                value={myShifts.some((s) => s.id === shiftId) ? shiftId : ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setShiftId(v);
+                  setUuidEditUnlocked(false);
+                }}
+                disabled={shiftsLoading || myShifts.length === 0}
+                style={{ flex: 1, minWidth: 200, padding: 10, borderRadius: 8 }}
+              >
+                <option value="">{shiftsLoading ? "Loading…" : myShifts.length ? "— Select a shift —" : "— No shifts —"}</option>
+                {myShifts.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {formatShiftDate(s.shift_date) +
+                      " · " +
+                      (s.shift_start || "") +
+                      "–" +
+                      (s.shift_end || "") +
+                      " · " +
+                      String(s.location || "").slice(0, 40)}
+                  </option>
+                ))}
+              </select>
+              <button type="button" className="btn" onClick={loadMyShifts} disabled={shiftsLoading}>
+                {shiftsLoading ? "…" : "Refresh"}
+              </button>
+            </div>
+            {shiftsHint ? <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{shiftsHint}</div> : null}
+            <label>Shift ID used for Clock In / Out</label>
+            {lockUuid ? (
+              <div style={{ marginTop: 6 }}>
+                <div
+                  style={{
+                    fontFamily: "ui-monospace, monospace",
+                    fontSize: 12,
+                    padding: "10px 12px",
+                    background: "rgba(0,0,0,0.06)",
+                    borderRadius: 8,
+                    wordBreak: "break-all",
+                  }}
+                >
+                  {shiftId}
+                </div>
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ marginTop: 8 }}
+                  onClick={() => setUuidEditUnlocked(true)}
+                >
+                  Edit UUID manually (not recommended)
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  value={shiftId}
+                  onChange={(e) => setShiftId(e.target.value)}
+                  placeholder="Paste full UUID only if you have no shifts in the list"
+                  style={{ marginTop: 6 }}
+                />
+                {idFromList ? (
+                  <button type="button" className="btn" style={{ marginTop: 8 }} onClick={() => setUuidEditUnlocked(false)}>
+                    Lock to list selection again
+                  </button>
+                ) : null}
+              </>
+            )}
           </div>
 
           <div className="row">

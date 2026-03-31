@@ -8,6 +8,26 @@ const logger = require("../../logger");
 let redisClient = null;
 const CHANNEL = "realtime:events";
 
+/** Redis error events can fire many times per minute (reconnect loops); throttle logs. */
+const REDIS_ERROR_LOG_THROTTLE_MS = 60000;
+let redisErrorLastWarnAt = 0;
+let redisErrorSuppressed = 0;
+
+function logRedisPublisherError(message) {
+  const now = Date.now();
+  if (now - redisErrorLastWarnAt < REDIS_ERROR_LOG_THROTTLE_MS) {
+    redisErrorSuppressed += 1;
+    return;
+  }
+  const suppressed = redisErrorSuppressed;
+  redisErrorSuppressed = 0;
+  redisErrorLastWarnAt = now;
+  logger.warn(
+    suppressed > 0 ? { err: message, suppressedSinceLastLog: suppressed } : { err: message },
+    "Redis realtime publisher error"
+  );
+}
+
 const EVENTS_FOR_OPEVENT = [
   "incidents:new",
   "incidents:updated",
@@ -31,7 +51,7 @@ async function getPublisher() {
   try {
     const { createClient } = require("redis");
     redisClient = createClient({ url });
-    redisClient.on("error", (err) => logger.warn({ err: err.message }, "Redis realtime publisher error"));
+    redisClient.on("error", (err) => logRedisPublisherError(err.message));
     await redisClient.connect();
     return redisClient;
   } catch (e) {

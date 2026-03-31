@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getGuardApiUrl, getAdminApiUrl } from "../config/apiUrls";
+import { appHardNavigate, isAppOnLoginRoute } from "../utils/appNavigation";
 
 /**
  * Guard backend (abe-guard-ai). baseURL is set per-request so runtime
@@ -46,8 +47,8 @@ guardClient.interceptors.response.use(
         localStorage.removeItem("guardDevToken");
 
         // Redirect to login if not already there
-        if (!window.location.pathname.includes("/login")) {
-          window.location.href = "/login";
+        if (!isAppOnLoginRoute()) {
+          appHardNavigate("/login");
         }
       }
     }
@@ -96,8 +97,8 @@ messagesClient.interceptors.response.use(
       if (/jwt expired|invalid token|invalid signature/i.test(msg)) {
         localStorage.removeItem("guardToken");
         localStorage.removeItem("guardUser");
-        if (!window.location.pathname.includes("/login")) {
-          window.location.href = "/login";
+        if (!isAppOnLoginRoute()) {
+          appHardNavigate("/login");
         }
       }
     }

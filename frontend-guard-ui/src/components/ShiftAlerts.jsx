@@ -6,6 +6,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getCombinedAlert } from "../services/guardApi";
+import { GEO_GET_CURRENT_RELAXED } from "../utils/geolocationOptions";
 import "./ShiftAlerts.css";
 
 export default function ShiftAlerts({ shiftId, shift, origin = null }) {
@@ -24,39 +25,13 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
   useEffect(() => {
     if (!shiftId) return;
 
-    const loadAlerts = async () => {
+    const loadAlerts = () => {
       try {
         setLoading(true);
         setError(null);
-
-        // Try to get origin from browser geolocation if not provided
-        let finalOrigin = origin;
-        if (!finalOrigin && navigator.geolocation) {
-          console.log("📍 Requesting geolocation for traffic/transit alerts...");
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              finalOrigin = `${position.coords.latitude},${position.coords.longitude}`;
-              console.log("✅ Geolocation obtained:", finalOrigin);
-              fetchAlerts(finalOrigin);
-            },
-            (error) => {
-              // Geolocation failed - log the error
-              console.warn("⚠️ Geolocation failed:", error.message);
-              console.warn("   Traffic and transit alerts require location permission");
-              console.warn("   Weather alerts will still work");
-              // Show manual input option
-              setShowManualInput(true);
-              // Try without origin (weather only)
-              fetchAlerts(null);
-            },
-            {
-              timeout: 10000, // 10 second timeout
-              enableHighAccuracy: false, // Faster, less accurate is fine
-            }
-          );
-        } else {
-          fetchAlerts(finalOrigin);
-        }
+        // Do not auto-request geolocation on load — it prompts as soon as Home opens and users
+        // confuse it with clock-in. Weather loads without origin; traffic/transit use manual/GPS buttons.
+        fetchAlerts(origin || null);
       } catch (err) {
         console.error("Failed to load alerts:", err);
         setError(err.message);
@@ -284,7 +259,8 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
                         (err) => {
                           console.warn("Geolocation still denied:", err);
                           setShowManualInput(true);
-                        }
+                        },
+                        GEO_GET_CURRENT_RELAXED
                       );
                     }
                   }}
@@ -331,14 +307,13 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
                         },
                         (err) => {
                           console.warn("❌ Geolocation denied:", err);
-                          setError(`Location permission denied: ${err.message}. Please enter address manually.`);
+                          setError(
+                            "Location is optional. Enter an address below for traffic & transit, or dismiss this banner."
+                          );
                           setShowManualInput(true);
                           setLoading(false);
                         },
-                        {
-                          timeout: 10000,
-                          enableHighAccuracy: false,
-                        }
+                        GEO_GET_CURRENT_RELAXED
                       );
                     } else {
                       setError("Geolocation not supported in this browser. Please enter address manually.");

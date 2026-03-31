@@ -1,13 +1,24 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
+import { appHardNavigate } from "../utils/appNavigation";
 
 const AuthContext = createContext(null);
 
+function readGuardUser() {
+  try {
+    const raw = localStorage.getItem("guardUser");
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    try {
+      localStorage.removeItem("guardUser");
+    } catch (_) {}
+    return null;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("guardToken"));
-  const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem("guardUser");
-    return raw ? JSON.parse(raw) : null;
-  });
+  const [user, setUser] = useState(() => readGuardUser());
 
   const loginWithToken = (jwt, userObj = null) => {
     localStorage.setItem("guardToken", jwt);
@@ -31,7 +42,7 @@ export function AuthProvider({ children }) {
   setToken?.(null);
   setUser?.(null);
 
-  window.location.href = "/login";
+  appHardNavigate("/login");
 };
 
   const value = useMemo(

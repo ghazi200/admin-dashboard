@@ -127,10 +127,20 @@ app.get("/api/cron/shift-reminders", async (req, res) => {
 });
 
 // Correct database for all features (admin, guards, messaging)
-const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard", "railway"];
+// Railway Postgres often uses database name "postgres" — excluding it caused deploy crash (process.exit).
+const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard", "railway", "postgres"];
 function isAllowedDb(name) {
   if (!name) return false;
-  return REQUIRED_DB_NAMES.includes(name) || name.toLowerCase() === "railway";
+  if (String(process.env.SKIP_DB_NAME_CHECK).toLowerCase() === "true") return true;
+  const n = String(name).trim();
+  const lower = n.toLowerCase();
+  if (REQUIRED_DB_NAMES.includes(n) || lower === "railway" || lower === "postgres") return true;
+  const extra = process.env.EXTRA_ALLOWED_DB_NAMES;
+  if (extra) {
+    const allowed = extra.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+    if (allowed.includes(lower)) return true;
+  }
+  return false;
 }
 
 // Log which DB config points to (from DATABASE_URL or DB_NAME) — only if DEBUG_STARTUP
@@ -140,7 +150,7 @@ if (process.env.DEBUG_STARTUP) {
 }
 
 // ✅ Middleware FIRST
-;const cors = require("cors");
+const cors = require("cors");
 
 // CORS: built-in + optional env (comma-separated: CORS_ORIGINS or GUARD_APP_URL, ADMIN_APP_URL)
 const corsOrigins = [
@@ -187,11 +197,30 @@ app.use(
 
 app.options("*", cors());
 
+function sendTimeClockReady(req, res) {
+  res.json({
+    ok: true,
+    service: "admin-dashboard-backend",
+    check: "time-clock-ready",
+    postClockIn: "/api/guard/shifts/:shiftId/clock-in",
+    postClockInLegacy: "/shifts/:shiftId/clock-in",
+    note: "If you still get 404 on clock-in after seeing this JSON, redeploy failed or wrong service.",
+  });
+}
+
 // After CORS: WebView/Capacitor "Test connection" and cross-origin reads work
 app.get("/", (req, res) =>
-  res.json({ service: "admin-dashboard-backend", status: "OK", health: "/health", ready: "/health/ready" })
+  res.json({
+    service: "admin-dashboard-backend",
+    status: "OK",
+    health: "/health",
+    ready: "/health/ready",
+    timeClockReady: "/time-clock-ready",
+  })
 );
 app.get("/health", (req, res) => res.json({ status: "OK" }));
+/** Root-level check (no /api prefix) — use this URL in browser if /api/guard/time-clock-ready 404s on an old proxy */
+app.get("/time-clock-ready", sendTimeClockReady);
 
 // Request ID for structured logs (attach to req and to logger child)
 app.use((req, res, next) => {
@@ -421,7 +450,14 @@ app.use("/api/admin/shifts", adminShiftsRoutes);
 
 const analyticsRoutes = require("./src/routes/analytics.routes");
 app.use("/api/admin/analytics", analyticsRoutes);
-// Also support /shifts path for compatibility (if frontend calls it directly)
+// Guard punch routes MUST be registered before app.use("/shifts", ...) or POST /shifts/:id/clock-in never reaches them.
+const authGuardPunch = require("./src/middleware/authGuard");
+const guardTimePunchCtrl = require("./src/controllers/guardTimePunch.controller");
+app.post("/shifts/:shiftId/clock-in", authGuardPunch, guardTimePunchCtrl.clockIn);
+app.post("/shifts/:shiftId/clock-out", authGuardPunch, guardTimePunchCtrl.clockOut);
+app.post("/shifts/:shiftId/break-start", authGuardPunch, guardTimePunchCtrl.breakStart);
+app.post("/shifts/:shiftId/break-end", authGuardPunch, guardTimePunchCtrl.breakEnd);
+// Also support /shifts path for compatibility (admin JWT list/get/update on same prefix)
 app.use("/shifts", adminShiftsRoutes);
 
 const adminNotificationsRoutes = require("./src/routes/adminNotifications.routes");
@@ -518,12 +554,25 @@ app.use("/api/guard/messages", guardMessagesRoutes);
 const authGuard = require("./src/middleware/authGuard");
 const { getGuardDashboard } = require("./src/controllers/guardDashboard.controller");
 const guardShiftsController = require("./src/controllers/guardShifts.controller");
+const guardTimePunchController = require("./src/controllers/guardTimePunch.controller");
 const guardUiStubs = require("./src/controllers/guardUiStubs.controller");
+const adminScheduleController = require("./src/controllers/adminSchedule.controller");
 
 app.get("/api/guard/dashboard", authGuard, getGuardDashboard);
+// Weekly building schedule (same payload as GET /api/admin/schedule; guard JWT + tenant)
+app.get("/api/guard/schedule", authGuard, adminScheduleController.getSchedule);
+// Legacy guard-ui builds: GET {GUARD_API_URL}/schedule (no /api/guard prefix)
+app.get("/schedule", authGuard, adminScheduleController.getSchedule);
 // Guard Home: shifts + state (never use GET /shifts — that is admin JWT only on this server)
 app.get("/api/guard/shifts/:shiftId/state", authGuard, guardShiftsController.getGuardShiftState);
 app.get("/api/guard/shifts", authGuard, guardShiftsController.listGuardShifts);
+// Same as GET /time-clock-ready (kept for docs that mention /api/guard/…)
+app.get("/api/guard/time-clock-ready", sendTimeClockReady);
+// Time clock — MUST use /api/guard/shifts/... (not /shifts/...) so this is registered BEFORE app.use("/shifts", adminShiftsRoutes) is irrelevant; avoids admin router eating POST /shifts/*/clock-in.
+app.post("/api/guard/shifts/:shiftId/clock-in", authGuard, guardTimePunchController.clockIn);
+app.post("/api/guard/shifts/:shiftId/clock-out", authGuard, guardTimePunchController.clockOut);
+app.post("/api/guard/shifts/:shiftId/break-start", authGuard, guardTimePunchController.breakStart);
+app.post("/api/guard/shifts/:shiftId/break-end", authGuard, guardTimePunchController.breakEnd);
 // Notifications / alerts stubs (guard JWT) — avoids hitting admin-only routes or 404
 app.get("/api/guard/notifications/unread-count", authGuard, guardUiStubs.guardNotificationsUnreadCount);
 app.get("/api/guard/notifications", authGuard, guardUiStubs.listGuardNotifications);
@@ -556,7 +605,13 @@ const adminShiftSwapRoutes = require("./src/routes/adminShiftSwap.routes");
 app.use("/api/admin/shift-swaps", adminShiftSwapRoutes);
 
 // Backend check: proves this URL is the Node API (not frontend)
-app.get("/api/backend-ping", (req, res) => res.json({ ok: true, service: "admin-dashboard-backend" }));
+app.get("/api/backend-ping", (req, res) =>
+  res.json({
+    ok: true,
+    service: "admin-dashboard-backend",
+    timeClockReady: "/time-clock-ready",
+  })
+);
 
 // Debug: see exactly what path/method the server receives (proves deploy is latest)
 app.get("/api/admin/login-debug", (req, res) => {
@@ -667,9 +722,13 @@ const { emitToRealtime } = require("./src/services/realtime.service");
 app.locals.emitToRealtime = emitToRealtime;
 app.set("emitToRealtime", emitToRealtime);
 
-// ✅ Initialize callout notification listener (connects to abe-guard-ai, publishes to Redis)
-const { initCalloutNotificationListener } = require("./src/services/calloutNotificationListener");
-initCalloutNotificationListener(app);
+// ✅ Initialize callout notification listener (optional; must not crash boot if misconfigured)
+try {
+  const { initCalloutNotificationListener } = require("./src/services/calloutNotificationListener");
+  initCalloutNotificationListener(app);
+} catch (e) {
+  logger.warn({ err: e?.message }, "calloutNotificationListener init skipped");
+}
 
 // ✅ Global Express error handler (after routes)
 app.use((err, req, res, next) => {
@@ -717,7 +776,10 @@ function withTimeout(promise, ms, label) {
         process.exit(1);
       }
       if (!isAllowedDb(dbName)) {
-        logger.error({ dbName }, "Wrong database. Backend must use abe_guard or railway. Set DATABASE_URL to postgresql://.../abe_guard or .../railway and restart");
+        logger.error(
+          { dbName },
+          "Database name not in allowlist. Set DATABASE_URL to use abe_guard / railway / postgres, or set EXTRA_ALLOWED_DB_NAMES=mydb or SKIP_DB_NAME_CHECK=true (emergency only)."
+        );
         process.exit(1);
       }
       logger.info({ dbName }, "Database ready (messaging and all APIs use this)");

@@ -71,7 +71,7 @@ export default function NavBar() {
         </button>
         <div className="brand">ABE Guard</div>
         {menuOpen && (
-          <div className="navDropdown">
+          <div className="navDropdown scrollable" role="menu" aria-label="Main navigation">
             {NAV_ITEMS.map(({ to, label }) => (
               <Item
                 key={to}
@@ -80,15 +80,47 @@ export default function NavBar() {
                 onClick={() => setMenuOpen(false)}
               />
             ))}
+            {isMobileOrCapacitor && (
+              <div className="navDropdownFooter">
+                <Link
+                  className="navItem"
+                  to="/account"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Account
+                </Link>
+                <button
+                  type="button"
+                  className="navItem navDropdownLogout"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    logout();
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
-      <div className="navRight">
-        <Clock />
-        <Link to="/account" className="btn" style={{ marginRight: 8 }}>
-          Account
-        </Link>
-        <button className="btn" onClick={logout}>Logout</button>
+      <div className={`navRight ${isMobileOrCapacitor ? "navRight--mobile" : ""}`}>
+        <Clock compact={isMobileOrCapacitor} />
+        {!isMobileOrCapacitor && (
+          <>
+            <Link to="/account" className="btn" style={{ marginRight: 8 }}>
+              Account
+            </Link>
+            <button type="button" className="btn" onClick={logout}>
+              Logout
+            </button>
+          </>
+        )}
+        {isMobileOrCapacitor && (
+          <button type="button" className="btn btnLogoutHeader" onClick={logout}>
+            Logout
+          </button>
+        )}
       </div>
     </div>
   );

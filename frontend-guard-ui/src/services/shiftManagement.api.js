@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getAdminApiUrl } from "../config/apiUrls";
+import { appHardNavigate, isAppOnLoginRoute } from "../utils/appNavigation";
 
 /**
  * Shift Management API Client
@@ -37,8 +38,8 @@ shiftManagementClient.interceptors.response.use(
       if (looksLikeBadToken) {
         localStorage.removeItem("guardToken");
         localStorage.removeItem("guardUser");
-        if (!window.location.pathname.includes("/login")) {
-          window.location.href = "/login";
+        if (!isAppOnLoginRoute()) {
+          appHardNavigate("/login");
         }
       }
     }

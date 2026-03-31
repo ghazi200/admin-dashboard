@@ -3,13 +3,17 @@
  * Used for health checks and login so they work reliably on mobile.
  */
 
+import { rewriteLocalhostForAndroidEmulator } from "../config/apiUrls";
+
 /** True when running in Capacitor (Android/iOS) so native HTTP is available. */
 export function isNativeCapable() {
   if (typeof window === "undefined") return false;
   try {
     if (window.Capacitor?.isNativePlatform?.()) return true;
     const p = window.Capacitor?.getPlatform?.();
-    return p === "android" || p === "ios";
+    if (p === "android" || p === "ios") return true;
+    const pl = typeof p === "string" ? p.toLowerCase() : "";
+    return pl === "android" || pl === "ios";
   } catch (_) {
     return false;
   }
@@ -31,30 +35,86 @@ function parseCapacitorBody(data) {
 /**
  * GET request. In Capacitor app uses native HTTP (no CORS); otherwise fetch.
  * @param {string} url - Full URL
- * @returns {Promise<{ ok: boolean }>} ok true if status 2xx
+ * @param {{ connectTimeout?: number, readTimeout?: number }} [timeouts] - ms; native only (default 20s)
+ * @returns {Promise<{ ok: boolean, status?: number, error?: string }>}
  */
-export async function nativeGet(url) {
+export async function nativeGet(url, timeouts = {}) {
+  const connectTimeout = timeouts.connectTimeout ?? 20000;
+  const readTimeout = timeouts.readTimeout ?? 20000;
+
   if (isNativeCapable()) {
     try {
       const { CapacitorHttp } = await import("@capacitor/core");
-      const r = await CapacitorHttp.get({ url });
+      const r = await CapacitorHttp.get({
+        url,
+        connectTimeout,
+        readTimeout,
+      });
+      const st = Number(r.status);
+      const ok = Number.isFinite(st) && st >= 200 && st < 300;
+      let errDetail;
+      if (!ok) {
+        const body =
+          typeof r.data === "string"
+            ? r.data.slice(0, 120)
+            : r.data && typeof r.data === "object"
+              ? JSON.stringify(r.data).slice(0, 120)
+              : "";
+        errDetail = body ? `HTTP ${st} — ${body}` : `HTTP ${st}`;
+      }
       return {
-        ok: r.status >= 200 && r.status < 300,
-        error: r.status >= 200 && r.status < 300 ? undefined : String(r.data || r.status),
+        ok,
+        status: st,
+        error: ok ? undefined : errDetail,
       };
     } catch (e) {
-      return { ok: false, error: e?.message || String(e) };
+      return {
+        ok: false,
+        status: 0,
+        error: e?.message || String(e),
+      };
     }
   }
   try {
     const r = await fetch(url);
     return {
       ok: r.ok,
+      status: r.status,
       error: r.ok ? undefined : `HTTP ${r.status}`,
     };
   } catch (e) {
-    return { ok: false, error: e?.message || "Network error" };
+    return {
+      ok: false,
+      status: 0,
+      error: e?.message || "Network error",
+    };
   }
+}
+
+/**
+ * Probe admin-dashboard base URL: try /health then / (cold Node can be slow).
+ * @param {string} base - e.g. http://10.0.2.2:5000
+ */
+export async function probeBackendBase(base) {
+  let b = String(base || "").replace(/\/+$/, "");
+  b = rewriteLocalhostForAndroidEmulator(b);
+  if (!b.startsWith("http://") && !b.startsWith("https://")) {
+    return { ok: false, status: 0, error: "Invalid URL", lastUrl: "" };
+  }
+  const t = { connectTimeout: 25000, readTimeout: 25000 };
+  const healthUrl = `${b}/health`;
+  let r = await nativeGet(healthUrl, t);
+  if (r.ok) return { ...r, lastUrl: healthUrl };
+  const rootUrl = `${b}/`;
+  r = await nativeGet(rootUrl, t);
+  if (r.ok) return { ...r, lastUrl: rootUrl };
+  return {
+    ok: false,
+    status: r.status ?? 0,
+    error: r.error || `Unreachable`,
+    lastUrl: healthUrl,
+    alsoTried: rootUrl,
+  };
 }
 
 /**
@@ -100,11 +160,52 @@ export async function nativeGetJson(url, headers = {}) {
 }
 
 /**
- * POST request with JSON body. In Capacitor uses native HTTP (no CORS).
- * @param {string} url - Full URL
- * @param {object} data - JSON-serializable body
- * @returns {Promise<{ ok: boolean, data?: any, status: number }>}
+ * POST JSON with extra headers (e.g. Authorization). Same transport as nativeGetJson.
  */
+export async function nativePostJson(url, data, headers = {}) {
+  const merged = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    ...headers,
+  };
+  if (isNativeCapable()) {
+    try {
+      const { CapacitorHttp } = await import("@capacitor/core");
+      const r = await CapacitorHttp.post({
+        url,
+        data: data || {},
+        headers: merged,
+      });
+      const parsed = parseCapacitorBody(r.data);
+      const ok = r.status >= 200 && r.status < 300;
+      return {
+        ok,
+        status: r.status,
+        data: parsed,
+        error: ok ? undefined : String(parsed?.message || parsed?.error || `HTTP ${r.status}`),
+      };
+    } catch (e) {
+      return { ok: false, status: e.status || 0, data: null, error: e?.message || String(e) };
+    }
+  }
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: merged,
+      body: JSON.stringify(data || {}),
+    });
+    const body = await r.json().catch(() => ({}));
+    return {
+      ok: r.ok,
+      status: r.status,
+      data: body,
+      error: r.ok ? undefined : String(body?.message || body?.error || r.status),
+    };
+  } catch (e) {
+    return { ok: false, status: 0, data: null, error: e?.message || "Network error" };
+  }
+}
+
 export async function nativePost(url, data) {
   if (isNativeCapable()) {
     try {

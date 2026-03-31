@@ -45,5 +45,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Optional: used for traffic alerts and clock-in location when you choose to allow it.</string>
 </dict>
 </plist>

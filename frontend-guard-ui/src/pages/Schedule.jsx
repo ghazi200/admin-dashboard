@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
-import { guardClient } from "../api/axiosClients";
+import { getGuardSchedule } from "../services/guardApi";
 import "./shifts.css";
 
 export default function Schedule() {
@@ -16,9 +16,9 @@ export default function Schedule() {
     setLoading(true);
     setErr("");
     try {
-      // Call abe-guard-ai schedule endpoint
+      // Admin-dashboard GET /api/guard/schedule (guard JWT; same payload as admin weekly schedule)
       console.log("📅 Loading schedule...");
-      const res = await guardClient.get("/schedule");
+      const res = await getGuardSchedule();
       console.log("✅ Schedule loaded:", res.data);
       console.log("📅 Schedule data:", res.data?.schedule);
       if (res.data?.schedule && res.data.schedule.length > 0) {
@@ -34,7 +34,17 @@ export default function Schedule() {
     } catch (e) {
       console.error("❌ Schedule error:", e);
       console.error("Response:", e?.response?.data);
-      setErr(e?.response?.data?.message || e?.message || "Failed to load schedule");
+      const status = e?.response?.status;
+      const bodyMsg = e?.response?.data?.message || e?.response?.data?.error;
+      if (status === 404) {
+        setErr(
+          "Schedule API returned 404 on every URL we tried. Point Server URL at the full admin-dashboard API (same host you use in the browser for admin), not a minimal guard-only service. Save URL on Login, then retry. If you use two ports locally (:4000 and :5000), set URL to the port that serves /api/guard/schedule (usually the admin/unified port)."
+        );
+      } else if (status === 401) {
+        setErr(bodyMsg || "Session expired. Please log in again.");
+      } else {
+        setErr(bodyMsg || e?.message || "Failed to load schedule");
+      }
     } finally {
       setLoading(false);
     }
@@ -92,9 +102,9 @@ export default function Schedule() {
     );
   }
 
-  // Safely destructure schedule data with defaults
+  // Safely destructure schedule data with defaults (API returns placeholders even when admin hasn’t customized)
   const building = schedule?.building || {};
-  const scheduleData = schedule?.schedule || [];
+  const scheduleData = Array.isArray(schedule?.schedule) ? schedule.schedule : [];
   const guardHours = schedule?.guardHours || {};
   const summary = schedule?.summary || {};
 
@@ -188,6 +198,22 @@ export default function Schedule() {
           <div style={{ fontWeight: 800, marginBottom: 20, fontSize: 20, color: "#1e293b" }}>
             Weekly Schedule
           </div>
+          {scheduleData.length === 0 ? (
+            <div
+              style={{
+                padding: 24,
+                borderRadius: 14,
+                background: "rgba(255,255,255,0.9)",
+                color: "#475569",
+                fontSize: 15,
+                lineHeight: 1.5,
+                border: "1px solid rgba(148,163,184,0.25)",
+              }}
+            >
+              No weekly template is configured yet, or your tenant has no schedule rows. Ask an admin to set up
+              the schedule in the admin dashboard; once saved, it will appear here.
+            </div>
+          ) : (
           <div style={{ display: "grid", gap: 16 }}>
             {scheduleData.map((day, dayIdx) => {
               const isWeekend = day.day === "Saturday" || day.day === "Sunday";
@@ -219,7 +245,7 @@ export default function Schedule() {
                     {day.day}
                   </div>
                   <div style={{ display: "grid", gap: 10 }}>
-                    {day.shifts.map((shift, shiftIdx) => {
+                    {(Array.isArray(day.shifts) ? day.shifts : []).map((shift, shiftIdx) => {
                       // Color code by shift time
                       let shiftColor = "#3b82f6"; // Default blue
                       let bgColor = "rgba(59,130,246,0.08)";
@@ -287,6 +313,7 @@ export default function Schedule() {
               );
             })}
           </div>
+          )}
         </div>
 
         {/* Guard Hours Summary */}

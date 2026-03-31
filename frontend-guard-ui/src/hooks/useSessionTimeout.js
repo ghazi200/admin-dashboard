@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
+import { appHardNavigate } from "../utils/appNavigation";
 
 const STORAGE_KEYS = ["guardToken", "guardUser"];
 const MIN_MINUTES = 15;
@@ -14,7 +15,7 @@ function getTimeoutMinutes() {
 
 function clearSession() {
   STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
-  window.location.href = "/login";
+  appHardNavigate("/login");
 }
 
 /**

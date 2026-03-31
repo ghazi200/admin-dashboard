@@ -8,12 +8,13 @@ import {
   listShifts,
   getShiftState,
   triggerCallout,
-  clockIn,
+  clockInWithOptionalLocation,
   clockOut,
   breakStart,
   breakEnd,
   runningLate,
   getUnreadAnnouncementsCount,
+  formatGuardApiError,
 } from "../services/guardApi";
 import ShiftNotifications from "../components/ShiftNotifications";
 import ShiftAlerts from "../components/ShiftAlerts";
@@ -520,12 +521,7 @@ export default function Home() {
         }
       }, 500); // 500ms delay to ensure backend has processed
     } catch (e) {
-      const m =
-        e?.response?.data?.message ||
-        e?.response?.data?.error ||
-        e?.message ||
-        "Action failed";
-      setActionMsg(`❌ ${m}`);
+      setActionMsg(`❌ ${formatGuardApiError(e)}`);
     } finally {
       setActionLoading(false);
       setTimeout(() => setActionMsg(""), 2500);
@@ -739,9 +735,12 @@ export default function Home() {
               </div>
             )}
 
-            {/* Weather, Traffic & Transit Alerts */}
+            {/* Weather, Traffic & Transit Alerts (GPS is optional; not required for clock-in) */}
             {currentShift && (
               <div style={{ marginTop: 16 }}>
+                <div className="muted" style={{ fontSize: 11, marginBottom: 6, opacity: 0.8 }}>
+                  Alerts may offer optional location for traffic. Clock in works without sharing location.
+                </div>
                 <ShiftAlerts shiftId={currentShift.id} shift={currentShift} />
               </div>
             )}
@@ -779,7 +778,7 @@ export default function Home() {
                     <button
                       className="btnPrimary"
                       disabled={actionLoading || loading}
-                      onClick={() => doAction(clockIn)}
+                      onClick={() => doAction(clockInWithOptionalLocation)}
                     >
                       {actionLoading ? "Working..." : "Clock In"}
                     </button>

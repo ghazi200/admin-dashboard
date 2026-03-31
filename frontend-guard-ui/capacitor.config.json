@@ -2,6 +2,10 @@
   "appId": "com.abe.guardui",
   "appName": "Guard UI",
   "webDir": "build",
+  "android": {
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": true
+  },
   "server": {
     "androidScheme": "http"
   },

@@ -49,7 +49,9 @@ const styles = {
   },
   list: {
     flex: 1,
+    minHeight: 0, /* required so flex child can shrink and scroll */
     overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
     padding: 8,
   },
   conversationItem: {
@@ -382,7 +384,7 @@ export default function Messages() {
         <div className="messagesLayout" style={styles.layout}>
           <div className="messagesSidebar" style={styles.sidebar}>
             <div style={styles.sidebarHeader}>Conversations</div>
-            <div style={styles.list}>
+            <div className="messagesConversationList scrollable" style={styles.list}>
               {loading ? (
                 <div style={{ padding: 20, color: "rgba(255,255,255,0.6)" }}>Loading…</div>
               ) : conversations.length === 0 ? (

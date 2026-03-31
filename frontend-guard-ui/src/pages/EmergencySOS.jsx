@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import NavBar from "../components/NavBar";
 import { triggerEmergencySOS, getEmergencyContacts, addEmergencyContact } from "../services/guardApi";
+import { GEO_GET_CURRENT_RELAXED } from "../utils/geolocationOptions";
 
 export default function EmergencySOS() {
   const [location, setLocation] = useState(null);
@@ -21,11 +22,7 @@ export default function EmergencySOS() {
         return;
       }
 
-      const options = {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      };
+      const options = { ...GEO_GET_CURRENT_RELAXED };
 
       navigator.geolocation.getCurrentPosition(
         (position) => {

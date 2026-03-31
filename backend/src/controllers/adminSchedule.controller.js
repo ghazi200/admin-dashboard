@@ -7,7 +7,8 @@
 exports.getSchedule = async (req, res) => {
   try {
     const { sequelize, ScheduleConfig } = req.app.locals.models;
-    const tenantId = req.admin?.tenant_id || null;
+    /** Admin UI or guard-ui (GET /api/guard/schedule with authGuard) */
+    const tenantId = req.admin?.tenant_id ?? req.guard?.tenant_id ?? null;
 
     // Get schedule config from database
     let scheduleConfig = await ScheduleConfig.findOne({

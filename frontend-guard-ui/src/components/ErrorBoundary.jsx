@@ -1,4 +1,5 @@
 import React from "react";
+import { appHardNavigate } from "../utils/appNavigation";
 
 /**
  * Error Boundary to catch component errors
@@ -38,7 +39,7 @@ export default class ErrorBoundary extends React.Component {
           </pre>
           <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
             <button
-              onClick={() => (window.location.href = "/login")}
+              onClick={() => appHardNavigate("/login")}
               style={{
                 padding: "12px 24px",
                 background: "#7c3aed",

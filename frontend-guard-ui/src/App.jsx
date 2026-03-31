@@ -21,20 +21,14 @@ import ShiftHistory from "./pages/ShiftHistory";
 import ShiftReportForm from "./pages/ShiftReportForm";
 import Messages from "./pages/Messages";
 import Account from "./pages/Account";
-
-// Debug: Log that components are imported
-console.log("[App.jsx] Shift Management components imported:", {
-  ShiftSwapMarketplace: !!ShiftSwapMarketplace,
-  AvailabilityPreferences: !!AvailabilityPreferences,
-  ShiftHistory: !!ShiftHistory,
-  ShiftReportForm: !!ShiftReportForm,
-});
-
+import RequestTimeOff from "./pages/RequestTimeOff";
+import Payroll from "./pages/Payroll";
+import EmergencySOS from "./pages/EmergencySOS";
+import Announcements from "./pages/Announcements";
+import Dashboard from "./pages/Dashboard";
 import "./styles/styles.css";
 
 export default function App() {
-  console.log("[App.jsx] App component rendering...");
-
   useEffect(() => {
     if (typeof window !== "undefined" && window.Capacitor) {
       document.documentElement.classList.add("guard-app-native");
@@ -46,20 +40,9 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <BrowserRouter future={{ v7_relativeSplatPath: true }}>
+      <BrowserRouter>
+        {/* SessionTimeout: add back <SessionTimeout /> here if you need idle logout (import from ./components/SessionTimeout) */}
         <Routes>
-          {/* Debug: Log all routes */}
-          {(() => {
-            console.log("[App.jsx] Routes being registered:");
-            console.log("  - /shifts/swap-test");
-            console.log("  - /shifts/swap-test-protected");
-            console.log("  - /shifts/swap");
-            console.log("  - /shifts/availability");
-            console.log("  - /shifts/history");
-            console.log("  - /shifts/:id/report");
-            console.log("  - /shifts (general)");
-            return null;
-          })()}
           <Route path="/login" element={<Login />} />
 
           {/* Put /incident BEFORE / route to ensure it matches */}
@@ -183,6 +166,47 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Account />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/request-time-off"
+            element={
+              <ProtectedRoute>
+                <RequestTimeOff />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/payroll"
+            element={
+              <ProtectedRoute>
+                <Payroll />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/emergency"
+            element={
+              <ProtectedRoute>
+                <EmergencySOS />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/announcements"
+            element={
+              <ProtectedRoute>
+                <Announcements />
               </ProtectedRoute>
             }
           />

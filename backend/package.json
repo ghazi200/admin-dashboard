@@ -10,7 +10,8 @@
     "test:mfa": "node scripts/run-test-with-server.js",
     "drop-contact-preferences": "node scripts/drop-contact-preferences-table.js",
     "test:create-shift": "node scripts/testCreateShiftGhazi.js",
-    "test:guard-dashboard": "node scripts/testGuardDashboardHttp.js"
+    "test:guard-dashboard": "node scripts/testGuardDashboardHttp.js",
+    "seed:test-shift": "node src/scripts/seedTestShiftsForGuardUi.js"
   },
   "dependencies": {
     "axios": "^1.6.0",

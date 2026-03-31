@@ -16,7 +16,29 @@ module.exports = function (app) {
       changeOrigin: true,
     })
   );
-  // Guard API (auth, shifts, etc.) – same-origin in dev so login works from Guard UI page
+  /**
+   * guardClient uses baseURL /guard-api + paths like /api/guard/schedule (admin JWT routes).
+   * Without this, /guard-api/api/guard/* hits the generic /guard-api proxy → port 4000 → 404.
+   * Must be registered BEFORE the catch-all /guard-api rule.
+   */
+  app.use(
+    "/guard-api/api/guard",
+    createProxyMiddleware({
+      target: adminApiUrl,
+      changeOrigin: true,
+      pathRewrite: { "^/guard-api": "" },
+    })
+  );
+  // Clock in/out + breaks live on admin-dashboard (5000); :4000 often not running in dev
+  app.use(
+    "/guard-api/shifts",
+    createProxyMiddleware({
+      target: adminApiUrl,
+      changeOrigin: true,
+      pathRewrite: { "^/guard-api": "" },
+    })
+  );
+  // Guard API (auth, callouts, etc.) – remainder to abe-guard-ai when used
   app.use(
     "/guard-api",
     createProxyMiddleware({

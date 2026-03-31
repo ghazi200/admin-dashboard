@@ -11,6 +11,27 @@
   overflow: hidden;
 }
 
+/* Conversation list: scroll with visible thumb (many threads) */
+.messagesConversationList {
+  min-height: 0 !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.5) rgba(15, 23, 42, 0.45);
+}
+
+.messagesConversationList::-webkit-scrollbar {
+  width: 10px;
+}
+.messagesConversationList::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.45);
+  border-radius: 8px;
+}
+.messagesConversationList::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 8px;
+}
+
 .messagesMainCol {
   display: flex !important;
   flex-direction: column !important;

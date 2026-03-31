@@ -1,7 +1,9 @@
 // src/services/guardApi.js
+import axios from "axios";
 import { guardClient } from "../api/axiosClients";
-import { getGuardApiUrl } from "../config/apiUrls";
-import { isNativeCapable, nativeGetJson } from "../utils/nativeHttp";
+import { getAdminApiUrl, getGuardApiUrl, getUnifiedBackendUrl } from "../config/apiUrls";
+import { isNativeCapable, nativeGetJson, nativePostJson } from "../utils/nativeHttp";
+import { GEO_GET_CURRENT_RELAXED } from "../utils/geolocationOptions";
 
 /**
  * Always send guardToken for guard backend calls
@@ -13,6 +15,78 @@ function guardAuthHeaders() {
     "";
 
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/**
+ * Readable API errors. Backend catch-all uses { error: "Not Found", path } (no message).
+ */
+export function formatGuardApiError(e) {
+  const st = e?.response?.status ?? 0;
+  const d = e?.response?.data;
+  const body = d && typeof d === "object" ? d : {};
+  const fromBody = body.message || body.error;
+  const base = fromBody || e?.message || "Request failed";
+
+  if (st === 404) {
+    if (body.path) {
+      return `404: no route at ${body.path}. Use Railway NODE URL (root "backend"). Test in browser: YOUR-HOST/time-clock-ready (then /api/guard/time-clock-ready). Emulator: http://10.0.2.2:5000`;
+    }
+    if (typeof base === "string" && /shift not found/i.test(base)) {
+      return `${base} Pick a shift from the list or seed shifts on this database.`;
+    }
+    const vague = !fromBody || /^HTTP\s*\d+/i.test(String(base).trim());
+    if (vague) {
+      return `404 (empty error body). App tried POST /api/guard/shifts/…/clock-in then POST /shifts/…/clock-in. In browser open HOST/time-clock-ready — expect ok:true. If 404, redeploy Railway (Root Directory=backend). Path is “guard”, not “guest”.`;
+    }
+    return `${base} (404). Redeploy backend; verify GET /api/guard/time-clock-ready returns ok:true.`;
+  }
+
+  return String(base);
+}
+
+/** POST once; returns { ok, status, data, error? } */
+async function postToGuardPath(path, body, headers) {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  if (isNativeCapable()) {
+    const base = getGuardApiUrl().replace(/\/+$/, "");
+    const res = await nativePostJson(`${base}${p}`, body, headers);
+    return { ok: res.ok, status: res.status, data: res.data, error: res.error };
+  }
+  try {
+    const r = await guardClient.post(p, body, { headers });
+    return { ok: true, status: r.status, data: r.data };
+  } catch (e) {
+    return {
+      ok: false,
+      status: e.response?.status ?? 0,
+      data: e.response?.data,
+      error: e.message,
+    };
+  }
+}
+
+/**
+ * Time punch: admin-dashboard uses POST /api/guard/shifts/:id/clock-in; abe-guard-ai uses POST /shifts/:id/clock-in.
+ * Try primary first, then legacy path so one app build works with either Railway service.
+ */
+async function guardPostPunch(shiftId, action, body = {}) {
+  const id = encodeURIComponent(shiftId);
+  const headers = guardAuthHeaders();
+  const primary = `/api/guard/shifts/${id}/${action}`;
+  const fallback = `/shifts/${id}/${action}`;
+
+  let res = await postToGuardPath(primary, body, headers);
+  if (!res.ok && res.status === 404) {
+    res = await postToGuardPath(fallback, body, headers);
+  }
+  if (!res.ok) {
+    const err = new Error(
+      res.data?.message || res.data?.error || res.error || `Request failed (${res.status})`
+    );
+    err.response = { status: res.status, data: res.data || {} };
+    throw err;
+  }
+  return { data: res.data };
 }
 
 /* ================= AUTH ================= */
@@ -64,6 +138,34 @@ export async function getShiftState(shiftId) {
 }
 
 /**
+ * Best-effort GPS for clock-in. Never throws — returns {} if denied, unsupported, or timeout.
+ */
+export function getOptionalClockInLocation() {
+  return new Promise((resolve) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      return resolve({});
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracyM: position.coords.accuracy,
+        });
+      },
+      () => resolve({}),
+      GEO_GET_CURRENT_RELAXED
+    );
+  });
+}
+
+/** Clock in: attach GPS when allowed; still succeeds if user denied location. */
+export async function clockInWithOptionalLocation(shiftId, _unused) {
+  const locationData = await getOptionalClockInLocation();
+  return clockIn(shiftId, locationData);
+}
+
+/**
  * Clock in with geolocation data
  * @param {string} shiftId - Shift ID
  * @param {Object} locationData - Geolocation and device data
@@ -75,39 +177,20 @@ export async function getShiftState(shiftId) {
  * @param {string} locationData.deviceOS - Device OS version
  */
 export const clockIn = (shiftId, locationData = {}) =>
-  guardClient.post(
-    `/shifts/${shiftId}/clock-in`,
-    {
-      lat: locationData.lat,
-      lng: locationData.lng,
-      accuracyM: locationData.accuracyM,
-      deviceId: locationData.deviceId,
-      deviceType: locationData.deviceType,
-      deviceOS: locationData.deviceOS,
-    },
-    { headers: guardAuthHeaders() }
-  );
+  guardPostPunch(shiftId, "clock-in", {
+    lat: locationData.lat,
+    lng: locationData.lng,
+    accuracyM: locationData.accuracyM,
+    deviceId: locationData.deviceId,
+    deviceType: locationData.deviceType,
+    deviceOS: locationData.deviceOS,
+  });
 
-export const clockOut = (shiftId) =>
-  guardClient.post(
-    `/shifts/${shiftId}/clock-out`,
-    {},
-    { headers: guardAuthHeaders() }
-  );
+export const clockOut = (shiftId) => guardPostPunch(shiftId, "clock-out", {});
 
-export const breakStart = (shiftId) =>
-  guardClient.post(
-    `/shifts/${shiftId}/break-start`,
-    {},
-    { headers: guardAuthHeaders() }
-  );
+export const breakStart = (shiftId) => guardPostPunch(shiftId, "break-start", {});
 
-export const breakEnd = (shiftId) =>
-  guardClient.post(
-    `/shifts/${shiftId}/break-end`,
-    {},
-    { headers: guardAuthHeaders() }
-  );
+export const breakEnd = (shiftId) => guardPostPunch(shiftId, "break-end", {});
 
 /**
  * ✅ Support BOTH running-late call patterns:
@@ -401,6 +484,73 @@ export const markAnnouncementAsRead = (announcementId) =>
     {},
     { headers: guardAuthHeaders() }
   );
+
+/* ================= SCHEDULE (weekly template) ================= */
+
+/**
+ * Bases to try for GET /api/guard/schedule (unified Railway host, or split :4000 login + :5000 admin).
+ */
+function scheduleBackendBases() {
+  const unified = getUnifiedBackendUrl().replace(/\/+$/, "");
+  const admin = getAdminApiUrl().replace(/\/+$/, "");
+  const guard = getGuardApiUrl().replace(/\/+$/, "");
+  const out = [];
+  const push = (b) => {
+    if (!b || (!b.startsWith("http://") && !b.startsWith("https://"))) return;
+    if (!out.includes(b)) out.push(b);
+  };
+  push(unified);
+  push(admin);
+  push(guard);
+  return out;
+}
+
+/**
+ * Weekly schedule: GET /api/guard/schedule (guard JWT). Tries multiple hosts so 404s from a
+ * guard-only :4000 server fall through to the admin/unified host (e.g. :5000 or Railway).
+ */
+export async function getGuardSchedule() {
+  const headers = guardAuthHeaders();
+  const bases = scheduleBackendBases();
+
+  async function fetchFromBase(base, suffix) {
+    const path = suffix.startsWith("/") ? suffix : `/${suffix}`;
+    const url = `${base.replace(/\/+$/, "")}${path}`;
+    if (isNativeCapable()) {
+      const res = await nativeGetJson(url, headers);
+      if (!res.ok) {
+        const err = new Error(res.data?.message || res.data?.error || res.error || "Failed to load schedule");
+        err.response = { status: res.status, data: res.data || {} };
+        throw err;
+      }
+      return { data: res.data };
+    }
+    return axios.get(url, { headers, timeout: 45000 });
+  }
+
+  async function tryScheduleOnBase(base) {
+    try {
+      return await fetchFromBase(base, "/api/guard/schedule");
+    } catch (e) {
+      if (e?.response?.status === 404) {
+        return await fetchFromBase(base, "/schedule");
+      }
+      throw e;
+    }
+  }
+
+  let lastErr;
+  for (const base of bases) {
+    try {
+      return await tryScheduleOnBase(base);
+    } catch (e) {
+      lastErr = e;
+      if (e?.response?.status === 404) continue;
+      throw e;
+    }
+  }
+  throw lastErr;
+}
 
 /* ================= DASHBOARD ================= */
 
