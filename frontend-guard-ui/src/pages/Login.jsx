@@ -13,6 +13,7 @@ import {
   isLanIpUrl,
   DEFAULT_CLOUD_BACKEND,
   rewriteLocalhostForAndroidEmulator,
+  normalizeBackendBaseUrl,
 } from "../config/apiUrls";
 import { nativePost, isNativeCapable, probeBackendBase } from "../utils/nativeHttp";
 import { appHardNavigate } from "../utils/appNavigation";
@@ -41,7 +42,8 @@ export default function Login() {
 
   /** What you see in Server URL is what we use — avoids testing stale localStorage. */
   const persistGuardUrlFromField = () => {
-    let u = serverUrl.trim().replace(/\/+$/, "");
+    let u = normalizeBackendBaseUrl(serverUrl);
+    if (u && u !== serverUrl.trim()) setServerUrl(u);
     if (u.startsWith("http://") || u.startsWith("https://")) {
       const rw = rewriteLocalhostForAndroidEmulator(u);
       if (rw !== u) {
@@ -60,7 +62,8 @@ export default function Login() {
   };
 
   const persistAdminUrlFromField = () => {
-    let u = adminApiUrl.trim().replace(/\/+$/, "");
+    let u = normalizeBackendBaseUrl(adminApiUrl);
+    if (u && u !== adminApiUrl.trim()) setAdminApiUrlState(u);
     if (u.startsWith("http://") || u.startsWith("https://")) {
       const rw = rewriteLocalhostForAndroidEmulator(u);
       if (rw !== u) {
@@ -297,8 +300,9 @@ export default function Login() {
                   localStorage.removeItem("guardDevToken");
                 } catch (_) {}
                 if (isAndroidApp()) {
-                  setServerUrl(EMULATOR_GUARD_URL);
-                  setAdminApiUrlState(EMULATOR_GUARD_URL);
+                  const cloud = String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
+                  setServerUrl(cloud);
+                  setAdminApiUrlState(cloud);
                 } else {
                   setServerUrl("http://localhost:4000");
                   setAdminApiUrlState("http://localhost:5000");
@@ -310,7 +314,7 @@ export default function Login() {
               Changed location? Reset URLs
             </button>
             <span style={{ fontSize: 11, color: "var(--muted, #888)" }}>
-              Then set Server URL to this computer’s IP (e.g. http://192.168.x.x:4000) if on phone.
+              On Android this clears saved URLs and shows the cloud default. Need the Mac instead? Tap <strong>Use emulator URL</strong>. On phone, set your PC’s LAN IP if using a local backend.
             </span>
           </div>
 
@@ -419,6 +423,21 @@ export default function Login() {
                     `Tried ${r.lastUrl || `${url}/health`}${r.alsoTried ? ` and ${r.alsoTried}` : ""}.`,
                     r.error || (r.status ? `status ${r.status}` : "No response"),
                   ];
+                  if (r.detail) parts.push(r.detail);
+                  const dnsHintSrc = `${r.error || ""} ${r.detail || ""}`;
+                  if (/unable to resolve|no address associated with hostname|unknownhost|failed to fetch/i.test(dnsHintSrc)) {
+                    parts.push(
+                      "If the host name has a typo it will never resolve — copy the exact https host from Railway → your Node service → Networking (public URL / domain). Or tap Use Railway backend."
+                    );
+                    parts.push(
+                      "Still failing? In the emulator open Chrome: (1) https://www.google.com — if it fails, the AVD has no internet or DNS (cold boot AVD, try a “Google Play” system image, disable Mac VPN briefly). (2) Then open YOUR-RAILWAY-URL/health — must show JSON."
+                    );
+                  }
+                  if (String(url).startsWith("https://")) {
+                    parts.push(
+                      "Cloud (HTTPS) needs internet from the emulator. 10.0.2.2 only reaches your Mac — no public network. If HTTPS keeps failing: open Chrome inside the emulator and visit the same Railway URL; if that fails, fix emulator networking (Wi‑Fi, DNS, or cold boot AVD)."
+                    );
+                  }
                   if (isAndroidApp() && !isProbablyAndroidEmulator() && url.includes("10.0.2.2")) {
                     parts.push(
                       "10.0.2.2 only works on the emulator. On a real phone use http://YOUR_PC_IP:5000 (same Wi‑Fi)."

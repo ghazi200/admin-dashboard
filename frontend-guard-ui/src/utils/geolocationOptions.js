@@ -4,6 +4,7 @@
  */
 export const GEO_GET_CURRENT_RELAXED = {
   enableHighAccuracy: false,
-  timeout: 30000,
+  /** Shorter wait on emulators/indoors — user can use “Clock in (no GPS)” or confirm without location */
+  timeout: 15000,
   maximumAge: 300000,
 };

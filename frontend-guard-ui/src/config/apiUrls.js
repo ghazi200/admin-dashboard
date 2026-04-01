@@ -10,6 +10,27 @@ const DEFAULT_CLOUD_BACKEND =
   (typeof process !== "undefined" && process.env?.REACT_APP_DEFAULT_BACKEND_URL) ||
   "https://admin-dashboard-production-2596.up.railway.app";
 
+/**
+ * Trim junk, strip path/query, remove trailing slash — API base should be origin only.
+ * If the string has no scheme, assume https (Railway).
+ */
+function normalizeBackendBaseUrl(raw) {
+  const trimmed = String(raw || "")
+    .trim()
+    .replace(/\u200B/g, "")
+    .replace(/[\u00A0\t\n\r]+/g, "");
+  if (!trimmed) return "";
+  const withProto = /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const u = new URL(withProto);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return trimmed.replace(/\/+$/, "");
+    const hostport = u.hostname + (u.port ? `:${u.port}` : "");
+    return `${u.protocol}//${hostport}`;
+  } catch {
+    return trimmed.replace(/\/+$/, "");
+  }
+}
+
 /** Android emulator user agents — include API 34+ / arm64 variants (sdk_gphone64, ranchu, etc.). */
 function isProbablyAndroidEmulator() {
   try {
@@ -58,8 +79,9 @@ function isLocalhostUrl(url) {
  * 1. In development (web): always use /guard-api proxy so browser never uses stale phone URL
  * 2. localStorage (runtime override) – on Android, localhost is ignored and we use 10.0.2.2
  * 3. Build-time REACT_APP_GUARD_API_URL
- * 4. Android app: http://10.0.2.2:5000 (emulator → host; same as admin-dashboard server.js)
- * 5. Default: http://localhost:4000
+ * 4. Android app (no saved URL): same default for emulator and phone — cloud Railway URL so clock-in works without a local Node on :5000
+ * 5. Local backend on emulator: Login → "Use emulator URL" (10.0.2.2:5000)
+ * 6. Default (web dev): http://localhost:4000
  */
 function getGuardApiUrl() {
   if (typeof process !== "undefined" && process.env?.NODE_ENV === "development") {
@@ -78,8 +100,7 @@ function getGuardApiUrl() {
     return String(process.env.REACT_APP_GUARD_API_URL).replace(/\/+$/, "");
   }
   if (isAndroidApp()) {
-    // Real phone: 10.0.2.2 only works on emulator — default to cloud so login works without extra taps.
-    return isProbablyAndroidEmulator() ? EMULATOR_GUARD_URL : String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
+    return String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
   }
   return "http://localhost:4000";
 }
@@ -98,7 +119,7 @@ function getAdminApiUrl() {
     return String(process.env.REACT_APP_ADMIN_API_URL).replace(/\/+$/, "");
   }
   if (isAndroidApp()) {
-    return isProbablyAndroidEmulator() ? EMULATOR_ADMIN_URL : String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
+    return String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
   }
   return "http://localhost:5000";
 }
@@ -195,4 +216,5 @@ export {
   isLanIpUrl,
   DEFAULT_CLOUD_BACKEND,
   rewriteLocalhostForAndroidEmulator,
+  normalizeBackendBaseUrl,
 };

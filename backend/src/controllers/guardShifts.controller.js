@@ -24,7 +24,10 @@ exports.listGuardShifts = async (req, res) => {
       SELECT id, tenant_id, guard_id, shift_date, shift_start, shift_end, status, location,
              created_at, notes, ai_decision
       FROM public.shifts
-      WHERE (status = 'OPEN' OR guard_id = $1::uuid) ${tenantSql}
+      -- Only show shifts the guard can act on:
+      -- - assigned to this guard (any status)
+      -- - open AND unassigned (guard can claim on clock-in)
+      WHERE ((guard_id = $1::uuid) OR (status = 'OPEN' AND guard_id IS NULL)) ${tenantSql}
       ORDER BY shift_date NULLS LAST, shift_start NULLS LAST`;
 
     const [rows] = await sequelize.query(sql, { bind: params });

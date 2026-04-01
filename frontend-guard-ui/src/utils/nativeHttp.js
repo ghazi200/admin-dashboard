@@ -3,7 +3,7 @@
  * Used for health checks and login so they work reliably on mobile.
  */
 
-import { rewriteLocalhostForAndroidEmulator } from "../config/apiUrls";
+import { rewriteLocalhostForAndroidEmulator, normalizeBackendBaseUrl } from "../config/apiUrls";
 
 /** True when running in Capacitor (Android/iOS) so native HTTP is available. */
 export function isNativeCapable() {
@@ -30,6 +30,18 @@ function parseCapacitorBody(data) {
     }
   }
   return data;
+}
+
+/** Railway cold start + some emulators need generous timeouts */
+const CAP_HTTP_LONG = { connectTimeout: 60000, readTimeout: 60000 };
+
+/**
+ * Capacitor OkHttp sometimes fails HTTPS on emulators while WebView fetch works.
+ * Only fall back when we did not get a real HTTP status (avoid double-submit on 401/500).
+ */
+function shouldUseFetchFallback(status) {
+  const n = Number(status);
+  return !Number.isFinite(n) || n <= 0;
 }
 
 /**
@@ -92,22 +104,61 @@ export async function nativeGet(url, timeouts = {}) {
 }
 
 /**
+ * WebView fetch — TLS/DNS path can differ from CapacitorHttp on some emulators.
+ */
+async function probeWithFetch(url) {
+  try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 30000);
+    const r = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    clearTimeout(id);
+    const ok = r.ok;
+    return {
+      ok,
+      status: r.status,
+      error: ok ? undefined : `HTTP ${r.status}`,
+    };
+  } catch (e) {
+    const msg = e?.name === "AbortError" ? "Request timed out (30s)" : e?.message || String(e);
+    return { ok: false, status: 0, error: msg };
+  }
+}
+
+/**
  * Probe admin-dashboard base URL: try /health then / (cold Node can be slow).
  * @param {string} base - e.g. http://10.0.2.2:5000
  */
 export async function probeBackendBase(base) {
-  let b = String(base || "").replace(/\/+$/, "");
+  let b = normalizeBackendBaseUrl(base) || String(base || "").replace(/\/+$/, "");
   b = rewriteLocalhostForAndroidEmulator(b);
   if (!b.startsWith("http://") && !b.startsWith("https://")) {
     return { ok: false, status: 0, error: "Invalid URL", lastUrl: "" };
   }
   const t = { connectTimeout: 25000, readTimeout: 25000 };
   const healthUrl = `${b}/health`;
+  const rootUrl = `${b}/`;
+
   let r = await nativeGet(healthUrl, t);
   if (r.ok) return { ...r, lastUrl: healthUrl };
-  const rootUrl = `${b}/`;
   r = await nativeGet(rootUrl, t);
   if (r.ok) return { ...r, lastUrl: rootUrl };
+
+  // CapacitorHttp sometimes fails HTTPS on emulators; WebView fetch often succeeds.
+  if (isNativeCapable()) {
+    let f = await probeWithFetch(healthUrl);
+    if (f.ok) return { ...f, lastUrl: healthUrl };
+    f = await probeWithFetch(rootUrl);
+    if (f.ok) return { ...f, lastUrl: rootUrl };
+    return {
+      ok: false,
+      status: f.status ?? 0,
+      error: f.error || r.error || "Unreachable",
+      lastUrl: healthUrl,
+      alsoTried: rootUrl,
+      detail: `Native HTTP: ${r.error || "failed"}. Fetch: ${f.error || "failed"}.`,
+    };
+  }
+
   return {
     ok: false,
     status: r.status ?? 0,
@@ -124,39 +175,55 @@ export async function probeBackendBase(base) {
  * @returns {Promise<{ ok: boolean, status: number, data?: any, error?: string }>}
  */
 export async function nativeGetJson(url, headers = {}) {
+  const mergedHeaders = { Accept: "application/json", ...headers };
+
+  async function viaFetch() {
+    try {
+      const r = await fetch(url, { headers: mergedHeaders, cache: "no-store" });
+      const body = await r.json().catch(() => ({}));
+      return {
+        ok: r.ok,
+        status: r.status,
+        data: body,
+        error: r.ok ? undefined : String(body?.message || body?.error || r.status),
+      };
+    } catch (e) {
+      return { ok: false, status: 0, data: null, error: e?.message || "Network error" };
+    }
+  }
+
   if (isNativeCapable()) {
+    let st = 0;
+    let parsed;
     try {
       const { CapacitorHttp } = await import("@capacitor/core");
       const r = await CapacitorHttp.get({
         url,
-        headers: { Accept: "application/json", ...headers },
+        headers: mergedHeaders,
+        ...CAP_HTTP_LONG,
       });
-      const parsed = parseCapacitorBody(r.data);
-      return {
-        ok: r.status >= 200 && r.status < 300,
-        status: r.status,
-        data: parsed,
-        error:
-          r.status >= 200 && r.status < 300
-            ? undefined
-            : String(parsed?.message || parsed?.error || r.status),
-      };
+      st = r.status;
+      parsed = parseCapacitorBody(r.data);
+      const ok = r.status >= 200 && r.status < 300;
+      if (ok) return { ok: true, status: r.status, data: parsed };
+      if (!shouldUseFetchFallback(st)) {
+        return {
+          ok: false,
+          status: r.status,
+          data: parsed,
+          error: String(parsed?.message || parsed?.error || r.status),
+        };
+      }
     } catch (e) {
-      return { ok: false, status: e.status || 0, data: null, error: e?.message || String(e) };
+      st = e.status || 0;
+      if (!shouldUseFetchFallback(st)) {
+        return { ok: false, status: st, data: null, error: e?.message || String(e) };
+      }
     }
+    return viaFetch();
   }
-  try {
-    const r = await fetch(url, { headers: { Accept: "application/json", ...headers } });
-    const body = await r.json().catch(() => ({}));
-    return {
-      ok: r.ok,
-      status: r.status,
-      data: body,
-      error: r.ok ? undefined : String(body?.message || body?.error || r.status),
-    };
-  } catch (e) {
-    return { ok: false, status: 0, data: null, error: e?.message || "Network error" };
-  }
+
+  return viaFetch();
 }
 
 /**
@@ -168,72 +235,106 @@ export async function nativePostJson(url, data, headers = {}) {
     Accept: "application/json",
     ...headers,
   };
+
+  async function viaFetch() {
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: merged,
+        body: JSON.stringify(data || {}),
+        cache: "no-store",
+      });
+      const body = await r.json().catch(() => ({}));
+      const ok = r.ok;
+      return {
+        ok,
+        status: r.status,
+        data: body,
+        error: ok ? undefined : String(body?.message || body?.error || `HTTP ${r.status}`),
+      };
+    } catch (e) {
+      return { ok: false, status: 0, data: null, error: e?.message || "Network error" };
+    }
+  }
+
   if (isNativeCapable()) {
+    let st = 0;
     try {
       const { CapacitorHttp } = await import("@capacitor/core");
       const r = await CapacitorHttp.post({
         url,
         data: data || {},
         headers: merged,
+        ...CAP_HTTP_LONG,
       });
+      st = r.status;
       const parsed = parseCapacitorBody(r.data);
       const ok = r.status >= 200 && r.status < 300;
-      return {
-        ok,
-        status: r.status,
-        data: parsed,
-        error: ok ? undefined : String(parsed?.message || parsed?.error || `HTTP ${r.status}`),
-      };
+      if (ok) return { ok: true, status: r.status, data: parsed };
+      if (!shouldUseFetchFallback(st)) {
+        return {
+          ok: false,
+          status: r.status,
+          data: parsed,
+          error: String(parsed?.message || parsed?.error || `HTTP ${r.status}`),
+        };
+      }
     } catch (e) {
-      return { ok: false, status: e.status || 0, data: null, error: e?.message || String(e) };
+      st = e.status || 0;
+      if (!shouldUseFetchFallback(st)) {
+        return { ok: false, status: st, data: null, error: e?.message || String(e) };
+      }
     }
+    return viaFetch();
   }
-  try {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: merged,
-      body: JSON.stringify(data || {}),
-    });
-    const body = await r.json().catch(() => ({}));
-    return {
-      ok: r.ok,
-      status: r.status,
-      data: body,
-      error: r.ok ? undefined : String(body?.message || body?.error || r.status),
-    };
-  } catch (e) {
-    return { ok: false, status: 0, data: null, error: e?.message || "Network error" };
-  }
+
+  return viaFetch();
 }
 
 export async function nativePost(url, data) {
+  const headers = { "Content-Type": "application/json", Accept: "application/json" };
+
+  async function viaFetch() {
+    try {
+      const r = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(data || {}),
+        cache: "no-store",
+      });
+      const body = await r.json().catch(() => ({}));
+      return { ok: r.ok, status: r.status, data: body };
+    } catch (e) {
+      return { ok: false, status: 0, data: null, error: e?.message };
+    }
+  }
+
   if (isNativeCapable()) {
+    let st = 0;
+    let parsed;
     try {
       const { CapacitorHttp } = await import("@capacitor/core");
       const r = await CapacitorHttp.post({
         url,
         data: data || {},
-        headers: { "Content-Type": "application/json" },
+        headers,
+        ...CAP_HTTP_LONG,
       });
-      const parsed = parseCapacitorBody(r.data);
-      return {
-        ok: r.status >= 200 && r.status < 300,
-        status: r.status,
-        data: parsed,
-      };
+      st = r.status;
+      parsed = parseCapacitorBody(r.data);
+      const ok = r.status >= 200 && r.status < 300;
+      if (ok) return { ok: true, status: r.status, data: parsed };
+      if (!shouldUseFetchFallback(st)) {
+        return { ok: false, status: r.status, data: parsed };
+      }
     } catch (e) {
-      return { ok: false, status: e.status || 0, data: null, error: e?.message };
+      st = e.status || 0;
+      if (!shouldUseFetchFallback(st)) {
+        return { ok: false, status: st, data: null, error: e?.message };
+      }
     }
+    return viaFetch();
   }
-  try {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data || {}),
-    });
-    const body = await r.json().catch(() => ({}));
-    return { ok: r.ok, status: r.status, data: body };
-  } catch (_) {
-    return { ok: false, status: 0, data: null };
-  }
+
+  return viaFetch();
 }

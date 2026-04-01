@@ -8,6 +8,7 @@ import {
   listShifts,
   formatGuardApiError,
 } from "../services/guardApi";
+import { getGuardApiUrl } from "../config/apiUrls";
 import { GEO_GET_CURRENT_RELAXED } from "../utils/geolocationOptions";
 
 function formatShiftDate(d) {
@@ -150,8 +151,12 @@ export default function TimeClock() {
               errorMessage = "An unknown error occurred while getting location.";
               break;
           }
-          setLocationError(errorMessage);
           setLocationStatus("");
+          // Do not set locationError on TIMEOUT — it races the confirm dialog and looks like a failure after OK.
+          // TIMEOUT: only the confirm + “Clock in (no GPS)” path apply. Other errors: show red box.
+          if (error.code !== error.TIMEOUT) {
+            setLocationError(errorMessage);
+          }
           reject(new Error(errorMessage));
         },
         options
@@ -159,7 +164,11 @@ export default function TimeClock() {
     });
   };
 
-  const handleClockIn = async () => {
+  /**
+   * @param {{ skipGps?: boolean }} opts - skipGps: never call geolocation (emulator / indoors)
+   */
+  const handleClockIn = async (opts = {}) => {
+    const skipGps = opts?.skipGps === true;
     setErr("");
     setMsg("");
     setLocationError("");
@@ -170,26 +179,30 @@ export default function TimeClock() {
         throw new Error("Shift ID required");
       }
 
-      // Get location before clocking in
-      setLocationStatus("Requesting location permission...");
       let location = null;
 
-      try {
-        location = await getCurrentLocation();
-      } catch (locationErr) {
-        // Ask user if they want to proceed without location
-        const proceedWithoutLocation = window.confirm(
-          `${locationErr.message}\n\nDo you want to clock in without location verification?`
-        );
-        if (!proceedWithoutLocation) {
-          return;
+      if (skipGps) {
+        setLocationStatus("Clocking in without GPS…");
+      } else {
+        setLocationStatus("Requesting location…");
+        try {
+          location = await getCurrentLocation();
+        } catch (locationErr) {
+          const proceedWithoutLocation = window.confirm(
+            `${locationErr.message}\n\nDo you want to clock in without location verification?`
+          );
+          if (!proceedWithoutLocation) {
+            if (locationErr.message?.includes("timed out")) {
+              setLocationError(locationErr.message);
+            }
+            return;
+          }
+          setLocationError("");
+          setLocationStatus("Clocking in without GPS (after prompt)…");
         }
       }
 
-      // Get device information
       const deviceInfo = getDeviceInfo();
-
-      // Prepare location data (may be null if user chose to proceed without location)
       const locationData = location
         ? {
             lat: location.lat,
@@ -197,21 +210,24 @@ export default function TimeClock() {
             accuracyM: location.accuracyM,
             ...deviceInfo,
           }
-        : {
-            ...deviceInfo,
-          };
+        : { ...deviceInfo };
 
-      setLocationStatus("Clocking in...");
+      if (!skipGps) {
+        setLocationStatus((prev) =>
+          prev.includes("without GPS") ? prev : "Clocking in..."
+        );
+      }
       const res = await clockIn(shiftId.trim(), locationData);
 
       setLocationStatus("");
+      setLocationError("");
       setMsg(JSON.stringify(res?.data || { ok: true }));
       setCurrentLocation(null);
     } catch (e) {
       setLocationStatus("");
+      setLocationError("");
       setErr(formatGuardApiError(e));
 
-      // Check if it's a geofencing error
       if (e?.response?.data?.geofence) {
         const geofence = e.response.data.geofence;
         setLocationError(
@@ -241,6 +257,19 @@ export default function TimeClock() {
       <div className="page">
         <div className="card">
           <h2>Timeclock</h2>
+          <p className="muted" style={{ fontSize: 12, marginBottom: 12, lineHeight: 1.4 }}>
+            API base:{" "}
+            <strong style={{ wordBreak: "break-all" }}>{getGuardApiUrl()}</strong>
+            {typeof window !== "undefined" && window.Capacitor ? (
+              <>
+                {" "}
+                — 404 on clock-in here almost always means <strong>10.0.2.2</strong> is hitting a Mac process that is{" "}
+                <em>not</em> the current <code style={{ fontSize: 11 }}>admin-dashboard/backend</code> (or it’s an old build).{" "}
+                Fix: <strong>Logout</strong> → Login → <strong>Use Railway backend</strong> → Save URL → Test connection → log in again.
+                Or on the Mac run <code style={{ fontSize: 11 }}>{"cd backend && npm start"}</code> (port 5000) with this repo’s server.
+              </>
+            ) : null}
+          </p>
 
           <div className="field">
             <label>Your shifts (from API — avoids typos)</label>
@@ -315,12 +344,22 @@ export default function TimeClock() {
           </div>
 
           <div className="row">
-            <button 
-              className="btnPrimary" 
-              onClick={handleClockIn}
+            <button
+              className="btnPrimary"
+              type="button"
+              onClick={() => handleClockIn({ skipGps: false })}
               disabled={isGettingLocation}
             >
               {isGettingLocation ? "Getting Location..." : "Clock In"}
+            </button>
+            <button
+              type="button"
+              className="btn"
+              title="Skip GPS wait — use on emulator or when indoors"
+              onClick={() => handleClockIn({ skipGps: true })}
+              disabled={isGettingLocation}
+            >
+              Clock In (no GPS)
             </button>
             <button className="btn" onClick={() => run(clockOut)}>Clock Out</button>
           </div>
