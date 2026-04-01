@@ -573,6 +573,59 @@ app.post("/api/guard/shifts/:shiftId/clock-in", authGuard, guardTimePunchControl
 app.post("/api/guard/shifts/:shiftId/clock-out", authGuard, guardTimePunchController.clockOut);
 app.post("/api/guard/shifts/:shiftId/break-start", authGuard, guardTimePunchController.breakStart);
 app.post("/api/guard/shifts/:shiftId/break-end", authGuard, guardTimePunchController.breakEnd);
+
+// Guard callouts: guard-ui posts to /callouts/* (historical abe-guard-ai API).
+// This backend is the unified Railway host, so proxy to abe-guard-ai when configured.
+function getAbeGuardAiBase() {
+  const raw = process.env.ABE_GUARD_AI_URL || process.env.GUARD_AI_URL || "";
+  return String(raw).trim().replace(/\/+$/, "");
+}
+
+async function proxyToAbeGuardAi(req, res, method, path, body) {
+  const base = getAbeGuardAiBase();
+  if (!base) {
+    return res.status(501).json({
+      message: "Callouts service not configured. Set ABE_GUARD_AI_URL on the backend (Railway Variables).",
+      needed: "ABE_GUARD_AI_URL=https://<your-abe-guard-ai-backend>.up.railway.app",
+    });
+  }
+  try {
+    const axios = require("axios");
+    const url = `${base}${path.startsWith("/") ? path : `/${path}`}`;
+    const auth = req.headers.authorization ? { Authorization: req.headers.authorization } : {};
+    const r = await axios.request({
+      url,
+      method,
+      data: body,
+      headers: { "Content-Type": "application/json", Accept: "application/json", ...auth },
+      timeout: 60000,
+      validateStatus: () => true,
+    });
+    return res.status(r.status).json(r.data);
+  } catch (e) {
+    const msg = e?.message || String(e);
+    return res.status(502).json({ message: "Callouts proxy failed", error: msg });
+  }
+}
+
+app.post("/callouts/trigger", authGuard, async (req, res) => {
+  const shiftId = req.body?.shiftId;
+  const reason = req.body?.reason;
+  const payload = {
+    shiftId,
+    reason,
+    callerGuardId: req.guard?.id || null,
+    tenantId: req.guard?.tenant_id || null,
+  };
+  return proxyToAbeGuardAi(req, res, "POST", "/callouts/trigger", payload);
+});
+
+app.post("/callouts/:calloutId/respond", authGuard, async (req, res) => {
+  const calloutId = String(req.params.calloutId || "").trim();
+  return proxyToAbeGuardAi(req, res, "POST", `/callouts/${encodeURIComponent(calloutId)}/respond`, {
+    response: req.body?.response,
+  });
+});
 // Notifications / alerts stubs (guard JWT) — avoids hitting admin-only routes or 404
 app.get("/api/guard/notifications/unread-count", authGuard, guardUiStubs.guardNotificationsUnreadCount);
 app.get("/api/guard/notifications", authGuard, guardUiStubs.listGuardNotifications);
