@@ -578,7 +578,11 @@ app.post("/api/guard/shifts/:shiftId/break-end", authGuard, guardTimePunchContro
 // This backend is the unified Railway host, so proxy to abe-guard-ai when configured.
 function getAbeGuardAiBase() {
   const raw = process.env.ABE_GUARD_AI_URL || process.env.GUARD_AI_URL || "";
-  return String(raw).trim().replace(/\/+$/, "");
+  const trimmed = String(raw).trim().replace(/\/+$/, "");
+  if (!trimmed) return "";
+  // Accept values like "foo.up.railway.app" (add https://) or full https://...
+  if (!/^https?:\/\//i.test(trimmed)) return `https://${trimmed}`;
+  return trimmed;
 }
 
 async function proxyToAbeGuardAi(req, res, method, path, body) {
@@ -604,7 +608,11 @@ async function proxyToAbeGuardAi(req, res, method, path, body) {
     return res.status(r.status).json(r.data);
   } catch (e) {
     const msg = e?.message || String(e);
-    return res.status(502).json({ message: "Callouts proxy failed", error: msg });
+    return res.status(502).json({
+      message: "Callouts proxy failed",
+      error: msg,
+      hint: "Verify ABE_GUARD_AI_URL is the public abe-guard-ai backend URL (include https://).",
+    });
   }
 }
 
