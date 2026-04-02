@@ -1,9 +1,13 @@
 const OpenAI = require('openai');
 const { calculateReliabilityDecay, calculateSiteSuccessRate, calculateGuardScore } = require('../services/ranking.service');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+let openaiSingleton = null;
+function getOpenAI() {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || !String(key).trim()) return null;
+  if (!openaiSingleton) openaiSingleton = new OpenAI({ apiKey: key });
+  return openaiSingleton;
+}
 
 /**
  * Enhanced scoring function with reliability decay and site stats
@@ -85,6 +89,37 @@ async function rankGuardsWithAI(context) {
       lastShiftDate: g._lastShiftDate || null,
     })),
   };
+
+  const openai = getOpenAI();
+  if (!openai) {
+    const sorted = [...enhancedGuards].sort((a, b) => {
+      const statsA = a._siteStats || { successRate: 0.5, shiftCount: 0, onTimeRate: 0.5 };
+      const statsB = b._siteStats || { successRate: 0.5, shiftCount: 0, onTimeRate: 0.5 };
+      const relA = a._decayedReliability || a.reliability_score || 0.8;
+      const relB = b._decayedReliability || b.reliability_score || 0.8;
+      const scoreA = calculateGuardScore(a, shift, statsA, relA).score;
+      const scoreB = calculateGuardScore(b, shift, statsB, relB).score;
+      return scoreB - scoreA;
+    });
+    return {
+      rankings: sorted.map((guard, idx) => {
+        const siteStats = guard._siteStats || { successRate: 0.5, shiftCount: 0 };
+        const decayedReliability = guard._decayedReliability || guard.reliability_score || 0.8;
+        return {
+          guardId: guard.id,
+          rank: idx + 1,
+          reason: `Rule-based rank (OPENAI_API_KEY not set): score from reliability, acceptance, and site history.`,
+          factors: {
+            acceptanceRate: guard.acceptance_rate || 0.85,
+            reliabilityScore: decayedReliability,
+            weeklyHours: guard.weekly_hours || 0,
+            siteShiftCount: siteStats.shiftCount,
+            siteSuccessRate: siteStats.successRate,
+          },
+        };
+      }),
+    };
+  }
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',

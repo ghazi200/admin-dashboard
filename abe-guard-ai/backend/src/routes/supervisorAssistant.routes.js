@@ -15,9 +15,13 @@ const OpenAI = require("openai");
 
 const router = express.Router();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openaiSingleton = null;
+function getOpenAI() {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key || !String(key).trim()) return null;
+  if (!openaiSingleton) openaiSingleton = new OpenAI({ apiKey: key });
+  return openaiSingleton;
+}
 
 // All routes require admin authentication
 router.use(auth);
@@ -90,7 +94,8 @@ router.post("/ask", async (req, res) => {
     let answer = "";
     let citations = [];
 
-    if (process.env.OPENAI_API_KEY && openai) {
+    const openai = getOpenAI();
+    if (openai) {
       try {
         const response = await openai.chat.completions.create({
           model: "gpt-4o-mini",
