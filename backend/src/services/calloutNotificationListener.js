@@ -59,8 +59,14 @@ function initCalloutNotificationListener(app) {
   clientSocket.on("connect_error", (err) => {
     // Only log once per minute to avoid spam
     if (!clientSocket._lastErrorLog || Date.now() - clientSocket._lastErrorLog > 60000) {
-      console.warn("⚠️ Callout notification listener: Unable to connect to abe-guard-ai socket (this is optional)");
-      console.warn("💡 Make sure abe-guard-ai is running on port 4000 for real-time callout notifications");
+      const detail = err?.message || String(err);
+      console.warn(
+        "⚠️ Callout notification listener: Unable to connect to abe-guard-ai socket (this is optional)"
+      );
+      console.warn(`   Socket error: ${detail}`);
+      console.warn(
+        "💡 Fix the abe-guard-ai Railway service until GET /health returns 200 (check PORT, DATABASE_URL, JWT_SECRET, start command)."
+      );
       clientSocket._lastErrorLog = Date.now();
     }
   });
