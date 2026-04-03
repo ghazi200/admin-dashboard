@@ -1,15 +1,4 @@
-const path = require('path');
-const fs = require('fs');
-
-// Load .env from backend directory (backend/.env)
-// __dirname is backend/src/config, so ../.. goes to backend/, then .env is at backend/.env
-const envPath = path.resolve(__dirname, '../../.env'); // backend/.env
-if (fs.existsSync(envPath)) {
-  require('dotenv').config({ path: envPath });
-} else {
-  // Fallback to default dotenv behavior (looks for .env in current working directory)
-  require('dotenv').config();
-}
+require("../loadEnv");
 
 const { Sequelize } = require('sequelize');
 const { Pool } = require('pg');

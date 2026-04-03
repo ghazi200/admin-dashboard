@@ -16,7 +16,7 @@
  * - Admin Dashboard (policy + AI views)
  */
 
-require("dotenv").config();
+require("./loadEnv");
 const express = require("express");
 const cors = require("cors");
 const path = require("path");

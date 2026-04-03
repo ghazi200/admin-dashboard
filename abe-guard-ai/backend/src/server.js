@@ -1,5 +1,5 @@
 // backend/src/server.js
-require("dotenv").config();
+require("./loadEnv");
 
 const logger = require("./logger");
 

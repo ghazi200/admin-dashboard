@@ -27,13 +27,16 @@ function initCalloutNotificationListener(app) {
   const { Notification } = app.locals.models;
   const emitToRealtime = app.locals.emitToRealtime;
 
-  console.log(`🔌 Connecting to abe-guard-ai at ${abeGuardAiUrl} for callout notifications...`);
+  const baseUrl = String(abeGuardAiUrl).replace(/\/+$/, "");
+  console.log(`🔌 Connecting to abe-guard-ai at ${baseUrl} for callout notifications...`);
 
   // Create client socket connection
   // Note: abe-guard-ai might require auth, but for admin notifications we can connect without auth
   // or use a service token if needed
-  clientSocket = ioClient(abeGuardAiUrl, {
-    transports: ["websocket", "polling"],
+  // Polling first often succeeds through Railway/nginx where a raw WebSocket upgrade fails first.
+  clientSocket = ioClient(baseUrl, {
+    path: "/socket.io/",
+    transports: ["polling", "websocket"],
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: 5,
