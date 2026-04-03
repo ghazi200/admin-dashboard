@@ -196,6 +196,16 @@ if (process.env.LOG_LEVEL === "debug") {
   logger.debug({ routes }, "CALL OUT ROUTES");
 }
 
+// Root (browser / uptime checks often hit "/" — avoid a bare 404)
+app.get("/", (req, res) => {
+  res.json({
+    service: "abe-guard-ai",
+    status: "OK",
+    health: "/health",
+    ready: "/health/ready",
+  });
+});
+
 // Health: liveness (process is up)
 app.get("/health", (req, res) => {
   res.json({ status: "OK" });
