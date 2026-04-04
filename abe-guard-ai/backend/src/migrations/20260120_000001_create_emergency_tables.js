@@ -1,156 +1,147 @@
 /**
  * Migration: Create Emergency SOS Tables
- * 
- * Creates:
- * - emergency_events: Stores emergency SOS activations
- * - emergency_contacts: Stores guard's emergency contacts
+ *
+ * emergency_events / emergency_contacts — idempotent for partial runs
+ * (e.g. index "emergency_events_guard_id" already exists).
  */
 
-require("dotenv").config();
-const { sequelize } = require("../config/db");
-const { DataTypes } = require("sequelize");
+"use strict";
 
-async function up() {
-  const queryInterface = sequelize.getQueryInterface();
-
-  // Create emergency_events table
-  await queryInterface.createTable("emergency_events", {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-      allowNull: false,
-    },
-    guard_id: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      comment: "Guard who activated the emergency",
-    },
-    tenant_id: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      comment: "Tenant for multi-tenant isolation",
-    },
-    supervisor_id: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      comment: "On-call supervisor who was notified",
-    },
-    latitude: {
-      type: DataTypes.DOUBLE,
-      allowNull: true,
-      comment: "Guard's GPS latitude at time of activation",
-    },
-    longitude: {
-      type: DataTypes.DOUBLE,
-      allowNull: true,
-      comment: "Guard's GPS longitude at time of activation",
-    },
-    accuracy: {
-      type: DataTypes.DOUBLE,
-      allowNull: true,
-      comment: "GPS accuracy in meters",
-    },
-    status: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "active",
-      comment: "Status: active, resolved, cancelled",
-    },
-    resolved_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      comment: "When the emergency was resolved",
-    },
-    resolved_by: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      comment: "Admin/supervisor who resolved the emergency",
-    },
-    notes: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      comment: "Additional notes about the emergency",
-    },
-    activated_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-  });
-
-  // Create emergency_contacts table
-  await queryInterface.createTable("emergency_contacts", {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-      allowNull: false,
-    },
-    guard_id: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      comment: "Guard who owns this contact",
-    },
-    tenant_id: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      comment: "Tenant for multi-tenant isolation",
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      comment: "Contact name",
-    },
-    phone: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      comment: "Contact phone number",
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-  });
-
-  // Add indexes for better query performance
-  await queryInterface.addIndex("emergency_events", ["guard_id"]);
-  await queryInterface.addIndex("emergency_events", ["tenant_id"]);
-  await queryInterface.addIndex("emergency_events", ["supervisor_id"]);
-  await queryInterface.addIndex("emergency_events", ["status"]);
-  await queryInterface.addIndex("emergency_events", ["activated_at"]);
-
-  await queryInterface.addIndex("emergency_contacts", ["guard_id"]);
-  await queryInterface.addIndex("emergency_contacts", ["tenant_id"]);
-
-  console.log("✅ Created emergency_events and emergency_contacts tables");
+async function tableExists(queryInterface, name) {
+  try {
+    await queryInterface.describeTable(name);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-async function down() {
-  const queryInterface = sequelize.getQueryInterface();
-  
-  await queryInterface.dropTable("emergency_contacts");
-  await queryInterface.dropTable("emergency_events");
-  
-  console.log("✅ Dropped emergency_events and emergency_contacts tables");
+/** Postgres: create index only if missing (avoids "already exists"). */
+async function addIndexIfNotExists(sequelize, name, table, columnSql) {
+  await sequelize.query(
+    `CREATE INDEX IF NOT EXISTS "${name}" ON "${table}" (${columnSql});`
+  );
 }
 
-// Run migration
-if (require.main === module) {
-  (async () => {
-    try {
-      console.log("🔄 Running emergency tables migration...");
-      await up();
-      console.log("✅ Migration completed!");
-      await sequelize.close();
-      process.exit(0);
-    } catch (error) {
-      console.error("❌ Migration failed:", error);
-      await sequelize.close();
-      process.exit(1);
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    if (!(await tableExists(queryInterface, "emergency_events"))) {
+      await queryInterface.createTable("emergency_events", {
+        id: {
+          type: Sequelize.UUID,
+          allowNull: false,
+          primaryKey: true,
+          defaultValue: Sequelize.UUIDV4,
+        },
+        guard_id: {
+          type: Sequelize.UUID,
+          allowNull: false,
+          comment: "Guard who activated the emergency",
+        },
+        tenant_id: {
+          type: Sequelize.UUID,
+          allowNull: true,
+          comment: "Tenant for multi-tenant isolation",
+        },
+        supervisor_id: {
+          type: Sequelize.UUID,
+          allowNull: true,
+          comment: "On-call supervisor who was notified",
+        },
+        latitude: {
+          type: Sequelize.DOUBLE,
+          allowNull: true,
+          comment: "Guard's GPS latitude at time of activation",
+        },
+        longitude: {
+          type: Sequelize.DOUBLE,
+          allowNull: true,
+          comment: "Guard's GPS longitude at time of activation",
+        },
+        accuracy: {
+          type: Sequelize.DOUBLE,
+          allowNull: true,
+          comment: "GPS accuracy in meters",
+        },
+        status: {
+          type: Sequelize.STRING,
+          allowNull: false,
+          defaultValue: "active",
+          comment: "Status: active, resolved, cancelled",
+        },
+        resolved_at: {
+          type: Sequelize.DATE,
+          allowNull: true,
+          comment: "When the emergency was resolved",
+        },
+        resolved_by: {
+          type: Sequelize.UUID,
+          allowNull: true,
+          comment: "Admin/supervisor who resolved the emergency",
+        },
+        notes: {
+          type: Sequelize.TEXT,
+          allowNull: true,
+          comment: "Additional notes about the emergency",
+        },
+        activated_at: {
+          type: Sequelize.DATE,
+          allowNull: false,
+          defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
+        },
+      });
     }
-  })();
-}
 
-module.exports = { up, down };
+    if (!(await tableExists(queryInterface, "emergency_contacts"))) {
+      await queryInterface.createTable("emergency_contacts", {
+        id: {
+          type: Sequelize.UUID,
+          allowNull: false,
+          primaryKey: true,
+          defaultValue: Sequelize.UUIDV4,
+        },
+        guard_id: {
+          type: Sequelize.UUID,
+          allowNull: false,
+          comment: "Guard who owns this contact",
+        },
+        tenant_id: {
+          type: Sequelize.UUID,
+          allowNull: true,
+          comment: "Tenant for multi-tenant isolation",
+        },
+        name: {
+          type: Sequelize.STRING,
+          allowNull: false,
+          comment: "Contact name",
+        },
+        phone: {
+          type: Sequelize.STRING,
+          allowNull: false,
+          comment: "Contact phone number",
+        },
+        created_at: {
+          type: Sequelize.DATE,
+          allowNull: false,
+          defaultValue: Sequelize.literal("CURRENT_TIMESTAMP"),
+        },
+      });
+    }
+
+    const { sequelize } = queryInterface;
+
+    await addIndexIfNotExists(sequelize, "emergency_events_guard_id", "emergency_events", '"guard_id"');
+    await addIndexIfNotExists(sequelize, "emergency_events_tenant_id", "emergency_events", '"tenant_id"');
+    await addIndexIfNotExists(sequelize, "emergency_events_supervisor_id", "emergency_events", '"supervisor_id"');
+    await addIndexIfNotExists(sequelize, "emergency_events_status", "emergency_events", '"status"');
+    await addIndexIfNotExists(sequelize, "emergency_events_activated_at", "emergency_events", '"activated_at"');
+
+    await addIndexIfNotExists(sequelize, "emergency_contacts_guard_id", "emergency_contacts", '"guard_id"');
+    await addIndexIfNotExists(sequelize, "emergency_contacts_tenant_id", "emergency_contacts", '"tenant_id"');
+  },
+
+  async down(queryInterface) {
+    await queryInterface.dropTable("emergency_contacts");
+    await queryInterface.dropTable("emergency_events");
+  },
+};
