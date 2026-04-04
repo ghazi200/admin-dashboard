@@ -457,6 +457,7 @@ app.post("/shifts/:shiftId/clock-in", authGuardPunch, guardTimePunchCtrl.clockIn
 app.post("/shifts/:shiftId/clock-out", authGuardPunch, guardTimePunchCtrl.clockOut);
 app.post("/shifts/:shiftId/break-start", authGuardPunch, guardTimePunchCtrl.breakStart);
 app.post("/shifts/:shiftId/break-end", authGuardPunch, guardTimePunchCtrl.breakEnd);
+app.post("/shifts/:shiftId/running-late", authGuardPunch, guardTimePunchCtrl.runningLate);
 // Also support /shifts path for compatibility (admin JWT list/get/update on same prefix)
 app.use("/shifts", adminShiftsRoutes);
 
@@ -573,6 +574,7 @@ app.post("/api/guard/shifts/:shiftId/clock-in", authGuard, guardTimePunchControl
 app.post("/api/guard/shifts/:shiftId/clock-out", authGuard, guardTimePunchController.clockOut);
 app.post("/api/guard/shifts/:shiftId/break-start", authGuard, guardTimePunchController.breakStart);
 app.post("/api/guard/shifts/:shiftId/break-end", authGuard, guardTimePunchController.breakEnd);
+app.post("/api/guard/shifts/:shiftId/running-late", authGuard, guardTimePunchController.runningLate);
 
 // Guard callouts: guard-ui posts to /callouts/* (historical abe-guard-ai API).
 // This backend is the unified Railway host, so proxy to abe-guard-ai when configured.

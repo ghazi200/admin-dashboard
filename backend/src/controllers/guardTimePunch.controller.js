@@ -114,6 +114,41 @@ async function fetchFullTimeEntry(sequelize, id) {
   return Array.isArray(rows) && rows[0] ? rows[0] : null;
 }
 
+function parseShiftStart(shift) {
+  if (!shift?.shift_date || shift.shift_start == null) return new Date(NaN);
+  const t = String(shift.shift_start).trim();
+  return new Date(`${shift.shift_date}T${t}`);
+}
+
+function minutesDiff(a, b) {
+  return Math.floor((b - a) / 60000);
+}
+
+function clampInt(n, min, max) {
+  const x = Number.parseInt(n, 10);
+  if (!Number.isFinite(x)) return null;
+  return Math.max(min, Math.min(max, x));
+}
+
+async function loadShiftRowWithSchedule(sequelize, shiftId, guardTenantId) {
+  let sql = `SELECT id, guard_id, status, tenant_id, shift_date, shift_start::text AS shift_start, ai_decision
+     FROM public.shifts WHERE id = $1::uuid`;
+  const bind = [shiftId];
+  if (guardTenantId) {
+    bind.push(guardTenantId);
+    sql += ` AND tenant_id = $2::uuid`;
+  }
+  const [rows] = await sequelize.query(`${sql} LIMIT 1`, { bind });
+  return Array.isArray(rows) && rows[0] ? rows[0] : null;
+}
+
+async function fetchGuardName(sequelize, guardId) {
+  const [rows] = await sequelize.query(`SELECT name FROM public.guards WHERE id = $1::uuid LIMIT 1`, {
+    bind: [guardId],
+  });
+  return rows?.[0]?.name || null;
+}
+
 exports.clockIn = async (req, res) => {
   try {
     const guardId = req.guard?.id;
@@ -330,6 +365,129 @@ exports.breakEnd = async (req, res) => {
     return res.json({ ok: true, timeEntry: teRow });
   } catch (e) {
     console.error("guardTimePunch.breakEnd:", e);
+    return res.status(500).json({ message: "Server error", error: String(e.message || e) });
+  }
+};
+
+/**
+ * POST /api/guard/shifts/:shiftId/running-late (and legacy /shifts/... before admin router)
+ * Same contract as abe-guard-ai: guard JWT, updates shifts.ai_decision, optional shift_time_entries audit.
+ */
+exports.runningLate = async (req, res) => {
+  try {
+    const guardId = req.guard?.id;
+    if (!guardId) return res.status(401).json({ message: "Missing guard identity (auth)" });
+
+    const { shiftId } = req.params;
+    const sequelize = req.app.locals.models?.sequelize;
+    if (!sequelize) return res.status(500).json({ message: "Database not available" });
+
+    const shift = await loadShiftRowWithSchedule(sequelize, shiftId, req.guard?.tenant_id || null);
+    if (!shift) return res.status(404).json({ message: "Shift not found" });
+
+    const te = await getLatestTimeEntry(sequelize, shift.id, guardId);
+    const hasClockInRow = Boolean(te?.clock_in_at);
+    const isCurrentlyClockedIn =
+      hasClockInRow &&
+      !(
+        te.clock_out_at &&
+        te.clock_in_at &&
+        new Date(te.clock_out_at) >= new Date(te.clock_in_at)
+      );
+
+    const { assigned, openUnassigned } = shiftAccess(shift, guardId);
+    if (!assigned && !openUnassigned && !hasClockInRow) {
+      return res.status(403).json({ message: "Guard is not assigned to this shift" });
+    }
+
+    if (isCurrentlyClockedIn) {
+      return res.status(400).json({ message: "Already clocked in; running-late not allowed." });
+    }
+
+    const cooldownMinutes = parseInt(process.env.RUNNING_LATE_COOLDOWN_MINUTES || "30", 10);
+    try {
+      const [lastRows] = await sequelize.query(
+        `SELECT event_time FROM public.shift_time_entries
+         WHERE shift_id = $1::uuid AND guard_id = $2::uuid AND event_type = 'LATE_NOTICE'
+         ORDER BY event_time DESC NULLS LAST LIMIT 1`,
+        { bind: [shift.id, guardId] }
+      );
+      const lastT = lastRows?.[0]?.event_time;
+      if (lastT) {
+        const minsSince = minutesDiff(new Date(lastT), new Date());
+        if (minsSince < cooldownMinutes) {
+          return res.status(429).json({
+            message: `Running-late already sent. Try again in ${cooldownMinutes - minsSince} min.`,
+          });
+        }
+      }
+    } catch (_) {
+      /* shift_time_entries may be missing on older DBs */
+    }
+
+    const etaMinutes = clampInt(req.body?.etaMinutes ?? req.body?.minutesLate, 1, 180);
+    const reasonRaw = String(req.body?.reason || "").trim();
+    const reason = reasonRaw.length ? reasonRaw.slice(0, 160) : null;
+    const lateReasonText = reason || "Running late";
+    const nowIso = new Date().toISOString();
+    const ip = getIp(req);
+    const ua = req.headers["user-agent"] || null;
+
+    let eventId = null;
+    try {
+      const meta = JSON.stringify({ etaMinutes: etaMinutes ?? null, reason });
+      const [ins] = await sequelize.query(
+        `INSERT INTO public.shift_time_entries
+         (id, shift_id, guard_id, event_type, event_time, source, ip_address, user_agent, meta)
+         VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 'LATE_NOTICE', NOW(), 'MOBILE', $3, $4, $5::jsonb)
+         RETURNING id`,
+        { bind: [shift.id, guardId, ip, ua, meta] }
+      );
+      eventId = ins?.[0]?.id || null;
+    } catch (_) {
+      /* optional audit table */
+    }
+
+    await sequelize.query(
+      `UPDATE public.shifts
+       SET ai_decision = COALESCE(ai_decision, '{}'::jsonb) || $2::jsonb
+       WHERE id = $1::uuid`,
+      {
+        bind: [
+          shift.id,
+          JSON.stringify({
+            running_late: true,
+            late_reason: lateReasonText,
+            marked_late_at: nowIso,
+          }),
+        ],
+      }
+    );
+
+    const start = parseShiftStart(shift);
+    const minsLate = Number.isFinite(start.getTime()) ? minutesDiff(start, new Date()) : 0;
+    const guardName = await fetchGuardName(sequelize, guardId);
+
+    const payload = {
+      type: "RUNNING_LATE",
+      shiftId: shift.id,
+      guardId,
+      guardName,
+      minsLate,
+      etaMinutes: etaMinutes ?? null,
+      reason,
+      eventId,
+      createdAt: nowIso,
+    };
+
+    const emitToRealtime = req.app.get("emitToRealtime");
+    if (typeof emitToRealtime === "function") {
+      await emitToRealtime(req.app, ["admin", "admins"], "guard_running_late", payload);
+    }
+
+    return res.json({ ok: true, payload });
+  } catch (e) {
+    console.error("guardTimePunch.runningLate:", e);
     return res.status(500).json({ message: "Server error", error: String(e.message || e) });
   }
 };

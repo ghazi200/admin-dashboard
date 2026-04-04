@@ -89,6 +89,27 @@ async function guardPostPunch(shiftId, action, body = {}) {
   return { data: res.data };
 }
 
+/** Running late: unified host tries /api/guard/... first (admin backend), then /shifts/... (abe-guard-ai). */
+async function guardPostRunningLate(shiftId, body) {
+  const id = encodeURIComponent(shiftId);
+  const headers = guardAuthHeaders();
+  const primary = `/api/guard/shifts/${id}/running-late`;
+  const fallback = `/shifts/${id}/running-late`;
+
+  let res = await postToGuardPath(primary, body, headers);
+  if (!res.ok && res.status === 404) {
+    res = await postToGuardPath(fallback, body, headers);
+  }
+  if (!res.ok) {
+    const err = new Error(
+      res.data?.message || res.data?.error || res.error || `Request failed (${res.status})`
+    );
+    err.response = { status: res.status, data: res.data || {} };
+    throw err;
+  }
+  return { data: res.data };
+}
+
 /* ================= AUTH ================= */
 
 // Guard login (guard backend mounts auth at /auth). Longer timeout for cold start.
@@ -197,29 +218,30 @@ export const breakEnd = (shiftId) => guardPostPunch(shiftId, "break-end", {});
  * 1) runningLate(shiftId, reason)
  * 2) runningLate({ shiftId, minutesLate, reason })
  */
-export const runningLate = (arg1, arg2) => {
+export const runningLate = async (arg1, arg2) => {
   // object form
   if (arg1 && typeof arg1 === "object") {
     const { shiftId, minutesLate, reason } = arg1 || {};
     if (!shiftId) throw new Error("Missing shiftId");
 
-    // guardClient interceptor already adds token, no need for guardAuthHeaders()
-    return guardClient.post(
-      `/shifts/${shiftId}/running-late`,
-      { minutesLate, reason }
-    );
+    const body = {
+      minutesLate,
+      etaMinutes: minutesLate,
+      reason,
+    };
+    return guardPostRunningLate(shiftId, body);
   }
 
-  // legacy form
   const shiftId = arg1;
-  const reason = arg2;
   if (!shiftId) throw new Error("Missing shiftId");
-
-  // guardClient interceptor already adds token, no need for guardAuthHeaders()
-  return guardClient.post(
-    `/shifts/${shiftId}/running-late`,
-    { reason }
-  );
+  if (arg2 && typeof arg2 === "object") {
+    return guardPostRunningLate(shiftId, {
+      minutesLate: arg2.minutesLate,
+      etaMinutes: arg2.minutesLate ?? arg2.etaMinutes,
+      reason: arg2.reason,
+    });
+  }
+  return guardPostRunningLate(shiftId, { reason: arg2 });
 };
 
 /**
