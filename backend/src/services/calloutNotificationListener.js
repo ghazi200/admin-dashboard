@@ -78,11 +78,19 @@ function initCalloutNotificationListener(app) {
   clientSocket.on("callout_started", async (payload) => {
     try {
       console.log("📞 callout_started event received:", payload);
-      
-      const { shiftId, reason, callerGuardId, shift } = payload || {};
-      
+
+      const { shiftId, reason, callerGuardId, shift, createdCalloutsCount, calloutIds } = payload || {};
+
       if (!shiftId) {
         console.warn("⚠️ callout_started event missing shiftId");
+        return;
+      }
+
+      // abe-guard-ai now emits after Callout rows exist; skip bell noise if DB inserts all failed
+      if (createdCalloutsCount === 0) {
+        console.warn(
+          "⚠️ callout_started: createdCalloutsCount=0 (no rows in callouts table); skipping admin notification"
+        );
         return;
       }
 
@@ -169,17 +177,21 @@ function initCalloutNotificationListener(app) {
       // ✅ ENHANCED EVENT CAPTURE: Create OpEvent for Command Center
       try {
         const models = app.locals.models;
+        const resolvedTenantId =
+          payload?.tenantId || (shift && shift.tenant_id) || (shift && shift.dataValues?.tenant_id) || null;
+        const firstCalloutId =
+          Array.isArray(calloutIds) && calloutIds.length > 0 ? calloutIds[0] : null;
         if (models && models.OpEvent) {
           const opEvent = await opsEventService.createOpEvent(
             {
-              tenant_id: tenantId,
+              tenant_id: resolvedTenantId,
               site_id: null, // Could extract from location if available
               type: "CALLOUT",
               severity: "MEDIUM",
               title: `Guard Callout: ${guardName}`,
               summary: `${guardName} called out (${reasonText}) for shift on ${shiftDateText} ${shiftTime}`,
               entity_refs: {
-                callout_id: calloutId,
+                callout_id: firstCalloutId,
                 guard_id: callerGuardId,
                 shift_id: shiftId,
               },

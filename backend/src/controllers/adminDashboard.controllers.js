@@ -28,47 +28,149 @@ exports.getLiveCallouts = async (req, res) => {
   try {
     const { sequelize } = req.app.locals.models;
 
-    // Query callouts from the actual table (callouts lowercase)
-    // Note: callouts.guard_id is UUID from abe-guard-ai system
-    // Guards table uses INTEGER, so we'll show guard_id for now
-    // ✅ Tenant isolation: Filter by tenant
+    // Join shifts + guards: tenant admins often have NULL on callouts.tenant_id while the
+    // notified guard or shift still belongs to their tenant.
     const params = [];
-    const tenantFilter = getTenantSqlFilter(req.admin, params);
-    const tenantSql = tenantFilter ? `WHERE ${tenantFilter}` : "";
+    const tenantId = getTenantFilter(req.admin);
+    const tenantSql =
+      tenantId !== null
+        ? `WHERE (c.tenant_id = $1 OR s.tenant_id = $1 OR g.tenant_id = $1)`
+        : "";
+    if (tenantId !== null) {
+      params.push(tenantId);
+    }
 
-    const [rows] = await sequelize.query(`
-      SELECT 
-        id,
-        guard_id,
-        reason,
-        created_at,
-        shift_id,
-        tenant_id
-      FROM callouts
+    const [rows] = await sequelize.query(
+      `
+      SELECT
+        c.id,
+        c.guard_id,
+        c.reason,
+        c.created_at,
+        c.shift_id,
+        c.tenant_id,
+        g.name AS guard_name,
+        g.email AS guard_email
+      FROM callouts c
+      LEFT JOIN shifts s ON c.shift_id = s.id
+      LEFT JOIN guards g ON c.guard_id = g.id
       ${tenantSql}
-      ORDER BY created_at DESC
+      ORDER BY c.created_at DESC
       LIMIT 1000
-    `, { bind: params });
+    `,
+      { bind: params }
+    );
 
-    // Transform to match frontend expectations
+    let dbName = null;
+    try {
+      const [dbRows] = await sequelize.query(`SELECT current_database() AS db`);
+      dbName = dbRows?.[0]?.db || null;
+    } catch (_) {
+      /* ignore */
+    }
+
+    // Transform to match frontend expectations (include shiftId for dedupe)
     const callouts = rows.map((c) => {
-      // Try to get guard name - check if there's a guards table with UUID
-      // For now, show a shortened guard_id
-      const guardIdShort = c.guard_id ? c.guard_id.substring(0, 8) : 'Unknown';
-      
+      const guardIdShort = c.guard_id ? c.guard_id.substring(0, 8) : "Unknown";
+      const displayName =
+        (c.guard_name && String(c.guard_name).trim()) ||
+        (c.guard_email && String(c.guard_email).trim()) ||
+        `Guard ${guardIdShort}`;
+
       return {
         id: c.id,
         guardId: c.guard_id,
-        guardName: `Guard ${guardIdShort}`, // Will show guard_id prefix until we can join properly
+        guardName: displayName,
         reason: c.reason || "No reason",
         contactType: c.reason || "Unknown",
         active: true,
         timestamp: c.created_at,
         createdAt: c.created_at,
+        shiftId: c.shift_id || null,
+        source: "callouts_table",
       };
     });
 
-    return res.json({ data: callouts });
+    const shiftsWithDbRows = new Set(
+      callouts.map((c) => c.shiftId).filter(Boolean).map((id) => String(id))
+    );
+
+    // Bell notifications are written on the admin DB even when abe-guard-ai uses another
+    // DATABASE_URL or Callout.create fails — merge recent CALLOUT_CREATED so the KPI matches the inbox.
+    let mergedFromNotifications = 0;
+    try {
+      const { Notification } = req.app.locals.models;
+      const notifItems = await Notification.findAll({
+        where: { type: "CALLOUT_CREATED" },
+        order: [["createdAt", "DESC"]],
+        limit: 80,
+      });
+
+      const candidates = [];
+      for (const n of notifItems) {
+        const raw = n.meta;
+        const meta = raw && typeof raw === "object" ? raw : {};
+        const sid = meta.shiftId ? String(meta.shiftId) : "";
+        if (!sid || shiftsWithDbRows.has(sid)) continue;
+        candidates.push({ n, sid, meta });
+      }
+
+      const uniqueSids = [...new Set(candidates.map((c) => c.sid))];
+      let tenantByShift = new Map();
+      if (uniqueSids.length > 0) {
+        const [shiftRows] = await sequelize.query(
+          `SELECT id::text AS id, tenant_id::text AS tenant_id FROM shifts WHERE id = ANY($1::uuid[])`,
+          { bind: [uniqueSids] }
+        );
+        tenantByShift = new Map(
+          (shiftRows || []).map((r) => [String(r.id), r.tenant_id ? String(r.tenant_id) : null])
+        );
+      }
+
+      const tenantFilterStr = tenantId !== null ? String(tenantId) : null;
+      for (const { n, sid, meta } of candidates) {
+        if (shiftsWithDbRows.has(sid)) continue;
+        const shiftTenant = tenantByShift.get(sid);
+        if (tenantFilterStr !== null) {
+          if (shiftTenant == null || shiftTenant !== tenantFilterStr) continue;
+        }
+        shiftsWithDbRows.add(sid);
+        mergedFromNotifications += 1;
+        const gid = meta.guardId ? String(meta.guardId) : null;
+        const gshort = gid ? gid.substring(0, 8) : "Unknown";
+        callouts.push({
+          id: `nf-${n.id}`,
+          guardId: gid,
+          guardName: meta.guardName || `Guard ${gshort}`,
+          reason: meta.reason || "CALLOUT",
+          contactType: meta.reason || "Unknown",
+          active: true,
+          timestamp: n.createdAt,
+          createdAt: n.createdAt,
+          shiftId: sid,
+          source: "notification",
+        });
+      }
+
+      callouts.sort((a, b) => {
+        const ta = new Date(a.createdAt || 0).getTime();
+        const tb = new Date(b.createdAt || 0).getTime();
+        return tb - ta;
+      });
+    } catch (mergeErr) {
+      console.warn("getLiveCallouts: notification merge skipped:", mergeErr?.message || mergeErr);
+    }
+
+    return res.json({
+      data: callouts.slice(0, 1000),
+      meta: {
+        database: dbName,
+        count: callouts.length,
+        fromCalloutsTable: rows.length,
+        mergedFromNotifications,
+        at: new Date().toISOString(),
+      },
+    });
   } catch (e) {
     console.error("getLiveCallouts error:", e);
     return res

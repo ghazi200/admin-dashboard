@@ -264,18 +264,22 @@ export default function Dashboard() {
       const data = response.data;
       console.log("✅ Fetched callouts count:", data?.data?.length || 0);
       console.log("✅ Latest callout ID:", data?.data?.[0]?.id || "none");
-      // Update local state when query data loads
+      if (data?.meta?.database) {
+        console.log("🗄️ live-callouts DB:", data.meta.database, "meta.count:", data.meta.count);
+      }
       if (data?.data) {
         setLocalCallouts(data.data);
-        console.log("✅ Local callouts state updated from query");
       }
       return data;
     },
     enabled: canReadDashboard,
-    refetchInterval: canReadDashboard ? 5000 : false, // Poll every 5 seconds as fallback (faster than before)
+    refetchInterval: canReadDashboard ? 3000 : false,
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
     staleTime: 0, // Always consider data stale to allow immediate refetch
     gcTime: 0, // React Query v4 - don't cache, always fetch fresh
+    structuralSharing: false,
   });
 
   const qRunningLate = useQuery({
@@ -515,9 +519,8 @@ export default function Dashboard() {
           latestId: directData?.data?.[0]?.id || "none"
         });
         
-        // Update local state directly - this will trigger immediate re-render
         const newCalloutsArray = directData.data || [];
-        const currentCalloutsArray = localCallouts || [];
+        const currentCalloutsArray = qc.getQueryData(["liveCallouts"])?.data || [];
         
         console.log("🔄 [REFRESH] Comparing callouts:", {
           currentCount: currentCalloutsArray.length,
@@ -1084,27 +1087,15 @@ export default function Dashboard() {
   // - qCallouts.data.data = [...] (the actual array)
   // Use local state if available, otherwise use query data
   // ✅ FIX: Use useMemo to ensure recalculation when dependencies change
+  // Single source of truth: React Query cache (refreshAll/socket use setQueryData too).
   const callouts = useMemo(() => {
-    const local = localCallouts;
-    const query = qCallouts.data?.data;
-    
-    // Prefer local state if it exists, otherwise use query data
-    const result = local || query || [];
-    
-    // Debug: Log the actual count being used
-    console.log("🔢 [COUNT] Callouts count calculation:", {
-      localCalloutsLength: local?.length || 0,
-      queryDataLength: query?.length || 0,
-      finalCalloutsLength: result.length,
-      usingSource: local ? "localCallouts" : "qCallouts.data",
-      localFirstId: local?.[0]?.id || "none",
-      queryFirstId: query?.[0]?.id || "none",
-      resultFirstId: result[0]?.id || "none",
-      timestamp: new Date().toISOString(),
-    });
-    
+    const arr = qCallouts.data?.data;
+    const result = Array.isArray(arr) ? arr : [];
+    if (process.env.NODE_ENV === "development") {
+      console.log("🔢 [callouts] from query cache, length:", result.length);
+    }
     return result;
-  }, [localCallouts, qCallouts.data, qCallouts.dataUpdatedAt]);
+  }, [qCallouts.data, qCallouts.dataUpdatedAt]);
   
   // Force a state update when callouts change - track count separately to force re-render
   const [calloutCount, setCalloutCount] = useState(() => {
@@ -1134,7 +1125,8 @@ export default function Dashboard() {
   // Fix: getGuardAvailability returns data directly, not nested in data.data
   const avail = qAvail.data || {};
   // Use local state if available, otherwise use query data (similar to callouts for immediate updates)
-  const clockStatus = localClockStatus || qClockStatus.data || {};
+  // Prefer server refetches (polling) over a one-time local snapshot — otherwise clock-out never shows until a socket event.
+  const clockStatus = qClockStatus.data ?? localClockStatus ?? {};
   const clockedInRaw = clockStatus.clockedIn || [];
   const onBreak = clockStatus.onBreak || [];
   const clockedOutRaw = clockStatus.clockedOut || [];
@@ -1439,7 +1431,7 @@ export default function Dashboard() {
           <div className="kpiLabel">Live Callouts</div>
           <div 
             className="kpiValue" 
-            key={`callouts-${calloutCount}-${callouts[0]?.id || 'none'}-${localCallouts?.length || 0}`}
+            key={`callouts-${calloutCount}-${callouts[0]?.id || "none"}-${callouts.length}`}
             style={{ 
               // Force re-render by using a style that changes
               opacity: calloutCount > 0 ? 1 : 0.8,
