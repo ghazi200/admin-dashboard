@@ -90,24 +90,7 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
   shift.guard_id = null;
   await shift.save();
 
-  // 2) Notify admins that callout started
-  const calloutPayload = {
-    shiftId: shift.id,
-    reason: cleanReason,
-    callerGuardId: callerGuardId || null,
-    tenantId: tenantId || shift.tenant_id || null,
-    shift, // OK for internal UI; remove if you want a smaller payload later
-    ts: new Date().toISOString(),
-  };
-  console.log("📤 [CALLBACK] Emitting callout_started event to admins:", {
-    shiftId: calloutPayload.shiftId,
-    reason: calloutPayload.reason,
-    tenantId: calloutPayload.tenantId,
-  });
-  emitAdmin("callout_started", calloutPayload);
-  console.log("✅ [CALLBACK] callout_started event emitted");
-
-  // 3) Eligible guards: all active, excluding caller
+  // 2) Eligible guards: all active, excluding caller
   const allActive = await Guard.findAll({ where: { is_active: true } });
 
   const eligibleGuards = callerGuardId
@@ -185,6 +168,13 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
   // ✅ IMPORTANT: your callouts table is minimal and does NOT have response/status columns.
   const createdCallouts = [];
 
+  if (!rankings.length) {
+    console.warn("[CALL_OUT] rankings empty — no Callout rows will be created", {
+      shiftId: shift.id,
+      eligibleCount: eligibleGuards.length,
+    });
+  }
+
   for (const r of rankings) {
     const guard = rankedGuards.find((g) => String(g.id) === String(r.guardId));
     if (!guard) continue;
@@ -204,7 +194,14 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
       // Attach calloutId onto the SAME ranking object the UI will render.
       r.calloutId = calloutRow.id;
     } catch (e) {
-      console.log("ℹ️ Callout.create for guard skipped:", e?.message);
+      const code = e?.original?.code || e?.parent?.code;
+      console.error("❌ Callout.create failed:", {
+        guardId: guard?.id,
+        shiftId: shift?.id,
+        message: e?.message,
+        pgCode: code,
+      });
+      if (e?.stack) console.error(e.stack);
       r.calloutId = null;
     }
 
@@ -215,6 +212,26 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
       rank: r.rank,
     });
   }
+
+  // Notify admins only AFTER callout rows exist so /dashboard/live-callouts matches the bell notification.
+  const calloutPayload = {
+    shiftId: shift.id,
+    reason: cleanReason,
+    callerGuardId: callerGuardId || null,
+    tenantId: tenantId || shift.tenant_id || null,
+    shift,
+    ts: new Date().toISOString(),
+    createdCalloutsCount: createdCallouts.length,
+    calloutIds: createdCallouts.map((c) => c.id),
+  };
+  console.log("📤 [CALLBACK] Emitting callout_started (after DB rows):", {
+    shiftId: calloutPayload.shiftId,
+    reason: calloutPayload.reason,
+    tenantId: calloutPayload.tenantId,
+    createdCalloutsCount: calloutPayload.createdCalloutsCount,
+  });
+  emitAdmin("callout_started", calloutPayload);
+  console.log("✅ [CALLBACK] callout_started event emitted");
 
   // Return rankings WITH calloutId so Guard UI can Accept/Decline properly.
   return {
