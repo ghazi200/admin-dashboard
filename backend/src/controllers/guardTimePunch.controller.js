@@ -482,7 +482,12 @@ exports.runningLate = async (req, res) => {
 
     const emitToRealtime = req.app.get("emitToRealtime");
     if (typeof emitToRealtime === "function") {
-      await emitToRealtime(req.app, ["admin", "admins"], "guard_running_late", payload);
+      // Do not await: Redis connect/publish can stall; clock-in doesn't block on realtime.
+      Promise.resolve(
+        emitToRealtime(req.app, ["admin", "admins"], "guard_running_late", payload)
+      ).catch((err) => {
+        console.warn("guardTimePunch.runningLate: realtime publish failed:", err?.message || err);
+      });
     }
 
     return res.json({ ok: true, payload });
