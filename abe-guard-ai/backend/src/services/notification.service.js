@@ -1,48 +1,78 @@
 // backend/src/services/notification.service.js
 
+const { sendCalloutSms } = require("./sms.services");
+const { sendCalloutEmail } = require("./email.services");
+const { callGuardForCallout } = require("./call.service");
+
 function getChannelsForGuard(guard) {
-  // If/when you add guard.notifyBy or guard.notify_channels, prefer it.
-  // For now default to all channels so notifications always work.
   if (Array.isArray(guard.notifyBy) && guard.notifyBy.length > 0) {
     return guard.notifyBy;
   }
   return ["SMS", "EMAIL", "CALL", "APP"];
 }
 
+function buildCalloutCopy(shift, meta = {}) {
+  const lines = [
+    "🚨 ABE Security — shift callout",
+    `Date: ${shift.shift_date}`,
+    `Time: ${shift.shift_start} - ${shift.shift_end}`,
+  ];
+  if (meta.aiReason) lines.push(`Note: ${meta.aiReason}`);
+  if (meta.rank != null) lines.push(`Your rank: #${meta.rank}`);
+  if (meta.calloutId) lines.push(`Use the Guard app to respond. Ref: ${meta.calloutId}`);
+  else lines.push("Use the Guard app to respond.");
+  return lines.join("\n");
+}
+
 /**
  * notifyGuards(io, guard, shift, meta)
- * Pass io in to avoid circular dependency with server.js.
+ * meta: { aiReason, calloutId, rank }
  */
 async function notifyGuards(io, guard, shift, meta = {}) {
-  const message = `🚨 ABE Security Shift Available
-Date: ${shift.shift_date}
-Time: ${shift.shift_start} - ${shift.shift_end}
-Reply YES to accept.`;
-
+  const bodyText = buildCalloutCopy(shift, meta);
   const channels = getChannelsForGuard(guard);
 
   if (channels.includes("SMS")) {
-    console.log(`📱 SMS → ${guard.phone || "(no phone)"}: ${message}`);
-    // TODO: Twilio
+    if (guard.phone) {
+      const r = await sendCalloutSms(guard, shift, { ...meta, smsBody: bodyText });
+      if (!r.sent) console.log(`📱 SMS skipped (${r.reason || r.error || "unknown"}) → ${guard.phone}`);
+    } else {
+      console.log("📱 SMS skipped (no phone on guard record)");
+    }
   }
+
   if (channels.includes("EMAIL")) {
-    console.log(`📧 EMAIL → ${guard.email || "(no email)"}: ${message}`);
-    // TODO: SendGrid
+    if (guard.email) {
+      const r = await sendCalloutEmail(guard, shift, { ...meta, emailBody: bodyText });
+      if (!r.sent) console.log(`📧 Email skipped (${r.reason || r.error || "unknown"})`);
+    } else {
+      console.log("📧 Email skipped (no email on guard record)");
+    }
   }
+
   if (channels.includes("CALL")) {
-    console.log(`📞 CALL → ${guard.phone || "(no phone)"}: Voice call stub`);
-    // TODO: Twilio Voice
+    if (guard.phone) {
+      const r = await callGuardForCallout(guard, shift, meta);
+      if (!r.placed) console.log(`📞 Call skipped (${r.reason || r.error || "unknown"})`);
+    } else {
+      console.log("📞 Call skipped (no phone)");
+    }
   }
+
   if (channels.includes("APP")) {
     if (io) {
       io.to("guards").emit("shift_opened", {
         shiftId: shift.id,
         shift,
         guardId: guard.id,
+        calloutId: meta.calloutId ?? null,
+        rank: meta.rank ?? null,
         aiReason: meta.aiReason || null,
       });
     }
-    console.log(`🔔 APP → ${guard.name} (${guard.id}) | aiReason=${meta.aiReason || "n/a"}`);
+    console.log(
+      `🔔 APP → ${guard.name} (${guard.id}) | calloutId=${meta.calloutId || "n/a"} | aiReason=${meta.aiReason || "n/a"}`
+    );
   }
 }
 

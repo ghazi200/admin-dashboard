@@ -1,55 +1,48 @@
-// src/services/sms.service.js
-const twilio = require('twilio');
-const { handleGuardResponse } = require('./guardResponseHandler');
+const { getTwilioClient } = require("../config/twilio");
 
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+function toE164(phone) {
+  const raw = String(phone || "").trim();
+  if (!raw) return null;
+  if (raw.startsWith("+")) return raw.replace(/\s/g, "");
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return `+${digits}`;
+}
 
 /**
- * Send shift notification via SMS
- * @param {Object} guard - Guard object { id, name, phone }
- * @param {Object} shift - Shift object { id, shift_date, shift_start, shift_end }
+ * SMS for callout / shift offer (Twilio).
  */
-async function sendSMS(guard, shift) {
-  const message = `🚨 Shift Available: ${shift.shift_date} ${shift.shift_start}-${shift.shift_end}
-Reply YES to accept, NO to decline.`;
+async function sendCalloutSms(guard, shift, meta = {}) {
+  const client = getTwilioClient();
+  const from = process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_FROM_NUMBER;
+  const to = toE164(guard?.phone);
+  if (!client || !from || !to) {
+    return { sent: false, reason: "missing_twilio_config_or_phone" };
+  }
+
+  const body =
+    meta.smsBody ||
+    `ABE callout: shift ${shift.shift_date} ${shift.shift_start}-${shift.shift_end}. Open the Guard app to respond.${meta.calloutId ? ` Ref ${String(meta.calloutId).slice(0, 8)}…` : ""}`;
 
   try {
-    await client.messages.create({
-      body: message,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: guard.phone
-    });
-    console.log(`📱 SMS sent to ${guard.phone}`);
+    await client.messages.create({ body, from, to });
+    console.log(`📱 SMS sent to ${to}`);
+    return { sent: true, to };
   } catch (err) {
-    console.error('Error sending SMS:', err);
+    console.error("SMS send failed:", err?.message || err);
+    return { sent: false, error: err?.message };
   }
 }
 
-/**
- * Process incoming SMS reply
- * This would be called from your Twilio webhook
- * @param {string} from - Phone number of the guard
- * @param {string} body - Reply message (YES/NO)
- * @param {string} shiftId - Shift ID being responded to
- */
-async function processSMSReply({ from, body, shiftId }) {
-  const response = body.trim().toUpperCase();
-  const guardId = await findGuardByPhone(from); // Implement this lookup
-
-  if (!guardId) {
-    console.log(`⚠️ Unknown phone: ${from}`);
-    return;
-  }
-
-  await handleGuardResponse({
-    guardId,
-    shiftId,
-    response,
-    channel: 'SMS'
-  });
+/** Legacy name — same as sendCalloutSms with default message */
+async function sendSMS(guard, shift, meta) {
+  return sendCalloutSms(guard, shift, meta);
 }
 
-module.exports = { sendSMS, processSMSReply };
+async function processSMSReply() {
+  console.warn("processSMSReply: stub — wire Twilio webhook to respond flow");
+}
+
+module.exports = { sendCalloutSms, sendSMS, processSMSReply, toE164 };

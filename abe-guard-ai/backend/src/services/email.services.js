@@ -1,63 +1,70 @@
-// src/services/email.service.js
-const nodemailer = require('nodemailer');
-const { handleGuardResponse } = require('./guardResponseHandler');
+let cachedTransporter = null;
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: process.env.SMTP_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
+function getTransporter() {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  if (!host || !user) return null;
+
+  if (cachedTransporter) return cachedTransporter;
+
+  try {
+    // eslint-disable-next-line import/no-extraneous-dependencies, global-require
+    const nodemailer = require("nodemailer");
+    cachedTransporter = nodemailer.createTransport({
+      host,
+      port: parseInt(process.env.SMTP_PORT || "587", 10),
+      secure: String(process.env.SMTP_SECURE || "").toLowerCase() === "true",
+      auth: { user, pass },
+    });
+    return cachedTransporter;
+  } catch (e) {
+    console.warn("nodemailer not installed; run: npm install nodemailer");
+    return null;
   }
-});
+}
 
 /**
- * Send shift notification via Email
- * @param {Object} guard - Guard object { id, name, email }
- * @param {Object} shift - Shift object { id, shift_date, shift_start, shift_end }
+ * Email for callout / shift offer.
  */
-async function sendEmail(guard, shift) {
-  const message = `
-🚨 ABE Security Shift Available
+async function sendCalloutEmail(guard, shift, meta = {}) {
+  const transporter = getTransporter();
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const to = guard?.email;
+  if (!transporter || !from || !to) {
+    return { sent: false, reason: "missing_smtp_config_or_email" };
+  }
+
+  const text =
+    meta.emailBody ||
+    `Callout — shift needs coverage
+
 Date: ${shift.shift_date}
 Time: ${shift.shift_start} - ${shift.shift_end}
-
-Click YES to accept, NO to decline.
-`;
+${meta.aiReason ? `Ranking note: ${meta.aiReason}\n` : ""}${meta.calloutId ? `Callout ID: ${meta.calloutId}\n` : ""}
+Open the ABE Guard app to accept or decline this offer.`;
 
   try {
     await transporter.sendMail({
-      from: process.env.SMTP_FROM,
-      to: guard.email,
-      subject: 'Shift Available',
-      text: message
+      from,
+      to,
+      subject: meta.subject || "Shift callout — action needed",
+      text,
     });
-    console.log(`📧 Email sent to ${guard.email}`);
+    console.log(`📧 Email sent to ${to}`);
+    return { sent: true, to };
   } catch (err) {
-    console.error('Error sending Email:', err);
+    console.error("Email send failed:", err?.message || err);
+    return { sent: false, error: err?.message };
   }
 }
 
-/**
- * Process incoming email response
- * This could be triggered via a webhook or email parser
- */
-async function processEmailReply({ email, body, shiftId }) {
-  const response = body.trim().toUpperCase();
-  const guardId = await findGuardByEmail(email); // Implement this lookup
-
-  if (!guardId) {
-    console.log(`⚠️ Unknown email: ${email}`);
-    return;
-  }
-
-  await handleGuardResponse({
-    guardId,
-    shiftId,
-    response,
-    channel: 'EMAIL'
-  });
+async function sendEmail(guard, shift, meta) {
+  return sendCalloutEmail(guard, shift, meta);
 }
 
-module.exports = { sendEmail, processEmailReply };
+async function processEmailReply() {
+  console.warn("processEmailReply: stub");
+}
+
+module.exports = { sendCalloutEmail, sendEmail, processEmailReply, getTransporter };

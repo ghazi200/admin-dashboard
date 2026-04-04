@@ -121,6 +121,8 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 // ================= ROOT (Guard UI) =================
 // Guard UI expects these (NO /api prefix)
 app.use("/auth", authRoutes);
+// Twilio voice TwiML (outbound callouts) — must be public; set PUBLIC_BASE_URL on Railway
+app.use("/twilio", require("./routes/twilioVoice.routes"));
 app.use("/shifts", shiftRoutes);
 app.use("/callouts", calloutRoutes);
 app.use("/schedule", scheduleRoutes);
