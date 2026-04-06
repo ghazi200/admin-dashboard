@@ -25,16 +25,35 @@ function buildCalloutCopy(shift, meta = {}) {
 }
 
 /**
+ * Single-segment SMS (ASCII, no emoji). Twilio trial accounts reject multi-segment / long bodies.
+ * GSM-7 single segment max 160 chars — stay under that.
+ */
+function buildCalloutSmsBody(shift, meta = {}) {
+  const date = String(shift.shift_date || "")
+    .slice(0, 10)
+    .replace(/T.*/, "");
+  const start = String(shift.shift_start || "").slice(0, 8);
+  const end = String(shift.shift_end || "").slice(0, 8);
+  const ref = meta.calloutId ? String(meta.calloutId).replace(/-/g, "").slice(0, 8) : "";
+  let s = `ABE callout ${date} ${start}-${end}. Open Guard app.`;
+  if (ref) s += ` Ref:${ref}`;
+  if (meta.rank != null) s += ` #${meta.rank}`;
+  if (s.length > 160) s = `${s.slice(0, 157)}...`;
+  return s;
+}
+
+/**
  * notifyGuards(io, guard, shift, meta)
  * meta: { aiReason, calloutId, rank }
  */
 async function notifyGuards(io, guard, shift, meta = {}) {
   const bodyText = buildCalloutCopy(shift, meta);
+  const smsText = buildCalloutSmsBody(shift, meta);
   const channels = getChannelsForGuard(guard);
 
   if (channels.includes("SMS")) {
     if (guard.phone) {
-      const r = await sendCalloutSms(guard, shift, { ...meta, smsBody: bodyText });
+      const r = await sendCalloutSms(guard, shift, { ...meta, smsBody: smsText });
       if (!r.sent) console.log(`📱 SMS skipped (${r.reason || r.error || "unknown"}) → ${guard.phone}`);
     } else {
       console.log("📱 SMS skipped (no phone on guard record)");
