@@ -1,7 +1,12 @@
+const {
+  normalizeAccountSid,
+  normalizeAuthToken,
+} = require("../utils/twilioEnvNormalize");
+
 // Lazy Twilio REST client — avoids crashing when package or env is missing.
 function getTwilioClient() {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
+  const sid = normalizeAccountSid(process.env.TWILIO_ACCOUNT_SID);
+  const token = normalizeAuthToken(process.env.TWILIO_AUTH_TOKEN);
   if (!sid || !token) return null;
   try {
     // eslint-disable-next-line import/no-extraneous-dependencies, global-require

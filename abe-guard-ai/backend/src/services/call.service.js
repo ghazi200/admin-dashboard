@@ -1,5 +1,5 @@
 const { getTwilioClient } = require("../config/twilio");
-const { toE164 } = require("./sms.services");
+const { toE164, isPlaceholderFromNumber } = require("./sms.services");
 
 /**
  * Outbound voice: Twilio fetches TwiML from PUBLIC_BASE_URL (or BASE_URL) + /twilio/voice
@@ -17,9 +17,9 @@ async function callGuardForCallout(guard, shift, meta = {}) {
     .trim()
     .replace(/\/+$/, "");
 
-  if (!client || !from || !to || !base) {
+  if (!client || !from || isPlaceholderFromNumber(from) || !to || !base) {
     console.warn(
-      "callGuardForCallout: need Twilio creds, TWILIO_PHONE_NUMBER, guard phone, and PUBLIC_BASE_URL"
+      "callGuardForCallout: need real TWILIO_PHONE_NUMBER (not +1234567890), guard phone, PUBLIC_BASE_URL"
     );
     return { placed: false, reason: "missing_config" };
   }

@@ -212,8 +212,11 @@ async function rankGuards(guards, shift = null, models = null) {
       // Calculate enhanced score (including trust score)
       const scoreData = calculateGuardScore(guard, shift, siteStats, decayedReliability, trustScore);
 
+      // Sequelize instances don't spread — use plain row so id/name/phone/email survive ranking.
+      const plain = typeof guard.get === "function" ? guard.get({ plain: true }) : { ...guard };
+
       return {
-        ...guard,
+        ...plain,
         _rankScore: scoreData.score,
         _rankFactors: scoreData.factors,
         _lastShiftDate: lastShiftDate,
