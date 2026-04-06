@@ -2,6 +2,7 @@
 const { Shift, Guard, AIDecision, Callout } = require("../models");
 const rankGuards = require("../services/ranking.service");
 const notifyGuards = require("../services/notification.service");
+const { publishToGatewayLazy, roomsForTenant } = require("../services/realtimeGatewayPublish");
 
 function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));
@@ -175,9 +176,20 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
     });
   }
 
+  const maxNotify = parseInt(process.env.CALLOUT_MAX_GUARDS_NOTIFY || "0", 10);
+  let notifyCount = 0;
+
   for (const r of rankings) {
-    const guard = rankedGuards.find((g) => String(g.id) === String(r.guardId));
-    if (!guard) continue;
+    if (maxNotify > 0 && notifyCount >= maxNotify) {
+      console.warn(
+        `[CALL_OUT] CALLOUT_MAX_GUARDS_NOTIFY=${maxNotify} — stopped after ${maxNotify} guards (SMS/email/call); ${rankings.length - notifyCount} ranked but not notified`
+      );
+      break;
+    }
+    const guard =
+      eligibleGuards.find((g) => String(g.id) === String(r.guardId)) ||
+      rankedGuards.find((g) => String(g.id) === String(r.guardId));
+    if (!guard || !r.guardId) continue;
 
     let calloutRow = null;
     try {
@@ -211,6 +223,7 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
       calloutId: calloutRow?.id || null,
       rank: r.rank,
     });
+    notifyCount += 1;
   }
 
   // Notify admins only AFTER callout rows exist so /dashboard/live-callouts matches the bell notification.
@@ -232,6 +245,13 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
   });
   emitAdmin("callout_started", calloutPayload);
   console.log("✅ [CALLBACK] callout_started event emitted");
+  publishToGatewayLazy(roomsForTenant(calloutPayload.tenantId), "callout_started", {
+    shiftId: calloutPayload.shiftId,
+    reason: calloutPayload.reason,
+    tenantId: calloutPayload.tenantId,
+    createdCalloutsCount: calloutPayload.createdCalloutsCount,
+    ts: calloutPayload.ts,
+  });
 
   // Return rankings WITH calloutId so Guard UI can Accept/Decline properly.
   return {
@@ -380,6 +400,14 @@ async function respondToCallout(req, res) {
           guardId: shift.guard_id,
         });
       }
+
+      publishToGatewayLazy(roomsForTenant(shift.tenant_id), "shift_filled", {
+        shiftId: shift.id,
+        guardId: shift.guard_id,
+        calloutId: callout.id,
+        filledAt: now.toISOString(),
+        source: "callout_accept",
+      });
     }
 
     // Learning stats (optional)
@@ -416,6 +444,16 @@ async function respondToCallout(req, res) {
         filled,
       });
     }
+
+    const shiftForTenant = filledShift || (await Shift.findByPk(callout.shift_id));
+    publishToGatewayLazy(roomsForTenant(shiftForTenant?.tenant_id), "callout_response", {
+      calloutId: callout.id,
+      shiftId: callout.shift_id,
+      guardId: callout.guard_id,
+      response,
+      updatedAt: now.toISOString(),
+      filled,
+    });
 
     return res.json({
       success: true,
