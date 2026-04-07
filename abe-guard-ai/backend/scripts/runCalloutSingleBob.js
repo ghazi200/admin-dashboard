@@ -21,7 +21,7 @@ const { Op } = require("sequelize");
 const { sequelize } = require("../src/config/db");
 const { Guard, Shift, Callout } = require("../src/models");
 const notifyGuards = require("../src/services/notification.service");
-const { normalizeMessagingServiceSid } = require("../src/utils/twilioEnvNormalize");
+const { normalizeMessagingServiceSid } = require("../src/config/twilio");
 
 function toE164(input) {
   const digits = String(input || "").replace(/\D/g, "");

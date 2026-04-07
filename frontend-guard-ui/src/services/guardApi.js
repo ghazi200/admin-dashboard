@@ -245,17 +245,29 @@ export const runningLate = async (arg1, arg2) => {
 };
 
 /**
- * ✅ Accept shift
- * POST /shifts/accept/:shiftId
+ * Accept OPEN shift (Shifts page). Admin unified host: POST /api/guard/shifts/:id/accept;
+ * abe-guard-ai: POST /shifts/accept/:id — try both like clock-in.
  */
-export const acceptShift = (shiftId) => {
+export async function acceptShift(shiftId) {
   if (!shiftId) throw new Error("Missing shiftId");
-  return guardClient.post(
-    `/shifts/accept/${shiftId}`,
-    {},
-    { headers: guardAuthHeaders() }
-  );
-};
+  const id = encodeURIComponent(shiftId);
+  const headers = guardAuthHeaders();
+  const primary = `/api/guard/shifts/${id}/accept`;
+  const fallback = `/shifts/accept/${id}`;
+
+  let res = await postToGuardPath(primary, {}, headers);
+  if (!res.ok && res.status === 404) {
+    res = await postToGuardPath(fallback, {}, headers);
+  }
+  if (!res.ok) {
+    const err = new Error(
+      res.data?.message || res.data?.error || res.error || `Request failed (${res.status})`
+    );
+    err.response = { status: res.status, data: res.data || {} };
+    throw err;
+  }
+  return { data: res.data, status: res.status };
+}
 
 /* ================= CALLOUTS ================= */
 

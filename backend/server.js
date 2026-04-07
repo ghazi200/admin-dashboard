@@ -453,6 +453,8 @@ app.use("/api/admin/analytics", analyticsRoutes);
 // Guard punch routes MUST be registered before app.use("/shifts", ...) or POST /shifts/:id/clock-in never reaches them.
 const authGuardPunch = require("./src/middleware/authGuard");
 const guardTimePunchCtrl = require("./src/controllers/guardTimePunch.controller");
+const guardShiftsControllerEarly = require("./src/controllers/guardShifts.controller");
+app.post("/shifts/accept/:shiftId", authGuardPunch, guardShiftsControllerEarly.acceptGuardShift);
 app.post("/shifts/:shiftId/clock-in", authGuardPunch, guardTimePunchCtrl.clockIn);
 app.post("/shifts/:shiftId/clock-out", authGuardPunch, guardTimePunchCtrl.clockOut);
 app.post("/shifts/:shiftId/break-start", authGuardPunch, guardTimePunchCtrl.breakStart);
@@ -554,7 +556,7 @@ app.use("/api/guard/messages", guardMessagesRoutes);
 // would otherwise fall through to the catch-all /api handler and return 404.
 const authGuard = require("./src/middleware/authGuard");
 const { getGuardDashboard } = require("./src/controllers/guardDashboard.controller");
-const guardShiftsController = require("./src/controllers/guardShifts.controller");
+const guardShiftsController = guardShiftsControllerEarly;
 const guardTimePunchController = require("./src/controllers/guardTimePunch.controller");
 const guardUiStubs = require("./src/controllers/guardUiStubs.controller");
 const adminScheduleController = require("./src/controllers/adminSchedule.controller");
@@ -575,6 +577,7 @@ app.post("/api/guard/shifts/:shiftId/clock-out", authGuard, guardTimePunchContro
 app.post("/api/guard/shifts/:shiftId/break-start", authGuard, guardTimePunchController.breakStart);
 app.post("/api/guard/shifts/:shiftId/break-end", authGuard, guardTimePunchController.breakEnd);
 app.post("/api/guard/shifts/:shiftId/running-late", authGuard, guardTimePunchController.runningLate);
+app.post("/api/guard/shifts/:shiftId/accept", authGuard, guardShiftsController.acceptGuardShift);
 
 // Guard callouts: guard-ui posts to /callouts/* (historical abe-guard-ai API).
 // This backend is the unified Railway host, so proxy to abe-guard-ai when configured.

@@ -12,7 +12,7 @@ const {
   normalizeAccountSid,
   normalizeAuthToken,
   normalizeMessagingServiceSid,
-} = require("../src/utils/twilioEnvNormalize");
+} = require("../src/config/twilio");
 
 const sid = normalizeAccountSid(process.env.TWILIO_ACCOUNT_SID);
 const token = normalizeAuthToken(process.env.TWILIO_AUTH_TOKEN);

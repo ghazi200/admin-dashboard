@@ -1,5 +1,4 @@
-const { getTwilioClient } = require("../config/twilio");
-const { normalizeMessagingServiceSid } = require("../utils/twilioEnvNormalize");
+const { getTwilioClient, normalizeMessagingServiceSid } = require("../config/twilio");
 
 /** Twilio will reject fake “from” numbers; common .env.example leftovers */
 function isPlaceholderFromNumber(from) {

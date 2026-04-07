@@ -4,6 +4,12 @@
  */
 const { getGuardTenantSqlFilter } = require("../utils/guardTenantFilter");
 
+function isUUID(v) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(v || "").trim()
+  );
+}
+
 exports.listGuardShifts = async (req, res) => {
   try {
     const guardId = req.guard?.id;
@@ -126,5 +132,100 @@ exports.getGuardShiftState = async (req, res) => {
   } catch (e) {
     console.error("getGuardShiftState:", e);
     return res.status(500).json({ message: "Server error", error: e.message });
+  }
+};
+
+/**
+ * Claim an OPEN shift (Shifts page). Same contract as abe-guard-ai POST /shifts/accept/:shiftId.
+ * Unified Railway host exposes POST /api/guard/shifts/:shiftId/accept and POST /shifts/accept/:shiftId.
+ */
+exports.acceptGuardShift = async (req, res) => {
+  try {
+    const shiftId = String(req.params.shiftId || "").trim();
+    const guardId = req.guard?.id;
+    if (!shiftId) {
+      return res.status(400).json({ error: "Missing shiftId" });
+    }
+    if (!guardId) {
+      return res.status(401).json({ error: "Unauthorized (missing guard)" });
+    }
+    if (!isUUID(shiftId)) {
+      return res.status(400).json({ error: "Invalid shiftId" });
+    }
+    if (!isUUID(String(guardId))) {
+      return res.status(401).json({ error: "Unauthorized (missing guardId)" });
+    }
+
+    const sequelize = req.app.locals.models?.sequelize;
+    if (!sequelize) {
+      return res.status(500).json({ message: "Database not available" });
+    }
+
+    const [foundRows] = await sequelize.query(
+      `SELECT id, guard_id, status, tenant_id, shift_date, shift_start, shift_end, location
+       FROM public.shifts WHERE id = $1::uuid LIMIT 1`,
+      { bind: [shiftId] }
+    );
+    const shift = Array.isArray(foundRows) ? foundRows[0] : null;
+    if (!shift) {
+      return res.status(404).json({ error: "Shift not found" });
+    }
+
+    const guardTenant = req.guard?.tenant_id || null;
+    const shiftTenant = shift.tenant_id != null ? String(shift.tenant_id) : null;
+    if (guardTenant && shiftTenant && String(guardTenant) !== shiftTenant) {
+      return res.status(403).json({
+        error: "Access denied - shift belongs to different tenant",
+      });
+    }
+
+    const st = String(shift.status || "").toUpperCase();
+    if (st !== "OPEN") {
+      return res.status(409).json({
+        error: "Shift already taken",
+        shiftId: shift.id,
+        status: shift.status,
+        currentGuardId: shift.guard_id,
+      });
+    }
+
+    const [upd] = await sequelize.query(
+      `UPDATE public.shifts
+       SET guard_id = $1::uuid, status = 'CLOSED'
+       WHERE id = $2::uuid AND UPPER(TRIM(status::text)) = 'OPEN'
+       RETURNING id, guard_id, status, tenant_id, location, shift_date, shift_start, shift_end`,
+      { bind: [guardId, shiftId] }
+    );
+    const updated = Array.isArray(upd) ? upd[0] : null;
+    if (!updated) {
+      return res.status(409).json({
+        error: "Shift already taken",
+        shiftId,
+      });
+    }
+
+    const emitToRealtime = req.app.locals.emitToRealtime;
+    if (emitToRealtime) {
+      emitToRealtime(req.app, "role:all", "shift_filled", {
+        shift: updated,
+        shiftId: updated.id,
+        guardId,
+        tenant_id: updated.tenant_id,
+        location: updated.location,
+        filledAt: new Date().toISOString(),
+        source: "accept_shift",
+      }).catch(() => {});
+    }
+
+    return res.json({
+      success: true,
+      message: "Shift accepted",
+      shiftId: updated.id,
+      assignedGuardId: guardId,
+      status: "CLOSED",
+    });
+  } catch (e) {
+    console.error("acceptGuardShift:", e);
+    return res.status(500).json({ error: "Server error", message: e.message });
   }
 };
