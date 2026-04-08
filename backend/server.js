@@ -646,6 +646,11 @@ app.post("/api/guard/notifications/mark-all-read", authGuard, guardUiStubs.markA
 app.post("/api/guard/notifications/:id/read", authGuard, guardUiStubs.markGuardNotificationRead);
 app.get("/api/guard/alerts/combined/:shiftId", authGuard, guardUiStubs.getCombinedAlerts);
 
+// Incident report: list sites for guard tenant (guard-ui GET /sites or /api/guard/sites)
+const guardSitesRoutes = require("./src/routes/guardSites.routes");
+app.use("/api/guard/sites", guardSitesRoutes);
+app.use("/sites", guardSitesRoutes);
+
 const guardAuthRoutes = require("./src/routes/guardAuth.routes");
 app.use("/api/guard", guardAuthRoutes);
 // Alias so guard-ui can use admin backend for login when REACT_APP_GUARD_API_URL points here

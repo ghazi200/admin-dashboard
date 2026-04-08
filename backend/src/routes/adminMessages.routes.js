@@ -39,6 +39,114 @@ function toMessageResponse(message) {
   return normalizeMessageDates(out);
 }
 
+const looksLikeUuid = (id) => typeof id === "string" && id.length === 36 && id.includes("-");
+
+/**
+ * conversations.tenant_id FK → tenants.id. JWT/admin.tenant_id is often stale or orphaned.
+ * Prefer a tenant row that exists; derive from selected guards when the admin tenant is invalid.
+ */
+async function resolveTenantIdForAdminGroupChat(req, participantIds) {
+  const { Tenant, Admin, Guard } = req.app.locals.models || {};
+  if (!Tenant || !Admin || !Guard) {
+    return { error: { status: 500, message: "Server models not ready" } };
+  }
+
+  async function validTenantId(raw) {
+    if (raw == null || raw === "") return null;
+    const id = String(raw).trim();
+    const row = await Tenant.findByPk(id);
+    return row ? id : null;
+  }
+
+  const adminId = req.admin?.id;
+  const adminRow = await Admin.findByPk(adminId, { attributes: ["tenant_id"] });
+  const adminTenantRaw = adminRow?.tenant_id ?? req.admin?.tenant_id ?? null;
+  const adminTenantValid = await validTenantId(adminTenantRaw);
+
+  const guardUuids = (participantIds || []).filter(looksLikeUuid);
+  const guardTenantSet = new Set();
+  for (const gid of guardUuids) {
+    const g = await Guard.findByPk(gid, { attributes: ["tenant_id"] });
+    if (g?.tenant_id) {
+      const v = await validTenantId(g.tenant_id);
+      if (v) guardTenantSet.add(v);
+    }
+  }
+  const guardTenants = [...guardTenantSet];
+  const role = String(req.admin?.role || "").toLowerCase();
+  const superAdmin = role === "super_admin";
+
+  if (guardTenants.length > 1) {
+    return {
+      error: {
+        status: 400,
+        message:
+          "Selected guards belong to more than one tenant. Create one conversation per tenant.",
+      },
+    };
+  }
+
+  const singleGuardTenant = guardTenants[0] || null;
+
+  if (adminTenantValid) {
+    if (singleGuardTenant && singleGuardTenant !== adminTenantValid) {
+      if (!superAdmin) {
+        return {
+          error: {
+            status: 403,
+            message:
+              "You cannot add guards from another organization. Use an admin account linked to that tenant or ask a super admin.",
+          },
+        };
+      }
+      return { tenantId: singleGuardTenant };
+    }
+    return { tenantId: adminTenantValid };
+  }
+
+  if (singleGuardTenant) {
+    return { tenantId: singleGuardTenant };
+  }
+
+  if (adminTenantRaw && !adminTenantValid) {
+    return {
+      error: {
+        status: 400,
+        message:
+          "Your account tenant ID is not registered in the system (invalid or removed). Ask a super admin to assign your admin user to a valid tenant, then log out and sign in again.",
+      },
+    };
+  }
+
+  if (!adminTenantRaw && guardUuids.length === 0) {
+    return {
+      error: {
+        status: 400,
+        message:
+          "A tenant is required to create a conversation. Your account is not linked to a tenant, and no guard participants were provided.",
+      },
+    };
+  }
+
+  if (guardUuids.length && !singleGuardTenant) {
+    return {
+      error: {
+        status: 400,
+        message:
+          "Could not resolve a tenant from the selected guards (guard missing tenant_id or tenant not found in the system).",
+      },
+    };
+  }
+
+  return {
+    error: {
+      status: 400,
+      message:
+        "A tenant is required to create a group conversation. Your account may not be linked to a tenant.",
+    },
+  };
+}
+
 /**
  * GET /api/admin/messages/conversations
  * List all conversations for the current admin
@@ -638,9 +746,8 @@ router.post("/conversations/:conversationId/read", authAdmin, async (req, res) =
  */
 router.post("/conversations/group", authAdmin, async (req, res) => {
   try {
-    const { Conversation, ConversationParticipant, Shift } = req.app.locals.models;
+    const { Conversation, ConversationParticipant } = req.app.locals.models;
     const adminId = req.admin?.id;
-    const tenantId = req.admin?.tenant_id;
     const { name, participantIds = [], shiftId, location } = req.body;
 
     if (!adminId) {
@@ -649,12 +756,12 @@ router.post("/conversations/group", authAdmin, async (req, res) => {
     if (!name || !name.trim()) {
       return res.status(400).json({ message: "Group name is required" });
     }
-    // Conversation model requires tenant_id (allowNull: false)
-    if (tenantId == null || tenantId === "") {
-      return res.status(400).json({
-        message: "A tenant is required to create a group conversation. Your account may not be linked to a tenant.",
-      });
+
+    const resolved = await resolveTenantIdForAdminGroupChat(req, participantIds);
+    if (resolved.error) {
+      return res.status(resolved.error.status).json({ message: resolved.error.message });
     }
+    const tenantId = resolved.tenantId;
 
     const adminMessagingId = ensureAdminMessagingId(adminId);
 
@@ -677,7 +784,6 @@ router.post("/conversations/group", authAdmin, async (req, res) => {
 
     // Add other participants (participantIds from frontend are guard UUIDs from listGuards; Admin.id is integer so never pass UUID to Admin.findByPk)
     const { Guard, Admin } = req.app.locals.models;
-    const looksLikeUuid = (id) => typeof id === "string" && id.length === 36 && id.includes("-");
 
     for (const participantId of participantIds) {
       if (looksLikeUuid(participantId)) {
@@ -773,7 +879,6 @@ router.post("/conversations/:conversationId/participants", authAdmin, async (req
     }
 
     // Add participants (participantIds from frontend are guard UUIDs; Admin.id is integer so never pass UUID to Admin.findByPk)
-    const looksLikeUuid = (id) => typeof id === "string" && id.length === 36 && id.includes("-");
     const added = [];
 
     for (const participantId of participantIds) {

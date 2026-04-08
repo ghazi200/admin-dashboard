@@ -1,5 +1,24 @@
 const bcrypt = require("bcryptjs");
-const { getTenantWhere, ensureTenantId } = require("../utils/tenantFilter");
+const {
+  getTenantWhere,
+  resolveAdminTenantForWrite,
+  isValidTenantUuid,
+  canAccessTenant,
+} = require("../utils/tenantFilter");
+
+/** Non–super-admins may only act on users in their own tenant. */
+function assertTargetUserInActorTenant(req, targetTenantId) {
+  const role = String(req.admin?.role || "").toLowerCase();
+  if (role === "super_admin") return null;
+  if (!targetTenantId || !canAccessTenant(req.admin, targetTenantId)) {
+    return { status: 403, message: "You don't have access to this user" };
+  }
+  return null;
+}
+const {
+  TENANT_ADMIN_DEFAULT_PERMISSIONS,
+  TENANT_SUPERVISOR_DEFAULT_PERMISSIONS,
+} = require("../constants/tenantAdminDefaults");
 const { validatePassword } = require("../utils/passwordPolicy");
 
 exports.listAdmins = async (req, res) => {
@@ -91,9 +110,56 @@ exports.createUser = async (req, res) => {
       return res.status(409).json({ message: "Email already registered" });
     }
 
-    // ✅ Tenant isolation: Auto-set tenant_id from admin's tenant (unless super_admin)
-    const tenantData = ensureTenantId(req.admin, { tenant_id: req.body.tenant_id || null });
-    const tenant_id = tenantData.tenant_id;
+    const adminCtx = await resolveAdminTenantForWrite(req);
+    const actorRole = String(adminCtx.role || "").toLowerCase();
+
+    let tenant_id = null;
+    if (actorRole === "super_admin") {
+      const tid = req.body.tenant_id ?? req.body.tenantId;
+      tenant_id =
+        tid != null && String(tid).trim() !== "" ? String(tid).trim() : null;
+    } else {
+      tenant_id = adminCtx.tenant_id != null ? String(adminCtx.tenant_id).trim() : null;
+    }
+
+    if (!tenant_id || !isValidTenantUuid(tenant_id)) {
+      return res.status(400).json({
+        message:
+          actorRole === "super_admin"
+            ? "tenant_id is required in the body (UUID of the organization this staff member belongs to)."
+            : "Your administrator account has no tenant assigned. A super admin must set your tenant, then log out and sign in again before you can create users.",
+      });
+    }
+
+    const { Tenant } = req.app.locals.models;
+    if (Tenant) {
+      const trow = await Tenant.findByPk(tenant_id);
+      if (!trow) {
+        return res.status(400).json({
+          message: "tenant_id does not match a registered organization.",
+        });
+      }
+    }
+
+    if (actorRole === "super_admin" && validPermissions.length === 0) {
+      if (validRole === "admin") {
+        validPermissions = [...TENANT_ADMIN_DEFAULT_PERMISSIONS];
+      } else if (validRole === "supervisor") {
+        validPermissions = [...TENANT_SUPERVISOR_DEFAULT_PERMISSIONS];
+      }
+    }
+
+    // Tenant admin creating supervisor with no permissions[]: grant supervisor defaults they are allowed to give
+    if (actorRole !== "super_admin" && validRole === "supervisor" && validPermissions.length === 0) {
+      const adminPerms = Array.isArray(currentAdmin.permissions) ? currentAdmin.permissions : [];
+      validPermissions = TENANT_SUPERVISOR_DEFAULT_PERMISSIONS.filter((p) => adminPerms.includes(p));
+      if (validPermissions.length === 0) {
+        return res.status(400).json({
+          message:
+            "Send a permissions array, or ensure your admin account includes read permissions (e.g. dashboard:read, guards:read) so defaults can be applied.",
+        });
+      }
+    }
 
     const hash = await bcrypt.hash(password, 10);
 
@@ -103,7 +169,7 @@ exports.createUser = async (req, res) => {
       password: hash,
       role: validRole,
       permissions: validPermissions,
-      tenant_id, // ✅ Include tenant_id for multi-tenant support
+      tenant_id,
     });
     const sequelize = req.app.locals.models?.sequelize;
     if (sequelize) {
@@ -117,6 +183,7 @@ exports.createUser = async (req, res) => {
       email: admin.email,
       role: admin.role,
       permissions: admin.permissions || [],
+      tenant_id: admin.tenant_id || null,
       warning: filteredOut && filteredOut.length > 0 
         ? `Some permissions were not granted (you don't have them): ${filteredOut.join(", ")}`
         : undefined
@@ -139,6 +206,9 @@ exports.setPermissions = async (req, res) => {
 
     const targetAdmin = await Admin.findByPk(id);
     if (!targetAdmin) return res.status(404).json({ message: "User not found" });
+
+    const tenantErr = assertTargetUserInActorTenant(req, targetAdmin.tenant_id);
+    if (tenantErr) return res.status(tenantErr.status).json({ message: tenantErr.message });
 
     // ✅ HIERARCHICAL PERMISSION SYSTEM:
     // - Super Admin: Can grant ANY permissions (bypass check)
@@ -208,6 +278,13 @@ exports.setRole = async (req, res) => {
     const admin = await Admin.findByPk(id);
     if (!admin) return res.status(404).json({ message: "User not found" });
 
+    const tenantErr = assertTargetUserInActorTenant(req, admin.tenant_id);
+    if (tenantErr) return res.status(tenantErr.status).json({ message: tenantErr.message });
+
+    if (String(req.admin?.role || "").toLowerCase() !== "super_admin" && role === "admin") {
+      return res.status(403).json({ message: "Only Super Admin can assign the admin role" });
+    }
+
     admin.role = role;
     await admin.save();
 
@@ -241,6 +318,9 @@ exports.deleteUser = async (req, res) => {
       console.log("❌ User not found:", id);
       return res.status(404).json({ message: "User not found" });
     }
+
+    const tenantErr = assertTargetUserInActorTenant(req, admin.tenant_id);
+    if (tenantErr) return res.status(tenantErr.status).json({ message: tenantErr.message });
 
     const email = admin.email;
     console.log("✅ Deleting user:", { id, email });

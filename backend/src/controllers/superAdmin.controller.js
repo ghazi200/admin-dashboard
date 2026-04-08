@@ -1,5 +1,9 @@
 const { v4: uuidv4 } = require("uuid");
 const bcrypt = require("bcryptjs");
+const {
+  TENANT_ADMIN_DEFAULT_PERMISSIONS,
+  TENANT_SUPERVISOR_DEFAULT_PERMISSIONS,
+} = require("../constants/tenantAdminDefaults");
 
 /**
  * GET /api/super-admin/tenants
@@ -273,6 +277,28 @@ exports.createTenantAdmin = async (req, res) => {
       });
     }
 
+    let finalRole = "admin";
+    if (role != null && String(role).trim() !== "") {
+      const r = String(role).toLowerCase();
+      if (r === "super_admin") {
+        return res.status(400).json({
+          message: "Cannot create platform super_admin from this endpoint.",
+        });
+      }
+      if (r === "supervisor") finalRole = "supervisor";
+      else if (r === "admin") finalRole = "admin";
+      else {
+        return res.status(400).json({ message: "role must be admin or supervisor" });
+      }
+    }
+
+    const resolvedPermissions =
+      Array.isArray(permissions) && permissions.length > 0
+        ? permissions
+        : finalRole === "supervisor"
+          ? [...TENANT_SUPERVISOR_DEFAULT_PERMISSIONS]
+          : [...TENANT_ADMIN_DEFAULT_PERMISSIONS];
+
     // Verify tenant exists
     const [tenant] = await sequelize.query(`
       SELECT id, name FROM tenants WHERE id = $1::uuid AND status != 'inactive' LIMIT 1
@@ -293,13 +319,13 @@ exports.createTenantAdmin = async (req, res) => {
     // Hash password
     const hash = await bcrypt.hash(password, 10);
 
-    // Create admin
+    // Create admin (tenant-scoped; permissions default to org admin set unless super_admin overrides in body)
     const admin = await Admin.create({
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: hash,
-      role: role || "admin",
-      permissions: permissions || [],
+      role: finalRole,
+      permissions: resolvedPermissions,
       tenant_id: tenantId,
     });
 

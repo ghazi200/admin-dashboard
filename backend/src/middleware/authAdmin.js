@@ -21,10 +21,29 @@ module.exports = async function authAdmin(req, res, next) {
     const tokenVersion = typeof decoded.sessionTokenVersion === "number" ? decoded.sessionTokenVersion : 0;
     const { Admin } = req.app.locals.models || {};
     if (Admin) {
-      const admin = await Admin.findByPk(adminId, { attributes: ["session_token_version"] });
+      const admin = await Admin.findByPk(adminId, {
+        attributes: ["session_token_version", "permissions", "tenant_id", "role"],
+      });
       const dbVersion = admin ? (Number(admin.session_token_version) || 0) : 0;
       if (tokenVersion < dbVersion) {
         return res.status(401).json({ message: "Session invalidated (signed in elsewhere or other devices logged out)" });
+      }
+
+      if (admin) {
+        const role = String(admin.role || decoded.role || "admin").toLowerCase();
+        const dbPerms = admin.permissions;
+        const permissions = Array.isArray(dbPerms)
+          ? dbPerms
+          : Array.isArray(decoded.permissions)
+            ? decoded.permissions
+            : [];
+        req.admin = {
+          id: adminId,
+          role,
+          permissions,
+          tenant_id: admin.tenant_id != null ? admin.tenant_id : decoded.tenant_id || null,
+        };
+        return next();
       }
     }
 

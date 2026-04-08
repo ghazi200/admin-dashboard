@@ -163,6 +163,32 @@ function formatTime(dateStr) {
   return d.toLocaleDateString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+/** Stable chronological order; tie-break on id so polls never reshuffle (avoids flicker). */
+function sortMessagesChrono(list) {
+  return [...list].sort((a, b) => {
+    const ta = new Date(a.created_at || a.createdAt).getTime();
+    const tb = new Date(b.created_at || b.createdAt).getTime();
+    const na = Number.isNaN(ta) ? 0 : ta;
+    const nb = Number.isNaN(tb) ? 0 : tb;
+    if (na !== nb) return na - nb;
+    return String(a.id).localeCompare(String(b.id));
+  });
+}
+
+function messagesListShallowEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    const y = b[i];
+    if (x.id !== y.id || x.content !== y.content || x.sender_type !== y.sender_type) return false;
+    const tx = String(x.created_at || x.createdAt || "");
+    const ty = String(y.created_at || y.createdAt || "");
+    if (tx !== ty) return false;
+  }
+  return true;
+}
+
 export default function Messages() {
   const [conversations, setConversations] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -175,6 +201,8 @@ export default function Messages() {
   const [deletingMessageId, setDeletingMessageId] = useState(null);
   const [leavingConversationId, setLeavingConversationId] = useState(null);
   const messagesEndRef = useRef(null);
+  /** Only scroll when thread tail changes (new message), not on identical poll payloads. */
+  const scrollTailRef = useRef({ n: 0, lastId: "" });
 
   const selected = conversations.find((c) => c.id === selectedId);
 
@@ -204,51 +232,68 @@ export default function Messages() {
     if (!m || typeof m !== "object") return null;
     const senderType = m.sender_type === "guard" || m.sender_type === "admin" ? m.sender_type : "admin";
     const content = String(m.content ?? m.text ?? "").trim();
+    const rawTs = m.created_at ?? m.createdAt;
+    const d = rawTs ? new Date(rawTs) : null;
+    const iso =
+      d && !Number.isNaN(d.getTime()) ? d.toISOString() : rawTs ? String(rawTs) : "";
     return {
       id: m.id ?? m.message_id ?? `msg-${index}`,
       content,
       sender_type: senderType,
-      created_at: m.created_at ?? m.createdAt,
-      createdAt: m.createdAt ?? m.created_at,
+      created_at: iso,
+      createdAt: iso,
     };
   }
 
-  const fetchMessagesForConversation = useCallback((convId, setErrorOnFail = false, markRead = false) => {
-    if (!convId) return;
-    setMessagesLoading(true);
-    getMessages(convId, { page: 1, limit: 50 })
-      .then((res) => {
-        const raw = res.data?.messages ?? res.data?.data?.messages ?? res.data;
-        const list = Array.isArray(raw) ? raw : (raw && raw.messages ? raw.messages : []);
-        const normalized = list.map((item, i) => normalizeMessage(item, i)).filter(Boolean);
-        setMessages((prev) => {
-          const optimistic = prev.filter((m) => m.id && String(m.id).startsWith("temp-"));
-          if (optimistic.length === 0) return normalized;
-          const merged = [...normalized];
-          for (const o of optimistic) {
-            const alreadyInServer = normalized.some(
-              (m) =>
-                m.content === o.content &&
-                Math.abs(new Date(m.created_at || m.createdAt).getTime() - new Date(o.created_at || o.createdAt).getTime()) < 30000
-            );
-            if (!alreadyInServer) merged.push(o);
+  const fetchMessagesForConversation = useCallback(
+    (convId, setErrorOnFail = false, markRead = false, showLoading = true) => {
+      if (!convId) return;
+      if (showLoading) setMessagesLoading(true);
+      getMessages(convId, { page: 1, limit: 50 })
+        .then((res) => {
+          const raw = res.data?.messages ?? res.data?.data?.messages ?? res.data;
+          const list = Array.isArray(raw) ? raw : (raw && raw.messages ? raw.messages : []);
+          const normalized = list.map((item, i) => normalizeMessage(item, i)).filter(Boolean);
+          setMessages((prev) => {
+            const optimistic = prev.filter((m) => m.id && String(m.id).startsWith("temp-"));
+            let next;
+            if (optimistic.length === 0) {
+              next = sortMessagesChrono(normalized);
+            } else {
+              const merged = [...normalized];
+              for (const o of optimistic) {
+                const alreadyInServer = normalized.some(
+                  (m) =>
+                    m.content === o.content &&
+                    Math.abs(
+                      new Date(m.created_at || m.createdAt).getTime() -
+                        new Date(o.created_at || o.createdAt).getTime()
+                    ) < 30000
+                );
+                if (!alreadyInServer) merged.push(o);
+              }
+              next = sortMessagesChrono(merged);
+            }
+            return messagesListShallowEqual(prev, next) ? prev : next;
+          });
+          if (setErrorOnFail) setError("");
+        })
+        .catch((e) => {
+          if (setErrorOnFail) {
+            setMessages([]);
+            setError(e?.response?.data?.message || e?.message || "Failed to load messages");
           }
-          merged.sort((a, b) => new Date(a.created_at || a.createdAt).getTime() - new Date(b.created_at || b.createdAt).getTime());
-          return merged;
+        })
+        .finally(() => {
+          if (showLoading) setMessagesLoading(false);
         });
-        if (setErrorOnFail) setError("");
-      })
-      .catch((e) => {
-        setMessages([]);
-        if (setErrorOnFail) {
-          setError(e?.response?.data?.message || e?.message || "Failed to load messages");
-        }
-      })
-      .finally(() => setMessagesLoading(false));
-    if (markRead) markConversationAsRead(convId).catch(() => {});
-  }, []);
+      if (markRead) markConversationAsRead(convId).catch(() => {});
+    },
+    []
+  );
 
   useEffect(() => {
+    scrollTailRef.current = { n: 0, lastId: "" };
     if (!selectedId) {
       setMessages([]);
       setMessagesLoading(false);
@@ -256,17 +301,22 @@ export default function Messages() {
     }
     setError("");
     setMessages([]);
-    fetchMessagesForConversation(selectedId, true, true);
+    fetchMessagesForConversation(selectedId, true, true, true);
 
-    // Poll for new messages (e.g. from admin) every 3 seconds so admin messages appear quickly
+    // Poll without toggling loading UI (avoids thread blinking every interval)
     const pollInterval = setInterval(() => {
-      fetchMessagesForConversation(selectedId, false, false);
+      fetchMessagesForConversation(selectedId, false, false, false);
     }, 3000);
     return () => clearInterval(pollInterval);
   }, [selectedId, fetchMessagesForConversation]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const n = messages.length;
+    const lastId = n ? String(messages[n - 1].id) : "";
+    const t = scrollTailRef.current;
+    if (n === t.n && lastId === t.lastId) return;
+    scrollTailRef.current = { n, lastId };
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages]);
 
   function handleSend() {

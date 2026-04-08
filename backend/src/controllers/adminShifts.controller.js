@@ -64,7 +64,12 @@ function pickAny(obj, keys) {
 }
 
 // ✅ Tenant filtering utility
-const { getTenantSqlFilter, ensureTenantId, canAccessTenant } = require("../utils/tenantFilter");
+const {
+  getTenantSqlFilter,
+  ensureTenantId,
+  canAccessTenant,
+  resolveAdminTenantForWrite,
+} = require("../utils/tenantFilter");
 
 exports.listShifts = async (req, res) => {
   try {
@@ -176,13 +181,32 @@ exports.createShift = async (req, res) => {
     const { sequelize } = req.app.locals.models;
     const payload = req.body || {};
 
+    const adminCtx = await resolveAdminTenantForWrite(req);
+    const role = String(adminCtx.role || "").toLowerCase();
+
     // Support both schemas coming from UI
     let tenantId = pickAny(payload, ["tenantId", "tenant_id"]);
-    
+
+    if (role === "super_admin") {
+      if (tenantId === undefined || tenantId === null || String(tenantId).trim() === "") {
+        tenantId = adminCtx.tenant_id;
+      }
+    }
+
     // ✅ Tenant isolation: Auto-set tenant_id from admin's tenant (unless super_admin)
-    const tenantData = ensureTenantId(req.admin, { tenant_id: tenantId });
+    const tenantData = ensureTenantId(adminCtx, { tenant_id: tenantId });
     tenantId = tenantData.tenant_id;
-    
+
+    if (!tenantId || !isUUID(String(tenantId).trim())) {
+      return res.status(400).json({
+        message:
+          role === "super_admin"
+            ? "tenant_id is required to create a shift. Include tenantId or tenant_id (UUID) in the body, or assign your super admin user to a default tenant."
+            : "Your administrator account is not linked to a tenant. A super admin must set tenant_id on your admin user, then log out and sign in again.",
+      });
+    }
+    tenantId = String(tenantId).trim();
+
     const shiftDate = pickAny(payload, ["shift_date", "shiftDate", "date"]);
     const shiftStart = pickAny(payload, ["shift_start", "shiftStart", "startTime", "start_time", "start"]);
     const shiftEnd = pickAny(payload, ["shift_end", "shiftEnd", "endTime", "end_time", "end"]);
@@ -190,12 +214,21 @@ exports.createShift = async (req, res) => {
     const status = normStatus(pickAny(payload, ["status"]) ?? "OPEN");
     const location = pickAny(payload, ["location", "site", "site_name", "siteName"]); // optional
 
-    // Minimal validation (matches your real schema)
-    if (tenantId !== undefined && tenantId !== null && String(tenantId).trim() !== "" && !isUUID(tenantId)) {
-      return res.status(400).json({ message: "tenantId must be a UUID" });
-    }
     if (guardId !== undefined && guardId !== null && String(guardId).trim() !== "" && !isUUID(guardId)) {
       return res.status(400).json({ message: "guardId must be a UUID" });
+    }
+    const guardIdTrim = guardId ? String(guardId).trim() : "";
+    if (guardIdTrim) {
+      const { Guard } = req.app.locals.models;
+      const g = await Guard.findByPk(guardIdTrim, { attributes: ["tenant_id"] });
+      if (!g) {
+        return res.status(400).json({ message: "guardId does not match an existing guard" });
+      }
+      if (g.tenant_id && String(g.tenant_id) !== String(tenantId)) {
+        return res.status(400).json({
+          message: "That guard belongs to a different organization (tenant) than this shift.",
+        });
+      }
     }
     if (!shiftDate) return res.status(400).json({ message: "shift_date (date) is required" });
     if (!shiftStart) return res.status(400).json({ message: "shift_start (time) is required" });
@@ -213,8 +246,8 @@ exports.createShift = async (req, res) => {
       `,
       {
         bind: [
-          tenantId ? String(tenantId).trim() : null,
-          guardId ? String(guardId).trim() : null,
+          tenantId,
+          guardIdTrim || null,
           String(shiftDate).trim(),
           startTime,
           endTime,

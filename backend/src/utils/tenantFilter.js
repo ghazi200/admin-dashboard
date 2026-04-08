@@ -5,6 +5,36 @@
  * Super Admin bypasses all tenant restrictions.
  */
 
+function isValidTenantUuid(v) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(v || "").trim()
+  );
+}
+
+/**
+ * Merge DB-backed tenant_id and role so creates are not wrong when JWT is stale.
+ * @param {import("express").Request} req
+ * @returns {Promise<object>}
+ */
+async function resolveAdminTenantForWrite(req) {
+  const base = req.admin || {};
+  const adminId = base.id;
+  if (adminId == null) return base;
+  const { Admin } = req.app.locals.models || {};
+  if (!Admin) return base;
+  try {
+    const row = await Admin.findByPk(adminId, { attributes: ["tenant_id", "role"] });
+    if (!row) return base;
+    return {
+      ...base,
+      tenant_id: row.tenant_id != null ? row.tenant_id : base.tenant_id,
+      role: String(row.role || base.role || "admin").toLowerCase(),
+    };
+  } catch {
+    return base;
+  }
+}
+
 /**
  * Get tenant filter for the current admin
  * @param {Object} admin - req.admin object from authAdmin middleware
@@ -90,4 +120,6 @@ module.exports = {
   getTenantSqlFilter,
   ensureTenantId,
   canAccessTenant,
+  isValidTenantUuid,
+  resolveAdminTenantForWrite,
 };

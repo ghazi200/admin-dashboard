@@ -4,6 +4,25 @@ const crypto = require("crypto");
 const { validatePassword, getPolicyDescription } = require("../utils/passwordPolicy");
 const { addToHistory, isPasswordReused } = require("../utils/passwordHistory");
 const mfaService = require("../services/mfa.service");
+const { isValidTenantUuid } = require("../utils/tenantFilter");
+const { TENANT_ADMIN_DEFAULT_PERMISSIONS } = require("../constants/tenantAdminDefaults");
+
+async function assertTenantRowExists(models, tenantId) {
+  if (!tenantId || !isValidTenantUuid(tenantId)) {
+    return { ok: false, message: "tenant_id must be a valid UUID" };
+  }
+  const { Tenant } = models || {};
+  if (!Tenant) return { ok: true };
+  const row = await Tenant.findByPk(String(tenantId).trim());
+  if (!row) {
+    return {
+      ok: false,
+      message:
+        "tenant_id is not a registered organization. Create the tenant under Super Admin first, then register with that UUID.",
+    };
+  }
+  return { ok: true };
+}
 
 /**
  * POST /api/admin/register
@@ -22,12 +41,6 @@ exports.register = async (req, res) => {
       ? req.body.role
       : "admin";
 
-    // Baseline permissions for supervisors (admin bypasses permissions anyway)
-    const permissions =
-      role === "supervisor"
-        ? ["dashboard:read", "guards:read", "shifts:read"]
-        : [];
-
     if (!email || !email.includes("@")) {
       return res.status(400).json({ message: "Valid email is required" });
     }
@@ -41,10 +54,38 @@ exports.register = async (req, res) => {
       return res.status(409).json({ message: "Email already registered" });
     }
 
-    const hash = await bcrypt.hash(password, 10);
+    const adminCount = await Admin.count();
+    let tenant_id =
+      req.body.tenant_id != null && String(req.body.tenant_id).trim() !== ""
+        ? String(req.body.tenant_id).trim()
+        : req.body.tenantId != null && String(req.body.tenantId).trim() !== ""
+          ? String(req.body.tenantId).trim()
+          : null;
 
-    // ✅ Multi-tenant: Accept tenant_id from request body (optional for migration period)
-    const tenant_id = req.body.tenant_id || null;
+    if (adminCount > 0) {
+      if (!tenant_id) {
+        return res.status(400).json({
+          message:
+            "tenant_id is required. Ask your organization for the tenant UUID, or use Super Admin → Tenants → Add admin for this company.",
+        });
+      }
+      const check = await assertTenantRowExists(req.app.locals.models, tenant_id);
+      if (!check.ok) return res.status(400).json({ message: check.message });
+    } else if (tenant_id) {
+      const check = await assertTenantRowExists(req.app.locals.models, tenant_id);
+      if (!check.ok) return res.status(400).json({ message: check.message });
+    }
+
+    let permissions;
+    if (role === "supervisor") {
+      permissions = ["dashboard:read", "guards:read", "shifts:read", "schedule:read"];
+    } else if (role === "admin" && tenant_id) {
+      permissions = [...TENANT_ADMIN_DEFAULT_PERMISSIONS];
+    } else {
+      permissions = [];
+    }
+
+    const hash = await bcrypt.hash(password, 10);
 
     const admin = await Admin.create({
       name,
@@ -52,7 +93,7 @@ exports.register = async (req, res) => {
       password: hash,
       role,
       permissions,
-      tenant_id, // ✅ Set tenant_id if provided
+      tenant_id,
     });
     const sequelize = req.app.locals.models?.sequelize;
     if (sequelize) await addToHistory(sequelize, admin.id, hash);
@@ -78,6 +119,7 @@ exports.register = async (req, res) => {
         email: admin.email,
         role: admin.role,
         permissions: admin.permissions || [],
+        tenant_id: admin.tenant_id || null,
       },
     });
   } catch (e) {
@@ -146,10 +188,13 @@ exports.login = async (req, res) => {
       { where: { id: admin.id } }
     );
 
+    const perms = Array.isArray(adminWithTenant?.permissions)
+      ? adminWithTenant.permissions
+      : admin.permissions || [];
     const tokenPayload = {
       adminId: admin.id,
-      role: admin.role,
-      permissions: admin.permissions || [],
+      role: adminWithTenant?.role || admin.role,
+      permissions: perms,
       sessionTokenVersion: nextVersion,
     };
     if (tenantId) tokenPayload.tenant_id = tenantId;
@@ -162,8 +207,8 @@ exports.login = async (req, res) => {
         id: admin.id,
         name: admin.name,
         email: admin.email,
-        role: admin.role,
-        permissions: admin.permissions || [],
+        role: adminWithTenant?.role || admin.role,
+        permissions: perms,
         tenant_id: tenantId,
       },
     });

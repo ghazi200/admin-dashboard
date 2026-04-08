@@ -23,9 +23,9 @@ export function sendMessage(conversationId, body) {
 }
 
 export function deleteMessage(conversationId, messageId) {
-  // Use full path so axios/proxy resolve to backend correctly (avoids 404 on DELETE)
-  const path = `/api/admin/messages/conversations/${String(conversationId)}/messages/${String(messageId)}`;
-  return axiosClient.delete(path);
+  return axiosClient.delete(
+    `${BASE}/conversations/${String(conversationId)}/messages/${String(messageId)}`
+  );
 }
 
 export function markConversationAsRead(conversationId, body = {}) {

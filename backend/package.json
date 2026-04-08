@@ -11,7 +11,9 @@
     "drop-contact-preferences": "node scripts/drop-contact-preferences-table.js",
     "test:create-shift": "node scripts/testCreateShiftGhazi.js",
     "test:guard-dashboard": "node scripts/testGuardDashboardHttp.js",
-    "seed:test-shift": "node src/scripts/seedTestShiftsForGuardUi.js"
+    "seed:test-shift": "node src/scripts/seedTestShiftsForGuardUi.js",
+    "ensure-tenants": "node scripts/ensureMissingTenants.js",
+    "ensure-tenants:dry": "node scripts/ensureMissingTenants.js --dry-run"
   },
   "dependencies": {
     "axios": "^1.6.0",

@@ -44,14 +44,14 @@ router.get(
 router.post(
   "/sites",
   authAdmin,
-  requireAccess("dashboard:read"),
+  requireAccess("dashboard:write"),
   geographicDashboardController.createSite
 );
 
 router.delete(
   "/sites/:siteId",
   authAdmin,
-  requireAccess("dashboard:read"),
+  requireAccess("dashboard:write"),
   geographicDashboardController.deleteSite
 );
 

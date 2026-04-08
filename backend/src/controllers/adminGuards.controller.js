@@ -1,6 +1,12 @@
 const jwt = require("jsonwebtoken");
 const { notify } = require("../utils/notify");
-const { getTenantWhere, ensureTenantId, canAccessTenant } = require("../utils/tenantFilter");
+const {
+  getTenantWhere,
+  ensureTenantId,
+  canAccessTenant,
+  resolveAdminTenantForWrite,
+  isValidTenantUuid,
+} = require("../utils/tenantFilter");
 
 /**
  * Issue a short-lived JWT for a guard so admin can "view as this guard" on Guard view.
@@ -411,14 +417,36 @@ exports.createGuard = async (req, res) => {
   try {
     const { Guard, AvailabilityLog, sequelize } = req.app.locals.models;
 
-    // ✅ Tenant isolation: Automatically set tenant_id from admin's tenant
-    const guardData = ensureTenantId(req.admin, {
+    const adminCtx = await resolveAdminTenantForWrite(req);
+    const role = String(adminCtx.role || "").toLowerCase();
+
+    // Tenant admins: always stamp creator's org (JWT can be stale — use DB).
+    // Super admin: require explicit tenant_id in body, or use their own DB tenant if set.
+    const base = {
       name: req.body.name,
       email: req.body.email || null,
       phone: req.body.phone || null,
       active: req.body.active ?? true,
-      // Note: availability field doesn't exist in database, removed
-    });
+    };
+    if (role === "super_admin") {
+      const tid = req.body.tenant_id ?? req.body.tenantId;
+      if (tid != null && String(tid).trim() !== "" && isValidTenantUuid(tid)) {
+        base.tenant_id = String(tid).trim();
+      } else if (adminCtx.tenant_id && isValidTenantUuid(adminCtx.tenant_id)) {
+        base.tenant_id = adminCtx.tenant_id;
+      }
+    }
+
+    const guardData = ensureTenantId(adminCtx, base);
+
+    if (!guardData.tenant_id || !isValidTenantUuid(guardData.tenant_id)) {
+      return res.status(400).json({
+        message:
+          role === "super_admin"
+            ? "tenant_id is required to create a guard. Send tenant_id (UUID) in the request body for the target organization, or assign your super admin user to a default tenant."
+            : "Your administrator account is not linked to a tenant. A super admin must set tenant_id on your admin user in the database, then log out and sign in again.",
+      });
+    }
 
     const guard = await Guard.create(guardData);
     console.log("✅ createGuard - Guard created:", guard.id, guard.name);
