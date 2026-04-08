@@ -1,20 +1,15 @@
 /**
  * Middleware to require a specific permission
  *
- * - super_admin: full bypass (platform).
- * - admin with NO tenant_id: bypass (legacy / single-tenant bootstrap).
- * - admin with tenant_id: must have the permission (tenant org admin — provisioned by super_admin).
- * - supervisor / other roles: must have the permission.
- *
- * Tenant isolation (only seeing own org) is enforced separately in controllers via tenant_id.
+ * - super_admin and admin: full bypass (same as historical behavior). Tenant isolation is
+ *   enforced in controllers via tenant_id; org-level RBAC for admins can be layered later
+ *   without breaking existing tenant admins who have an empty permissions array.
+ * - supervisor / other roles: must have the permission in their array.
  */
 function requireAccess(permission) {
   return (req, res, next) => {
     const role = String(req.admin?.role || "").toLowerCase();
-    if (role === "super_admin") return next();
-
-    const hasTenant = req.admin?.tenant_id != null && String(req.admin.tenant_id).trim() !== "";
-    if (role === "admin" && !hasTenant) return next();
+    if (role === "super_admin" || role === "admin") return next();
 
     const perms = Array.isArray(req.admin?.permissions) ? req.admin.permissions : [];
 
