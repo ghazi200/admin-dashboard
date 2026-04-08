@@ -19,16 +19,6 @@ import {
 } from "../services/api";
 import { hasAccess } from "../utils/access";
 
-// helper: pull admin info saved at login
-function getAdminInfo() {
-  try {
-    const raw = localStorage.getItem("adminInfo");
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
 function safeLen(v) {
   return Array.isArray(v) ? v.length : 0;
 }
@@ -206,18 +196,6 @@ function LiveClock() {
 export default function Dashboard() {
   const canReadDashboard = hasAccess("dashboard:read");
   const qc = useQueryClient();
-
-  // ✅ Welcome text (admin/supervisor)
-  const adminInfo = useMemo(() => getAdminInfo(), []);
-  const role = (adminInfo?.role || "").toLowerCase();
-  const welcomeText =
-    role === "supervisor"
-      ? "WELCOME SUPERVISOR"
-      : role === "admin" || role === "super_admin"
-      ? role === "super_admin"
-        ? "WELCOME SUPER-ADMIN"
-        : "WELCOME ADMIN"
-      : "WELCOME";
 
   // ✅ Recent Activity state
   const [activity, setActivity] = useState([]);
@@ -1297,10 +1275,7 @@ export default function Dashboard() {
 
   return (
     <div className="container">
-      {/* ✅ Welcome banner (does NOT replace the dashboard) */}
-      <div className="welcomeBanner" style={{ marginBottom: 12 }}>
-        <div className="welcomeText">{welcomeText}</div>
-      </div>
+      {/* Welcome line is rendered in Layout.jsx on "/" so it stays visible above this page */}
 
       {/* Live Clock and SOS Indicator */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>

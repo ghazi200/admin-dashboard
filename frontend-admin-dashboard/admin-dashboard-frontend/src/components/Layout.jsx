@@ -7,6 +7,22 @@ import { getGeographicSites, globalSearch, getSearchHistory } from "../services/
 import { useSessionTimeout } from "../hooks/useSessionTimeout";
 import { disconnectSocket } from "../realtime/socket";
 
+/** Same copy as Dashboard — shown from Layout so home always displays it (avoids nested/covered content). */
+function getWelcomeLineFromStorage() {
+  try {
+    const raw = localStorage.getItem("adminInfo");
+    const adminInfo = raw ? JSON.parse(raw) : null;
+    const role = (adminInfo?.role || "").toLowerCase();
+    if (role === "supervisor") return "WELCOME SUPERVISOR";
+    if (role === "admin" || role === "super_admin") {
+      return role === "super_admin" ? "WELCOME SUPER-ADMIN" : "WELCOME ADMIN";
+    }
+    return "WELCOME";
+  } catch {
+    return "WELCOME";
+  }
+}
+
 export default function Layout() {
   const nav = useNavigate();
   const location = useLocation();
@@ -660,6 +676,38 @@ export default function Layout() {
             </button>
           </div>
         </div>
+
+        {/* Home: green welcome strip (Layout-level so it is never clipped by Dashboard internals) */}
+        {location.pathname === "/" && (
+          <div
+            role="status"
+            aria-label="Welcome"
+            style={{
+              marginBottom: 16,
+              padding: "12px 16px",
+              borderRadius: 10,
+              border: "2px solid #22c55e",
+              backgroundColor: "rgba(34, 197, 94, 0.14)",
+              boxShadow: "inset 0 0 0 1px rgba(34, 197, 94, 0.35), 0 8px 28px rgba(0, 0, 0, 0.35)",
+            }}
+          >
+            <div
+              style={{
+                margin: 0,
+                fontWeight: 900,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                fontSize: "clamp(20px, 2.5vw, 36px)",
+                lineHeight: 1.15,
+                color: "#22c55e",
+                WebkitTextFillColor: "#22c55e",
+                textShadow: "0 0 18px rgba(34, 197, 94, 0.5)",
+              }}
+            >
+              {getWelcomeLineFromStorage()}
+            </div>
+          </div>
+        )}
 
         {/* ✅ This renders Dashboard / Guards / Shifts / Users */}
         <Outlet />

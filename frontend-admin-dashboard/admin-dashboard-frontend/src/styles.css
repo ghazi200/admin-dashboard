@@ -381,6 +381,8 @@ code{
   margin: 6px 0 18px;
 }
 
+/* Same green as Dashboard donut + spark bars: rgb(34,197,94) → #22c55e */
+/* Solid color — gradient + background-clip + filter broke in some browsers (looked unchanged). */
 .welcomeText {
   margin: 0;
   font-weight: 900;
@@ -388,18 +390,23 @@ code{
   text-transform: uppercase;
   font-size: clamp(22px, 3vw, 40px);
   line-height: 1.1;
-
-  /* gradient text */
-  background: linear-gradient(90deg, rgba(255,255,255,0.95), rgba(255,255,255,0.55), rgba(255,255,255,0.95));
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-
-  /* animations */
+  color: #22c55e !important;
+  text-shadow: 0 0 22px rgba(34, 197, 94, 0.45);
   animation:
     welcomeSlideIn 650ms ease-out both,
-    welcomeShimmer 2.2s ease-in-out infinite;
+    welcomeGreenPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes welcomeGreenPulse {
+  0%,
+  100% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.95;
+    filter: brightness(1.08);
+  }
 }
 
 /* subtle glow behind */
@@ -418,11 +425,6 @@ code{
 @keyframes welcomeSlideIn {
   from { transform: translateY(10px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes welcomeShimmer {
-  0%   { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
 }
 
 @keyframes welcomePulse {
