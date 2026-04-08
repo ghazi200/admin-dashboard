@@ -154,11 +154,13 @@ function LiveClock() {
   return (
     <div
       style={{
-        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+        background:
+          "linear-gradient(145deg, rgba(15, 23, 42, 0.98) 0%, rgba(6, 78, 59, 0.28) 45%, rgba(15, 23, 42, 0.98) 100%)",
         padding: "20px 30px",
         borderRadius: 12,
-        border: "2px solid rgba(59, 130, 246, 0.3)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
+        border: "2px solid rgba(34, 197, 94, 0.5)",
+        boxShadow:
+          "0 4px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(34, 197, 94, 0.2), inset 0 0 28px rgba(34, 197, 94, 0.08)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -170,11 +172,11 @@ function LiveClock() {
         style={{
           fontSize: 48,
           fontWeight: 900,
-          color: "#3b82f6",
+          color: "#22c55e",
           fontFamily: "monospace",
           letterSpacing: 2,
           marginBottom: 8,
-          textShadow: "0 0 20px rgba(59, 130, 246, 0.5)",
+          textShadow: "0 0 22px rgba(34, 197, 94, 0.55), 0 2px 0 rgba(0,0,0,0.25)",
         }}
       >
         {hours}:{minutes}:{seconds}
@@ -182,7 +184,7 @@ function LiveClock() {
       <div
         style={{
           fontSize: 14,
-          color: "rgba(255, 255, 255, 0.8)",
+          color: "rgba(167, 243, 208, 0.92)",
           textAlign: "center",
           fontWeight: 500,
         }}
