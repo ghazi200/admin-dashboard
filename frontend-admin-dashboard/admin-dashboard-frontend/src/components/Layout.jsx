@@ -679,8 +679,21 @@ export default function Layout() {
 
         {/* Home: green welcome strip (Layout-level so it is never clipped by Dashboard internals) */}
         {location.pathname === "/" && (
-          <div className="homeWelcomeStrip" role="status" aria-label="Welcome">
-            <div className="homeWelcomeTitle">{getWelcomeLineFromStorage()}</div>
+          <div
+            className="homeWelcomeStrip"
+            role="status"
+            aria-label="Welcome"
+            style={{
+              borderColor: "#22c55e",
+              backgroundColor: "rgba(34, 197, 94, 0.18)",
+            }}
+          >
+            <div
+              className="homeWelcomeTitle"
+              style={{ color: "#22c55e" }}
+            >
+              {getWelcomeLineFromStorage()}
+            </div>
           </div>
         )}
 
