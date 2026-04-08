@@ -219,9 +219,14 @@ const OvertimeRequests = () => {
     <Card
       title="Overtime Requests"
       subtitle={
-        isLoading
-          ? "Loading…"
-          : `${requestedOnly.length} pending request${requestedOnly.length !== 1 ? "s" : ""}`
+        isLoading ? (
+          "Loading…"
+        ) : (
+          <>
+            <span className="dashboardNum">{requestedOnly.length}</span>
+            {` pending request${requestedOnly.length !== 1 ? "s" : ""}`}
+          </>
+        )
       }
     >
       {isLoading ? (
@@ -264,7 +269,8 @@ const OvertimeRequests = () => {
                 </div>
                 <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
                   <div>
-                    <strong>Extension:</strong> +{extensionHours.toFixed(1)} hours
+                    <strong>Extension:</strong> +
+                    <span className="dashboardNum">{extensionHours.toFixed(1)}</span> hours
                   </div>
                   <div style={{ marginTop: 2 }}>
                     <strong>Current End:</strong> {request.current_end_time ? (

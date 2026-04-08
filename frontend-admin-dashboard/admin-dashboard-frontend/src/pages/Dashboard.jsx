@@ -40,6 +40,11 @@ function formatRelativeTime(dateValue) {
   return `${day}d ago`;
 }
 
+/** Inline numeric accent — same green as KPI / welcome / clock */
+function DNum({ children }) {
+  return <span className="dashboardNum">{children}</span>;
+}
+
 function Donut({ a = 0, b = 0, labelA = "A", labelB = "B" }) {
   const total = a + b;
   const pct = total === 0 ? 0 : a / total;
@@ -76,7 +81,7 @@ function Donut({ a = 0, b = 0, labelA = "A", labelB = "B" }) {
           textAnchor="middle"
           fontSize="18"
           fontWeight="800"
-          fill="rgba(255,255,255,0.88)"
+          fill="#22c55e"
         >
           {Math.round(pct * 100)}%
         </text>
@@ -1276,7 +1281,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="container">
+    <div className="container dashboardPage">
       {/* Welcome line is rendered in Layout.jsx on "/" so it stays visible above this page */}
 
       {/* Live Clock and SOS Indicator */}
@@ -1406,12 +1411,11 @@ export default function Dashboard() {
         </div>
         <div className="kpi">
           <div className="kpiLabel">Live Callouts</div>
-          <div 
-            className="kpiValue" 
+          <div
+            className="kpiValue"
             key={`callouts-${calloutCount}-${callouts[0]?.id || "none"}-${callouts.length}`}
-            style={{ 
-              // Force re-render by using a style that changes
-              opacity: calloutCount > 0 ? 1 : 0.8,
+            style={{
+              opacity: calloutCount > 0 ? 1 : 0.85,
             }}
           >
             {calloutCount}
@@ -1469,7 +1473,15 @@ export default function Dashboard() {
       >
           <Card
   title="Open Shifts"
-  subtitle={qOpen.isLoading ? "Loading…" : `${safeLen(open)} open`}
+  subtitle={
+    qOpen.isLoading ? (
+      "Loading…"
+    ) : (
+      <>
+        <DNum>{safeLen(open)}</DNum> open
+      </>
+    )
+  }
 >
   {qOpen.isLoading ? (
     <div style={{ opacity: 0.75 }}>Loading…</div>
@@ -1513,7 +1525,9 @@ export default function Dashboard() {
             <b>{label}</b>
             <div className="muted">
               {datePretty ? `${datePretty} • ` : ""}
-              {start} → {end}
+              <span className="dashboardNum">
+                {start} → {end}
+              </span>
             </div>
           </li>
         );
@@ -1527,7 +1541,13 @@ export default function Dashboard() {
         <Card
           title="Live Callouts"
           subtitle={
-            qCallouts.isLoading ? "Loading…" : `${calloutCount} active`
+            qCallouts.isLoading ? (
+              "Loading…"
+            ) : (
+              <>
+                <DNum>{calloutCount}</DNum> active
+              </>
+            )
           }
         >
           {qCallouts.isLoading ? (
@@ -1549,7 +1569,13 @@ export default function Dashboard() {
         <Card
           title="Running Late"
           subtitle={
-            qRunningLate.isLoading ? "Loading…" : `${safeLen(runningLate)} guards`
+            qRunningLate.isLoading ? (
+              "Loading…"
+            ) : (
+              <>
+                <DNum>{safeLen(runningLate)}</DNum> guards
+              </>
+            )
           }
         >
           {qRunningLate.isLoading ? (
@@ -1572,7 +1598,13 @@ export default function Dashboard() {
         <Card
           title="Clocked In"
           subtitle={
-            qClockStatus.isLoading ? "Loading…" : `${safeLen(clockedIn)} guards`
+            qClockStatus.isLoading ? (
+              "Loading…"
+            ) : (
+              <>
+                <DNum>{safeLen(clockedIn)}</DNum> guards
+              </>
+            )
           }
         >
           {qClockStatus.isLoading ? (
@@ -1606,12 +1638,23 @@ export default function Dashboard() {
                           {g.location ? `${g.location} • ` : ""}
                           Clocked in: {formatRelativeTime(g.clockInAt)}
                           {parseFloat(hoursWorked) > 0 && (
-                            <span style={{ 
-                              marginLeft: 8, 
-                              color: isOvertime ? "#dc2626" : "#64748b",
-                              fontWeight: isOvertime ? 600 : 400
-                            }}>
-                              • {hoursWorked}h {isOvertime && "⚠️ OT"}
+                            <span
+                              style={{
+                                marginLeft: 8,
+                                color: isOvertime ? "#dc2626" : "var(--ok)",
+                                fontWeight: isOvertime ? 600 : 700,
+                              }}
+                            >
+                              •{" "}
+                              {isOvertime ? (
+                                <>
+                                  {hoursWorked}h ⚠️ OT
+                                </>
+                              ) : (
+                                <>
+                                  <DNum>{hoursWorked}</DNum>h
+                                </>
+                              )}
                             </span>
                           )}
                         </div>
@@ -1646,7 +1689,13 @@ export default function Dashboard() {
         <Card
           title="On Break"
           subtitle={
-            qClockStatus.isLoading ? "Loading…" : `${safeLen(onBreak)} guards`
+            qClockStatus.isLoading ? (
+              "Loading…"
+            ) : (
+              <>
+                <DNum>{safeLen(onBreak)}</DNum> guards
+              </>
+            )
           }
         >
           {qClockStatus.isLoading ? (
@@ -1672,7 +1721,13 @@ export default function Dashboard() {
         <Card
           title="Clocked Out"
           subtitle={
-            qClockStatus.isLoading ? "Loading…" : `${safeLen(clockedOut)} guards`
+            qClockStatus.isLoading ? (
+              "Loading…"
+            ) : (
+              <>
+                <DNum>{safeLen(clockedOut)}</DNum> guards
+              </>
+            )
           }
         >
           {qClockStatus.isLoading ? (
@@ -1701,7 +1756,13 @@ export default function Dashboard() {
         <Card
           title="Live Incidents"
           subtitle={
-            qIncidents.isLoading ? "Loading…" : `${safeLen(incidents)} open`
+            qIncidents.isLoading ? (
+              "Loading…"
+            ) : (
+              <>
+                <DNum>{safeLen(incidents)}</DNum> open
+              </>
+            )
           }
         >
           {qIncidents.isLoading ? (
@@ -1794,7 +1855,13 @@ export default function Dashboard() {
                 const guardLabel =
                   a.guard?.name ||
                   a.guard?.email ||
-                  (a.guardId ? `Guard #${a.guardId}` : "Guard");
+                  (a.guardId ? (
+                    <>
+                      Guard #<DNum>{a.guardId}</DNum>
+                    </>
+                  ) : (
+                    "Guard"
+                  ));
 
                 const toLabel =
                   a.to === null || typeof a.to === "undefined"
@@ -1837,9 +1904,13 @@ export default function Dashboard() {
                           <span style={{ opacity: 0.9 }}>{toLabel}</span>
                         </div>
                         <div style={{ fontSize: 12, opacity: 0.75 }}>
-                          {a.actorAdminId
-                            ? `Changed by Admin #${a.actorAdminId}`
-                            : "Changed by —"}
+                          {a.actorAdminId ? (
+                            <>
+                              Changed by Admin #<DNum>{a.actorAdminId}</DNum>
+                            </>
+                          ) : (
+                            "Changed by —"
+                          )}
                           {a.note ? ` • ${a.note}` : ""}
                         </div>
                       </div>
