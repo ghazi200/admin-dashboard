@@ -313,6 +313,21 @@ code{
   filter: none;
 }
 
+.messagesPage .messagesDeleteBtn {
+  border: 1px solid rgba(249, 115, 22, 0.55) !important;
+  background: rgba(249, 115, 22, 0.14) !important;
+  color: var(--home-accent) !important;
+}
+
+.messagesPage .messagesDeleteBtn:hover:not(:disabled) {
+  background: rgba(249, 115, 22, 0.28) !important;
+  border-color: rgba(249, 115, 22, 0.7) !important;
+}
+
+.messagesPage .messagesDeleteBtn:disabled {
+  opacity: 0.45 !important;
+}
+
 .staffPage {
   color: var(--home-accent);
   padding-bottom: 32px;

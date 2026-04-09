@@ -28,8 +28,8 @@ const MESSAGES_PAGE_STYLES = {
     display: "flex",
     flexDirection: "column",
     borderRadius: 18,
-    border: "1px solid rgba(148,163,184,0.18)",
-    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(249,115,22,0.28)",
+    background: "rgba(249,115,22,0.06)",
     overflow: "hidden",
   },
   sidebarHeader: {
@@ -49,12 +49,18 @@ const MESSAGES_PAGE_STYLES = {
     borderRadius: 12,
     cursor: "pointer",
     marginBottom: 4,
-    border: "1px solid transparent",
-    background: "rgba(255,255,255,0.02)",
+    border: "1px solid rgba(249,115,22,0.22)",
+    background: "rgba(249,115,22,0.07)",
+  },
+  /** Conversations with unread — stronger orange “new” card */
+  conversationItemUnread: {
+    background: "rgba(249,115,22,0.16)",
+    border: "1px solid rgba(249,115,22,0.48)",
+    boxShadow: "inset 0 0 0 1px rgba(249,115,22,0.12)",
   },
   conversationItemActive: {
-    background: "rgba(124,58,237,0.15)",
-    border: "1px solid rgba(124,58,237,0.35)",
+    background: "rgba(249,115,22,0.22)",
+    border: "1px solid rgba(249,115,22,0.55)",
   },
   main: {
     flex: 1,
@@ -62,8 +68,8 @@ const MESSAGES_PAGE_STYLES = {
     flexDirection: "column",
     minWidth: 0,
     borderRadius: 18,
-    border: "1px solid rgba(148,163,184,0.18)",
-    background: "rgba(255,255,255,0.03)",
+    border: "1px solid rgba(249,115,22,0.28)",
+    background: "rgba(249,115,22,0.06)",
     overflow: "hidden",
   },
   threadHeader: {
@@ -94,6 +100,12 @@ const MESSAGES_PAGE_STYLES = {
     alignSelf: "flex-end",
     background: "rgba(249,115,22,0.26)",
     border: "1px solid rgba(249,115,22,0.55)",
+  },
+  /** Just-sent / optimistic rows — full orange card */
+  messageBubbleNew: {
+    background: "rgba(249,115,22,0.32)",
+    border: "1px solid rgba(249,115,22,0.65)",
+    boxShadow: "0 4px 14px rgba(249,115,22,0.2)",
   },
   messageMeta: {
     fontSize: 11,
@@ -506,6 +518,7 @@ export default function Messages() {
                   key={c.id}
                   style={{
                     ...MESSAGES_PAGE_STYLES.conversationItem,
+                    ...(c.unreadCount > 0 ? MESSAGES_PAGE_STYLES.conversationItemUnread : {}),
                     ...(selectedId === c.id ? MESSAGES_PAGE_STYLES.conversationItemActive : {}),
                     display: "flex",
                     justifyContent: "space-between",
@@ -523,18 +536,26 @@ export default function Messages() {
                       </div>
                     )}
                     {c.unreadCount > 0 && (
-                      <span style={{ fontSize: 11, color: "var(--accent)", marginTop: 4, display: "inline-block" }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: "#f97316",
+                          fontWeight: 700,
+                          marginTop: 4,
+                          display: "inline-block",
+                        }}
+                      >
                         {c.unreadCount} new
                       </span>
                     )}
                   </div>
                   <button
                     type="button"
-                    className="btn"
+                    className="btn messagesDeleteBtn"
                     onClick={(e) => handleDeleteConversation(c, e)}
                     disabled={deletingConversationId === c.id}
                     title="Delete conversation"
-                    style={{ flexShrink: 0, padding: "4px 8px", fontSize: 12, minHeight: 0, opacity: 0.8 }}
+                    style={{ flexShrink: 0, padding: "4px 8px", fontSize: 12, minHeight: 0 }}
                   >
                     {deletingConversationId === c.id ? "…" : "Delete"}
                   </button>
@@ -613,6 +634,9 @@ export default function Messages() {
                     style={{
                       ...MESSAGES_PAGE_STYLES.messageBubble,
                       ...(isOwnMessage(msg) ? MESSAGES_PAGE_STYLES.messageBubbleOwn : {}),
+                      ...(String(msg.id).startsWith("temp-")
+                        ? MESSAGES_PAGE_STYLES.messageBubbleNew
+                        : {}),
                     }}
                   >
                     <div>{msg.content}</div>
@@ -622,7 +646,7 @@ export default function Messages() {
                         <span style={{ marginLeft: 8 }}>
                           <button
                             type="button"
-                            className="btn"
+                            className="btn messagesDeleteBtn"
                             style={{ padding: "2px 8px", fontSize: 12, minHeight: 0 }}
                             onClick={() => handleDeleteMessage(msg)}
                             disabled={deletingMessageId === msg.id}
