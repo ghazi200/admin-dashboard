@@ -441,27 +441,100 @@ code{
   color: rgba(249, 115, 22, 0.88);
 }
 
-.shiftSwapsPage .shiftSwapsStatusSelect {
+/* Custom status filter (native <select> cannot style option hover) */
+.shiftSwapsPage .shiftSwapsStatusMenu {
+  position: relative;
+  min-width: 180px;
+}
+
+.shiftSwapsPage .shiftSwapsStatusTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
   padding: 8px 12px;
   border-radius: 8px;
-  min-width: 160px;
-  border: 1px solid rgba(249, 115, 22, 0.55) !important;
-  background: rgba(255, 255, 255, 0.06) !important;
-  color: var(--home-accent) !important;
+  border: 1px solid rgba(249, 115, 22, 0.55);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--home-accent);
   font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
   cursor: pointer;
 }
 
-.shiftSwapsPage .shiftSwapsStatusSelect:focus {
-  outline: none;
-  border-color: rgba(249, 115, 22, 0.9) !important;
-  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.22);
+.shiftSwapsPage .shiftSwapsStatusTrigger:hover {
+  border-color: rgba(249, 115, 22, 0.85);
+  background: rgba(249, 115, 22, 0.12);
 }
 
-.shiftSwapsPage .shiftSwapsStatusSelect option {
-  background: #0f0f0f;
-  color: #f97316;
+.shiftSwapsPage .shiftSwapsStatusTrigger:focus {
+  outline: none;
+  border-color: rgba(249, 115, 22, 0.95);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.28);
+}
+
+.shiftSwapsPage .shiftSwapsStatusChevron {
+  opacity: 0.9;
+  font-size: 12px;
+  color: var(--home-accent);
+}
+
+.shiftSwapsPage .shiftSwapsStatusList {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  min-width: 100%;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: 10px;
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  background: #0a0a0a;
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(249, 115, 22, 0.08);
+}
+
+.shiftSwapsPage .shiftSwapsStatusList li {
+  margin: 0;
+  padding: 0;
+}
+
+.shiftSwapsPage .shiftSwapsStatusOption {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--home-accent);
   font-weight: 600;
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.shiftSwapsPage .shiftSwapsStatusOption:hover,
+.shiftSwapsPage .shiftSwapsStatusOption:focus-visible {
+  outline: none;
+  background: rgba(249, 115, 22, 0.28);
+  color: #ffedd5;
+  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.45);
+}
+
+.shiftSwapsPage .shiftSwapsStatusOptionActive {
+  background: rgba(249, 115, 22, 0.15);
+  color: #fdba74;
+}
+
+.shiftSwapsPage .shiftSwapsStatusOptionActive:hover,
+.shiftSwapsPage .shiftSwapsStatusOptionActive:focus-visible {
+  background: rgba(249, 115, 22, 0.35);
+  color: #fff7ed;
 }
 
 .shiftSwapsPage section {

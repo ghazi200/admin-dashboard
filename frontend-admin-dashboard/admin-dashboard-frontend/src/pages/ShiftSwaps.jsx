@@ -4,16 +4,26 @@
  * Admin-facing page to manage shift swap requests
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Card from "../components/Card";
 import { listShiftSwaps, approveShiftSwap, rejectShiftSwap } from "../services/api";
 import { hasAccess } from "../utils/access";
 
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "All Status" },
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
 export default function ShiftSwaps() {
   const queryClient = useQueryClient();
   const canWrite = hasAccess("shifts:write");
   const [filterStatus, setFilterStatus] = useState("");
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const statusMenuRef = useRef(null);
 
   // Fetch shift swaps
   const { data, isLoading, error } = useQuery({
@@ -69,6 +79,16 @@ export default function ShiftSwaps() {
       rawData: data,
     });
   }, [isLoading, error, swaps.length, filterStatus, data]);
+
+  useEffect(() => {
+    function onDocMouseDown(e) {
+      if (statusMenuRef.current && !statusMenuRef.current.contains(e.target)) {
+        setStatusMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, []);
 
   // Approve mutation
   const approveMutation = useMutation({
@@ -170,6 +190,9 @@ export default function ShiftSwaps() {
     );
   };
 
+  const statusFilterLabel =
+    STATUS_FILTER_OPTIONS.find((o) => o.value === filterStatus)?.label ?? "All Status";
+
   return (
     <div className="container shiftSwapsPage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
@@ -180,18 +203,44 @@ export default function ShiftSwaps() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <select
-            className="shiftSwapsStatusSelect"
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            aria-label="Filter by status"
-          >
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+          <div className="shiftSwapsStatusMenu" ref={statusMenuRef}>
+            <button
+              type="button"
+              className="shiftSwapsStatusTrigger"
+              onClick={() => setStatusMenuOpen((o) => !o)}
+              aria-expanded={statusMenuOpen}
+              aria-haspopup="listbox"
+              aria-label="Filter by status"
+            >
+              <span>{statusFilterLabel}</span>
+              <span className="shiftSwapsStatusChevron" aria-hidden>
+                ▾
+              </span>
+            </button>
+            {statusMenuOpen ? (
+              <ul className="shiftSwapsStatusList" role="listbox" aria-label="Status filter">
+                {STATUS_FILTER_OPTIONS.map((opt) => (
+                  <li key={opt.value || "all"} role="none">
+                    <button
+                      type="button"
+                      role="option"
+                      className={
+                        "shiftSwapsStatusOption" +
+                        (filterStatus === opt.value ? " shiftSwapsStatusOptionActive" : "")
+                      }
+                      aria-selected={filterStatus === opt.value}
+                      onClick={() => {
+                        setFilterStatus(opt.value);
+                        setStatusMenuOpen(false);
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         </div>
       </div>
 
