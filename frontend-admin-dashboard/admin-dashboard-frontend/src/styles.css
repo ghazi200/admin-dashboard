@@ -299,9 +299,8 @@ code{
   top: 0;
   height: 100vh;
   padding: 14px;
-  background: rgba(15, 23, 42, 0.55);
-  border-right: 1px solid rgba(148,163,184,0.14);
-  backdrop-filter: blur(10px);
+  background: #000000;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
   overflow-y: auto;
   overflow-x: hidden;
 }
