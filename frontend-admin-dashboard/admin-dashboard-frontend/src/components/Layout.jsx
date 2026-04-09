@@ -344,19 +344,18 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main — black: home/Staff/Messages/Guards/Shifts/Swaps; orange: Callout Risk prediction */}
+      {/* Main — black: home, Staff, Messages, Guards, Shifts, Swaps, Callout Risk */}
       <div
         className={
+          location.pathname === "/" ||
+          location.pathname === "/staff" ||
+          location.pathname === "/messages" ||
+          location.pathname === "/guards" ||
+          location.pathname === "/shifts" ||
+          location.pathname === "/shift-swaps" ||
           location.pathname === "/callout-risk"
-            ? "layoutMain layoutMain--calloutRisk"
-            : location.pathname === "/" ||
-                location.pathname === "/staff" ||
-                location.pathname === "/messages" ||
-                location.pathname === "/guards" ||
-                location.pathname === "/shifts" ||
-                location.pathname === "/shift-swaps"
-              ? "layoutMain layoutMain--home"
-              : "layoutMain"
+            ? "layoutMain layoutMain--home"
+            : "layoutMain"
         }
         style={{ padding: 14 }}
       >

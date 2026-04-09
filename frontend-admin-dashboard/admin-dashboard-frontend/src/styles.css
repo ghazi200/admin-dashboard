@@ -265,36 +265,14 @@ code{
   min-height: 100vh;
 }
 
-/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps — main column black */
+/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps, Callout Risk — main column black */
 .layoutMain--home {
   background: #000000;
   min-height: 100vh;
 }
 
-/* Callout Risk (/callout-risk) — orange main column */
-.layoutMain--calloutRisk {
-  background: linear-gradient(165deg, #ea580c 0%, #c2410c 42%, #9a3412 100%);
-  min-height: 100vh;
-  color: #fff;
-}
-
-.layoutMain--calloutRisk .muted {
-  color: rgba(255, 255, 255, 0.82) !important;
-}
-
-/* Global search field — keep dark text on white field (layout inherits white) */
-.layoutMain--calloutRisk input[type="text"] {
-  color: #0f172a !important;
-  background: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.75) !important;
-}
-
 @media (max-width: 900px) {
   .layoutMain--home {
-    min-height: min(100vh, 100%);
-  }
-
-  .layoutMain--calloutRisk {
     min-height: min(100vh, 100%);
   }
 }
