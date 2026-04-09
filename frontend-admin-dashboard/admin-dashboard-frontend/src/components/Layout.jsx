@@ -350,22 +350,21 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main — black: home, Staff, …; orange: AI Ranking */}
+      {/* Main — black: home, Staff, …, AI Ranking */}
       <div
         className={
+          location.pathname === "/" ||
+          location.pathname === "/staff" ||
+          location.pathname === "/messages" ||
+          location.pathname === "/guards" ||
+          location.pathname === "/shifts" ||
+          location.pathname === "/shift-swaps" ||
+          location.pathname === "/callout-risk" ||
+          isUsersPage ||
+          isReportsPage ||
           isAIRankingPage
-            ? "layoutMain layoutMain--aiRanking"
-            : location.pathname === "/" ||
-                location.pathname === "/staff" ||
-                location.pathname === "/messages" ||
-                location.pathname === "/guards" ||
-                location.pathname === "/shifts" ||
-                location.pathname === "/shift-swaps" ||
-                location.pathname === "/callout-risk" ||
-                isUsersPage ||
-                isReportsPage
-              ? "layoutMain layoutMain--home"
-              : "layoutMain"
+            ? "layoutMain layoutMain--home"
+            : "layoutMain"
         }
         style={{ padding: 14 }}
       >

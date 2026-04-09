@@ -265,7 +265,7 @@ code{
   min-height: 100vh;
 }
 
-/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps, Callout Risk, Reports, Users — main column black */
+/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps, Callout Risk, Reports, Users, AI Ranking — main column black */
 .layoutMain--home {
   background: #000000;
   min-height: 100vh;
@@ -277,36 +277,12 @@ code{
   }
 }
 
-/* AI Ranking (/ai-ranking) — orange main column */
-.layoutMain--aiRanking {
-  background: linear-gradient(165deg, #ea580c 0%, #c2410c 42%, #9a3412 100%);
-  min-height: 100vh;
-  color: #fff;
-}
-
-.layoutMain--aiRanking .muted {
-  color: rgba(255, 255, 255, 0.82) !important;
-}
-
-.layoutMain--aiRanking input[type="text"] {
-  color: #0f172a !important;
-  background: #ffffff !important;
-  border-color: rgba(255, 255, 255, 0.75) !important;
-}
-
-@media (max-width: 900px) {
-  .layoutMain--aiRanking {
-    min-height: min(100vh, 100%);
-  }
-}
-
-/* AI Ranking page — heading uses accent orange (readable on orange layout gradient) */
+/* AI Ranking page — orange heading on black main (layoutMain--home) */
 .aiRankingPage .aiRankingPageHeading {
   color: var(--home-accent) !important;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
 /* Dashboard content on home — sits on black */
