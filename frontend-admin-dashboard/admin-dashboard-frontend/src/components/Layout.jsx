@@ -36,6 +36,7 @@ export default function Layout() {
     location.pathname === "/shifts" ||
     location.pathname === "/shift-swaps" ||
     location.pathname === "/callout-risk" ||
+    location.pathname === "/users" ||
     isReportsPage;
 
   // Session timeout: 15–60 min inactivity (default 30). Set REACT_APP_SESSION_TIMEOUT_MINUTES in .env
@@ -345,7 +346,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main — black: home, Staff, Messages, Guards, Shifts, Swaps, Callout Risk, Reports */}
+      {/* Main — black: home, Staff, Messages, Guards, Shifts, Swaps, Callout Risk, Reports, Users */}
       <div
         className={
           location.pathname === "/" ||
@@ -355,6 +356,7 @@ export default function Layout() {
           location.pathname === "/shifts" ||
           location.pathname === "/shift-swaps" ||
           location.pathname === "/callout-risk" ||
+          location.pathname === "/users" ||
           isReportsPage
             ? "layoutMain layoutMain--home"
             : "layoutMain"

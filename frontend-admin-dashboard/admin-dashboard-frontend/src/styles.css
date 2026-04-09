@@ -265,7 +265,7 @@ code{
   min-height: 100vh;
 }
 
-/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps, Callout Risk, Reports — main column black */
+/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps, Callout Risk, Reports, Users — main column black */
 .layoutMain--home {
   background: #000000;
   min-height: 100vh;
@@ -564,6 +564,24 @@ code{
 }
 
 .calloutRiskPage section header div {
+  color: var(--home-accent) !important;
+}
+
+/* Users (/users) — orange title, orange-outlined Cards; black main via Layout */
+.usersPage h1 {
+  color: var(--home-accent);
+  font-weight: 800;
+}
+
+.usersPage section {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(249, 115, 22, 0.38) !important;
+  box-shadow:
+    0 14px 48px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(249, 115, 22, 0.08) !important;
+}
+
+.usersPage section header div {
   color: var(--home-accent) !important;
 }
 

@@ -195,7 +195,7 @@ export default function Users() {
 
   if (!canRead) {
     return (
-      <div className="container">
+      <div className="container usersPage">
         <h1>Users</h1>
         <div className="notice">You don’t have permission to view users.</div>
       </div>
@@ -272,7 +272,7 @@ export default function Users() {
   }
 
   return (
-    <div className="container">
+    <div className="container usersPage">
       <h1 style={{ marginBottom: 14 }}>Users</h1>
 
       {/* CREATE USER */}
