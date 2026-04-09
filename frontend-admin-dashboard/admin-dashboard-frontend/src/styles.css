@@ -511,7 +511,7 @@ code{
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--home-accent);
+  color: #ffffff;
   font-weight: 600;
   font-size: 14px;
   font-family: inherit;
@@ -521,20 +521,20 @@ code{
 .shiftSwapsPage .shiftSwapsStatusOption:hover,
 .shiftSwapsPage .shiftSwapsStatusOption:focus-visible {
   outline: none;
-  background: rgba(249, 115, 22, 0.28);
-  color: #ffedd5;
+  background: rgba(249, 115, 22, 0.22);
+  color: var(--home-accent);
   box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.45);
 }
 
 .shiftSwapsPage .shiftSwapsStatusOptionActive {
-  background: rgba(249, 115, 22, 0.15);
-  color: #fdba74;
+  background: rgba(249, 115, 22, 0.12);
+  color: #ffffff;
 }
 
 .shiftSwapsPage .shiftSwapsStatusOptionActive:hover,
 .shiftSwapsPage .shiftSwapsStatusOptionActive:focus-visible {
-  background: rgba(249, 115, 22, 0.35);
-  color: #fff7ed;
+  background: rgba(249, 115, 22, 0.32);
+  color: var(--home-accent);
 }
 
 .shiftSwapsPage section {
