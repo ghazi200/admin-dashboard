@@ -322,21 +322,22 @@ code{
 
 .staffPage .input,
 .staffPage input {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(249, 115, 22, 0.38);
-  color: var(--home-accent);
+  background: #ffffff;
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  color: #0f172a;
 }
 
 .staffPage .input::placeholder,
 .staffPage input::placeholder {
-  color: rgba(249, 115, 22, 0.45);
+  color: rgba(15, 23, 42, 0.45);
 }
 
 .staffPage .input:focus,
 .staffPage input:focus {
   outline: none;
-  border-color: rgba(249, 115, 22, 0.65) !important;
-  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(249, 115, 22, 0.85) !important;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2);
 }
 
 .staffPage section {
