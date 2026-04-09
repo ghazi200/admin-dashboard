@@ -336,8 +336,11 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main */}
-      <div style={{ padding: 14 }}>
+      {/* Main — black background on admin home (/) */}
+      <div
+        className={location.pathname === "/" ? "layoutMain layoutMain--home" : "layoutMain"}
+        style={{ padding: 14 }}
+      >
         <div
           style={{
             display: "flex",
@@ -677,20 +680,20 @@ export default function Layout() {
           </div>
         </div>
 
-        {/* Home: green welcome strip (Layout-level so it is never clipped by Dashboard internals) */}
+        {/* Home: orange welcome strip (Layout-level so it is never clipped by Dashboard internals) */}
         {location.pathname === "/" && (
           <div
             className="homeWelcomeStrip"
             role="status"
             aria-label="Welcome"
             style={{
-              borderColor: "#22c55e",
-              backgroundColor: "rgba(34, 197, 94, 0.18)",
+              borderColor: "#f97316",
+              backgroundColor: "rgba(249, 115, 22, 0.14)",
             }}
           >
             <div
               className="homeWelcomeTitle"
-              style={{ color: "#22c55e" }}
+              style={{ color: "#f97316" }}
             >
               {getWelcomeLineFromStorage()}
             </div>

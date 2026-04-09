@@ -91,8 +91,8 @@ const OvertimeRequests = () => {
         label: "Pending",
       },
       accepted: {
-        background: "rgba(34, 197, 94, 0.2)",
-        color: "#22c55e",
+        background: "rgba(249, 115, 22, 0.22)",
+        color: "#f97316",
         label: "Accepted",
       },
       declined: {
@@ -307,7 +307,7 @@ const OvertimeRequests = () => {
                         padding: "6px 12px",
                         borderRadius: 6,
                         border: "none",
-                        background: "#22c55e",
+                        background: "#f97316",
                         color: "white",
                         fontWeight: 600,
                         cursor: processing[request.id] ? "not-allowed" : "pointer",

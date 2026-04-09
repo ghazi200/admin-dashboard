@@ -40,7 +40,7 @@ function formatRelativeTime(dateValue) {
   return `${day}d ago`;
 }
 
-/** Inline numeric accent — same green as KPI / welcome / clock */
+/** Inline numeric accent — orange on home dashboard */
 function DNum({ children }) {
   return <span className="dashboardNum">{children}</span>;
 }
@@ -69,7 +69,7 @@ function Donut({ a = 0, b = 0, labelA = "A", labelB = "B" }) {
           cy="56"
           r={r}
           fill="none"
-          stroke="rgba(34,197,94,0.85)"
+          stroke="rgba(249,115,22,0.9)"
           strokeWidth="12"
           strokeDasharray={dash}
           strokeLinecap="round"
@@ -81,7 +81,7 @@ function Donut({ a = 0, b = 0, labelA = "A", labelB = "B" }) {
           textAnchor="middle"
           fontSize="18"
           fontWeight="800"
-          fill="#22c55e"
+          fill="#f97316"
         >
           {Math.round(pct * 100)}%
         </text>
@@ -122,9 +122,6 @@ function SparkBars({ values = [] }) {
               width: 36,
               height: `${Math.max(8, h)}%`,
               borderRadius: 10,
-              background: "rgba(34,197,94,0.85)",
-              boxShadow:
-                "0 0 0 1px rgba(34,197,94,0.25), 0 10px 24px rgba(0,0,0,0.25)",
             }}
             title={`${v}`}
           />
@@ -160,12 +157,12 @@ function LiveClock() {
     <div
       style={{
         background:
-          "linear-gradient(145deg, rgba(15, 23, 42, 0.98) 0%, rgba(6, 78, 59, 0.28) 45%, rgba(15, 23, 42, 0.98) 100%)",
+          "linear-gradient(145deg, #0a0a0a 0%, rgba(249, 115, 22, 0.12) 48%, #0a0a0a 100%)",
         padding: "20px 30px",
         borderRadius: 12,
-        border: "2px solid rgba(34, 197, 94, 0.5)",
+        border: "2px solid rgba(249, 115, 22, 0.55)",
         boxShadow:
-          "0 4px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(34, 197, 94, 0.2), inset 0 0 28px rgba(34, 197, 94, 0.08)",
+          "0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(249, 115, 22, 0.22), inset 0 0 32px rgba(249, 115, 22, 0.1)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -177,11 +174,11 @@ function LiveClock() {
         style={{
           fontSize: 48,
           fontWeight: 900,
-          color: "#22c55e",
+          color: "#f97316",
           fontFamily: "monospace",
           letterSpacing: 2,
           marginBottom: 8,
-          textShadow: "0 0 22px rgba(34, 197, 94, 0.55), 0 2px 0 rgba(0,0,0,0.25)",
+          textShadow: "0 0 24px rgba(249, 115, 22, 0.55), 0 2px 0 rgba(0,0,0,0.35)",
         }}
       >
         {hours}:{minutes}:{seconds}
@@ -189,7 +186,7 @@ function LiveClock() {
       <div
         style={{
           fontSize: 14,
-          color: "rgba(167, 243, 208, 0.92)",
+          color: "rgba(254, 215, 170, 0.95)",
           textAlign: "center",
           fontWeight: 500,
         }}
@@ -1641,7 +1638,7 @@ export default function Dashboard() {
                             <span
                               style={{
                                 marginLeft: 8,
-                                color: isOvertime ? "#dc2626" : "var(--ok)",
+                                color: isOvertime ? "#dc2626" : "#f97316",
                                 fontWeight: isOvertime ? 600 : 700,
                               }}
                             >
@@ -1895,7 +1892,7 @@ export default function Dashboard() {
                           width: 10,
                           height: 10,
                           borderRadius: 999,
-                          background: a.to ? "#22c55e" : "#ef4444",
+                          background: a.to ? "#f97316" : "#ef4444",
                         }}
                       />
                       <div style={{ display: "grid", gap: 2 }}>
