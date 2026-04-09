@@ -30,6 +30,7 @@ export default function Layout() {
   const isInspectionsPage = location.pathname === "/inspections" || location.pathname.startsWith("/inspections/");
   const isUsersPage =
     location.pathname === "/users" || location.pathname.startsWith("/users/");
+  const isAIRankingPage = location.pathname === "/ai-ranking";
   const isSearchOrange =
     location.pathname === "/" ||
     location.pathname === "/staff" ||
@@ -39,7 +40,8 @@ export default function Layout() {
     location.pathname === "/shift-swaps" ||
     location.pathname === "/callout-risk" ||
     isUsersPage ||
-    isReportsPage;
+    isReportsPage ||
+    isAIRankingPage;
 
   // Session timeout: 15–60 min inactivity (default 30). Set REACT_APP_SESSION_TIMEOUT_MINUTES in .env
   useSessionTimeout({ enabled: true });
@@ -348,20 +350,22 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main — black: home, Staff, Messages, Guards, Shifts, Swaps, Callout Risk, Reports, Users */}
+      {/* Main — black: home, Staff, …; orange: AI Ranking */}
       <div
         className={
-          location.pathname === "/" ||
-          location.pathname === "/staff" ||
-          location.pathname === "/messages" ||
-          location.pathname === "/guards" ||
-          location.pathname === "/shifts" ||
-          location.pathname === "/shift-swaps" ||
-          location.pathname === "/callout-risk" ||
-          isUsersPage ||
-          isReportsPage
-            ? "layoutMain layoutMain--home"
-            : "layoutMain"
+          isAIRankingPage
+            ? "layoutMain layoutMain--aiRanking"
+            : location.pathname === "/" ||
+                location.pathname === "/staff" ||
+                location.pathname === "/messages" ||
+                location.pathname === "/guards" ||
+                location.pathname === "/shifts" ||
+                location.pathname === "/shift-swaps" ||
+                location.pathname === "/callout-risk" ||
+                isUsersPage ||
+                isReportsPage
+              ? "layoutMain layoutMain--home"
+              : "layoutMain"
         }
         style={{ padding: 14 }}
       >

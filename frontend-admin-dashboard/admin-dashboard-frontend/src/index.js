@@ -5,7 +5,7 @@ import App from "./App";
 import "./styles.css";
 
 // BUILD MARKER — if you see this in console, new bundle is loaded (socket uses Railway in production)
-const APP_BUILD_ID = "2026-04-09-users-page-theme-v2";
+const APP_BUILD_ID = "2026-04-09-ai-ranking-orange-theme";
 if (typeof console !== "undefined") {
   console.log("%c BUILD " + APP_BUILD_ID, "color: #f97316; font-weight: bold; font-size: 14px;");
 }

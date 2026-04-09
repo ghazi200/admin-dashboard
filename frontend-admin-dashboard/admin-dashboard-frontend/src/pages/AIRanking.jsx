@@ -133,8 +133,10 @@ export default function AIRanking() {
   }
 
   return (
-    <div>
-      <h1 style={{ marginBottom: 14 }}>AI Ranking & Decisions</h1>
+    <div className="container aiRankingPage">
+      <h1 className="aiRankingPageHeading" style={{ marginBottom: 14 }}>
+        AI Ranking & Decisions
+      </h1>
 
       {err ? <div className="error" style={{ marginBottom: 14 }}>{err}</div> : null}
 
