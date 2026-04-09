@@ -31,7 +31,8 @@ export default function Layout() {
   const isSearchOrange =
     location.pathname === "/" ||
     location.pathname === "/staff" ||
-    location.pathname === "/messages";
+    location.pathname === "/messages" ||
+    location.pathname === "/guards";
 
   // Session timeout: 15–60 min inactivity (default 30). Set REACT_APP_SESSION_TIMEOUT_MINUTES in .env
   useSessionTimeout({ enabled: true });
@@ -340,12 +341,13 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main — black background on home (/), Staff (/staff), Messages (/messages) */}
+      {/* Main — black background on home (/), Staff (/staff), Messages (/messages), Guards (/guards) */}
       <div
         className={
           location.pathname === "/" ||
           location.pathname === "/staff" ||
-          location.pathname === "/messages"
+          location.pathname === "/messages" ||
+          location.pathname === "/guards"
             ? "layoutMain layoutMain--home"
             : "layoutMain"
         }

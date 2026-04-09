@@ -689,7 +689,7 @@ export default function Guards() {
   // Render
   // =====================
   return (
-    <div className="container">
+    <div className="container guardsPage">
       <div style={s.head}>
         <div>
           <h1 style={s.h1}>Guards</h1>

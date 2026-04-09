@@ -265,7 +265,7 @@ code{
   min-height: 100vh;
 }
 
-/* Admin home (/), Staff (/staff), Messages (/messages) — main column black */
+/* Admin home (/), Staff (/staff), Messages (/messages), Guards (/guards) — main column black */
 .layoutMain--home {
   background: #000000;
   min-height: 100vh;
@@ -326,6 +326,22 @@ code{
 
 .messagesPage .messagesDeleteBtn:disabled {
   opacity: 0.45 !important;
+}
+
+/* Guards page — orange primary (Create / Update Guard) on black */
+.guardsPage .btnPrimary {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+  color: #fff !important;
+}
+
+.guardsPage .btnPrimary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.guardsPage .btnPrimary:disabled {
+  opacity: 0.55;
+  filter: none;
 }
 
 .staffPage {
