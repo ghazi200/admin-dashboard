@@ -28,6 +28,8 @@ export default function Layout() {
   const location = useLocation();
   const isReportsPage = location.pathname === "/reports" || location.pathname.startsWith("/reports/");
   const isInspectionsPage = location.pathname === "/inspections" || location.pathname.startsWith("/inspections/");
+  const isSearchOrange =
+    location.pathname === "/" || location.pathname === "/staff";
 
   // Session timeout: 15–60 min inactivity (default 30). Set REACT_APP_SESSION_TIMEOUT_MINUTES in .env
   useSessionTimeout({ enabled: true });
@@ -385,11 +387,8 @@ export default function Layout() {
                   style={{
                     padding: "8px 14px",
                     borderRadius: 10,
-                    border:
-                      location.pathname === "/"
-                        ? "1px solid #f97316"
-                        : "1px solid #0ea5e9",
-                    background: location.pathname === "/" ? "#f97316" : "#0ea5e9",
+                    border: isSearchOrange ? "1px solid #f97316" : "1px solid #0ea5e9",
+                    background: isSearchOrange ? "#f97316" : "#0ea5e9",
                     color: "white",
                     cursor: searchLoading ? "wait" : "pointer",
                     fontSize: 13,
