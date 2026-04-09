@@ -568,12 +568,16 @@ code{
 }
 
 /* Users (/users) — orange title, orange-outlined Cards; black main via Layout */
-.usersPage h1 {
-  color: var(--home-accent);
+.usersPage h1,
+[data-admin-page="users"] h1 {
+  color: var(--home-accent) !important;
   font-weight: 800;
 }
 
-.usersPage section {
+/* Extra specificity so Card inline borders don’t win over theme */
+.layoutMain--home .usersPage section,
+.usersPage section,
+[data-admin-page="users"] section {
   background: rgba(255, 255, 255, 0.04) !important;
   border: 1px solid rgba(249, 115, 22, 0.38) !important;
   box-shadow:
@@ -581,7 +585,9 @@ code{
     inset 0 0 0 1px rgba(249, 115, 22, 0.08) !important;
 }
 
-.usersPage section header div {
+.layoutMain--home .usersPage section header div,
+.usersPage section header div,
+[data-admin-page="users"] section header div {
   color: var(--home-accent) !important;
 }
 
