@@ -359,7 +359,10 @@ export default function ReportBuilder() {
 
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         <button
-          className={`btn ${activeTab === "builder" ? "btnPrimary" : ""}`}
+          type="button"
+          className={
+            activeTab === "builder" ? "btn btnPrimary" : "btn reportBuilderBuilderTab"
+          }
           onClick={() => setActiveTab("builder")}
         >
           📊 Builder
