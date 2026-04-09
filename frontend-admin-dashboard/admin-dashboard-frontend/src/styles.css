@@ -265,7 +265,7 @@ code{
   min-height: 100vh;
 }
 
-/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps, Callout Risk — main column black */
+/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps, Callout Risk, Reports — main column black */
 .layoutMain--home {
   background: #000000;
   min-height: 100vh;
@@ -565,6 +565,12 @@ code{
 
 .calloutRiskPage section header div {
   color: var(--home-accent) !important;
+}
+
+/* Report Builder (/reports) — orange title; black main via Layout */
+.reportBuilderPage h1 {
+  color: var(--home-accent);
+  font-weight: 800;
 }
 
 .staffPage {

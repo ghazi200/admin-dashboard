@@ -326,7 +326,7 @@ export default function ReportBuilder() {
   const hasTemplatesData = templatesRaw !== undefined;
   if (!hasTemplatesData && !templatesError) {
     return (
-      <div className="container" style={{ padding: 48, textAlign: "center" }}>
+      <div className="container reportBuilderPage" style={{ padding: 48, textAlign: "center" }}>
         <h1 style={{ margin: "0 0 12px 0", fontSize: 26 }}>📊 Report Builder</h1>
         <p style={{ margin: 0, opacity: 0.8 }}>Loading reports…</p>
       </div>
@@ -335,7 +335,7 @@ export default function ReportBuilder() {
 
   if (templatesError && !templatesSafe.length) {
     return (
-      <div className="container">
+      <div className="container reportBuilderPage">
         <div style={{ marginBottom: 20 }}>
           <h1 style={{ margin: 0, fontSize: 26 }}>📊 Report Builder</h1>
         </div>
@@ -349,7 +349,7 @@ export default function ReportBuilder() {
   }
 
   return (
-    <div className="container">
+    <div className="container reportBuilderPage">
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: 0, fontSize: 26 }}>📊 Report Builder</h1>
         <div style={{ marginTop: 4, opacity: 0.7, fontSize: 13 }}>
