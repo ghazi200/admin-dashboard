@@ -5,11 +5,14 @@ import App from "./App";
 import "./styles.css";
 
 // BUILD MARKER — if you see this in console, new bundle is loaded (socket uses Railway in production)
-const APP_BUILD_ID = "2026-04-02-guards-checkboxes-orange";
+const APP_BUILD_ID = "2026-04-08-orange-theme-verified";
 if (typeof console !== "undefined") {
-  console.log("%c BUILD " + APP_BUILD_ID, "color: green; font-weight: bold; font-size: 14px;");
+  console.log("%c BUILD " + APP_BUILD_ID, "color: #f97316; font-weight: bold; font-size: 14px;");
 }
-if (typeof window !== "undefined") window.__APP_BUILD_ID__ = APP_BUILD_ID;
+if (typeof window !== "undefined") {
+  window.__APP_BUILD_ID__ = APP_BUILD_ID;
+  window.__ORANGE_THEME_BUILD__ = true;
+}
 
 // ✅ Create Query Client ONCE
 const queryClient = new QueryClient();
