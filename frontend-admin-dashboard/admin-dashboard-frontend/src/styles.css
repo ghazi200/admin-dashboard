@@ -265,7 +265,7 @@ code{
   min-height: 100vh;
 }
 
-/* Admin home (/) and Staff (/staff) — main column black */
+/* Admin home (/), Staff (/staff), Messages (/messages) — main column black */
 .layoutMain--home {
   background: #000000;
   min-height: 100vh;
@@ -289,6 +289,15 @@ code{
 }
 
 /* Staff page — orange on black (main column black via .layoutMain--home on /staff) */
+.messagesPage {
+  background: transparent;
+}
+
+.messagesPage .messagesPageHeading,
+.messagesPage h1.messagesPageHeading {
+  color: var(--home-accent);
+}
+
 .staffPage {
   color: var(--home-accent);
   padding-bottom: 32px;

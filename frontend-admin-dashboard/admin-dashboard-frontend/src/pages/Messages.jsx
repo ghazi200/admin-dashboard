@@ -469,9 +469,11 @@ export default function Messages() {
   const isOwnMessage = (msg) => msg.sender_type === "admin";
 
   return (
-    <div className="container" style={{ padding: "16px 12px" }}>
+    <div className="container messagesPage" style={{ padding: "16px 12px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0, fontWeight: 800 }}>Messages</h1>
+        <h1 className="messagesPageHeading" style={{ margin: 0, fontWeight: 800 }}>
+          Messages
+        </h1>
         <Link to="/messages/guard" style={{ fontSize: 14, color: "var(--muted)" }}>Guard view (test)</Link>
       </div>
       {error && (
