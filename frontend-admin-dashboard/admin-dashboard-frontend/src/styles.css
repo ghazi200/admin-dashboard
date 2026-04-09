@@ -295,6 +295,50 @@ code{
   letter-spacing: 0.06em;
 }
 
+.aiRankingPage .btnPrimary {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+  color: #fff !important;
+}
+
+.aiRankingPage .btnPrimary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.aiRankingPage .btnPrimary:disabled {
+  opacity: 0.55;
+  filter: none;
+}
+
+.aiRankingPage section {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(249, 115, 22, 0.38) !important;
+  box-shadow:
+    0 14px 48px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(249, 115, 22, 0.08) !important;
+}
+
+.aiRankingPage section header div {
+  color: var(--home-accent) !important;
+}
+
+/* Per-shift row + AI decision output block */
+.aiRankingPage .aiRankingShiftRow {
+  border: 1px solid rgba(249, 115, 22, 0.35);
+}
+
+.aiRankingPage .aiRankingOutput {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(249, 115, 22, 0.42);
+  background: rgba(249, 115, 22, 0.07);
+}
+
+.aiRankingPage .aiRankingOutput strong {
+  color: var(--home-accent);
+}
+
 /* Dashboard content on home — sits on black */
 .dashboardPage {
   color: var(--text);

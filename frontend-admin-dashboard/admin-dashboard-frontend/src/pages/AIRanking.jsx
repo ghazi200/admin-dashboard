@@ -184,12 +184,12 @@ export default function AIRanking() {
             {rankings.map((shift) => (
               <div
                 key={shift.id}
+                className="aiRankingShiftRow"
                 style={{
                   padding: 14,
-                  border: "1px solid rgba(148,163,184,0.18)",
                   borderRadius: 12,
                   background: shift.isOverridden
-                    ? "rgba(245,158,11,0.08)"
+                    ? "rgba(249, 115, 22, 0.1)"
                     : "rgba(255,255,255,0.02)",
                 }}
               >
@@ -232,15 +232,7 @@ export default function AIRanking() {
                 </div>
 
                 {/* AI Decision Data */}
-                <div
-                  style={{
-                    marginTop: 12,
-                    padding: 12,
-                    background: "rgba(255,255,255,0.02)",
-                    borderRadius: 8,
-                    border: "1px solid rgba(148,163,184,0.1)",
-                  }}
-                >
+                <div className="aiRankingOutput">
                   {shift.ranking && (
                     <div style={{ marginBottom: 6 }}>
                       <strong>Ranking:</strong> {shift.ranking}
@@ -300,7 +292,8 @@ export default function AIRanking() {
                 {canOverride && (
                   <div style={{ marginTop: 12 }}>
                     <button
-                      className="btn"
+                      type="button"
+                      className="btn btnPrimary"
                       onClick={() => openOverrideModal(shift)}
                       style={{
                         padding: "8px 16px",
@@ -325,11 +318,12 @@ export default function AIRanking() {
           onClose={closeOverrideModal}
           footer={
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-              <button className="btn" onClick={closeOverrideModal} disabled={overrideLoading}>
+              <button type="button" className="btn" onClick={closeOverrideModal} disabled={overrideLoading}>
                 Cancel
               </button>
               <button
-                className="btnPrimary"
+                type="button"
+                className="btn btnPrimary"
                 onClick={handleOverride}
                 disabled={overrideLoading}
               >
