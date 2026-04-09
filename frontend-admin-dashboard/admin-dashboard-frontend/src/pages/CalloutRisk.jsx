@@ -39,7 +39,7 @@ export default function CalloutRisk() {
 
   if (isLoading) {
     return (
-      <div className="container">
+      <div className="container calloutRiskPage">
         <h1>Callout Risk Prediction</h1>
         <div style={{ padding: 40, textAlign: "center", opacity: 0.7 }}>
           Loading risk predictions...
@@ -50,7 +50,7 @@ export default function CalloutRisk() {
 
   if (error) {
     return (
-      <div className="container">
+      <div className="container calloutRiskPage">
         <h1>Callout Risk Prediction</h1>
         <div style={{ padding: 40 }}>
           <div style={{ color: "#ef4444", marginBottom: 20 }}>
@@ -76,7 +76,7 @@ export default function CalloutRisk() {
   }
 
   return (
-    <div className="container">
+    <div className="container calloutRiskPage">
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: 0, marginBottom: 8 }}>Callout Risk Prediction</h1>
         <div style={{ opacity: 0.7, fontSize: 14 }}>
