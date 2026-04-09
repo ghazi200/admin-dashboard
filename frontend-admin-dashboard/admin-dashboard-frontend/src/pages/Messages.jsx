@@ -87,13 +87,13 @@ const MESSAGES_PAGE_STYLES = {
     fontSize: 14,
     lineHeight: 1.45,
     alignSelf: "flex-start",
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(148,163,184,0.12)",
+    background: "rgba(249,115,22,0.12)",
+    border: "1px solid rgba(249,115,22,0.38)",
   },
   messageBubbleOwn: {
     alignSelf: "flex-end",
-    background: "rgba(124,58,237,0.25)",
-    border: "1px solid rgba(124,58,237,0.4)",
+    background: "rgba(249,115,22,0.26)",
+    border: "1px solid rgba(249,115,22,0.55)",
   },
   messageMeta: {
     fontSize: 11,
@@ -556,7 +556,7 @@ export default function Messages() {
                 {selected.type === "group" && (
                   <button
                     type="button"
-                    className="btn"
+                    className="btn btnPrimary"
                     onClick={() => { setAddParticipantGuardIds([]); setShowAddParticipants(true); }}
                     style={{ fontSize: 13, padding: "6px 12px" }}
                   >
