@@ -265,7 +265,7 @@ code{
   min-height: 100vh;
 }
 
-/* Admin home (/) — main column black */
+/* Admin home (/) and Staff (/staff) — main column black */
 .layoutMain--home {
   background: #000000;
   min-height: 100vh;
@@ -286,6 +286,88 @@ code{
 .dashboardPage .kpi {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(249, 115, 22, 0.14);
+}
+
+/* Staff page — orange on black (main column black via .layoutMain--home on /staff) */
+.staffPage {
+  color: var(--home-accent);
+  padding-bottom: 32px;
+}
+
+.staffPage h1 {
+  color: var(--home-accent);
+}
+
+.staffPage > p {
+  color: rgba(249, 115, 22, 0.88);
+}
+
+.staffPage label {
+  color: var(--home-accent);
+}
+
+.staffPage .staffSubtle {
+  color: rgba(249, 115, 22, 0.72);
+}
+
+.staffPage .table th {
+  color: rgba(249, 115, 22, 0.78);
+  border-bottom-color: rgba(249, 115, 22, 0.28);
+}
+
+.staffPage .table td {
+  color: var(--home-accent);
+  border-bottom-color: rgba(249, 115, 22, 0.14);
+}
+
+.staffPage .input,
+.staffPage input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(249, 115, 22, 0.38);
+  color: var(--home-accent);
+}
+
+.staffPage .input::placeholder,
+.staffPage input::placeholder {
+  color: rgba(249, 115, 22, 0.45);
+}
+
+.staffPage .input:focus,
+.staffPage input:focus {
+  outline: none;
+  border-color: rgba(249, 115, 22, 0.65) !important;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.staffPage section {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(249, 115, 22, 0.22) !important;
+  box-shadow: 0 14px 48px rgba(0, 0, 0, 0.45) !important;
+}
+
+.staffPage section header div {
+  color: var(--home-accent) !important;
+}
+
+.staffPage .btn {
+  border-color: rgba(249, 115, 22, 0.4);
+  color: var(--home-accent);
+  background: rgba(249, 115, 22, 0.08);
+}
+
+.staffPage .btn:hover {
+  background: rgba(249, 115, 22, 0.14);
+  border-color: rgba(249, 115, 22, 0.55);
+}
+
+.staffPage .btnPrimary {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+  color: #fff !important;
+}
+
+.staffPage .btnPrimary:hover {
+  filter: brightness(1.06);
 }
 
 @media (max-width: 900px) {

@@ -336,9 +336,13 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main — black background on admin home (/) */}
+      {/* Main — black background on home (/) and Staff (/staff) */}
       <div
-        className={location.pathname === "/" ? "layoutMain layoutMain--home" : "layoutMain"}
+        className={
+          location.pathname === "/" || location.pathname === "/staff"
+            ? "layoutMain layoutMain--home"
+            : "layoutMain"
+        }
         style={{ padding: 14 }}
       >
         <div

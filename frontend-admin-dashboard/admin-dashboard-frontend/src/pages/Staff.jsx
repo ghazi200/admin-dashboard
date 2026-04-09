@@ -100,14 +100,23 @@ export default function Staff() {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 900 }}>
+    <div className="container staffPage" style={{ padding: 24, maxWidth: 900 }}>
       <h1 style={{ marginTop: 0, marginBottom: 8 }}>Staff directory</h1>
-      <p style={{ color: "var(--muted)", marginBottom: 24, fontSize: 14 }}>
+      <p style={{ marginBottom: 24, fontSize: 14 }}>
         Add name, title, and contact for staff. Owners can view this list on the Owner page.
       </p>
 
       {error && (
-        <p style={{ padding: 12, background: "#fef2f2", color: "#b91c1c", borderRadius: 8, marginBottom: 16 }}>
+        <p
+          style={{
+            padding: 12,
+            background: "rgba(239, 68, 68, 0.12)",
+            color: "#fecaca",
+            borderRadius: 8,
+            marginBottom: 16,
+            border: "1px solid rgba(239, 68, 68, 0.35)",
+          }}
+        >
           {error?.response?.data?.message || error?.message || "Failed to load staff"}
         </p>
       )}
@@ -122,6 +131,7 @@ export default function Staff() {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Full name"
+                className="input"
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 8 }}
               />
             </div>
@@ -132,6 +142,7 @@ export default function Staff() {
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder="e.g. Operations Manager"
+                className="input"
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 8 }}
               />
             </div>
@@ -142,6 +153,7 @@ export default function Staff() {
                 value={form.contact}
                 onChange={(e) => setForm((f) => ({ ...f, contact: e.target.value }))}
                 placeholder="Phone, email, etc."
+                className="input"
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 8 }}
               />
             </div>
@@ -154,9 +166,9 @@ export default function Staff() {
 
       <Card title="Staff list" subtitle={`${staffList.length} entry(ies). Visible to owners on the Owner page.`}>
         {isLoading ? (
-          <p style={{ color: "var(--muted)" }}>Loading…</p>
+          <p className="staffSubtle">Loading…</p>
         ) : staffList.length === 0 ? (
-          <p style={{ color: "var(--muted)" }}>No staff entries yet. Use the form above to add staff.</p>
+          <p className="staffSubtle">No staff entries yet. Use the form above to add staff.</p>
         ) : (
           <table className="table" style={{ width: "100%" }}>
             <thead>
@@ -182,6 +194,7 @@ export default function Staff() {
                             value={editForm.name}
                             onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
                             placeholder="Name"
+                            className="input"
                             style={{ padding: "6px 10px", borderRadius: 6 }}
                           />
                           <input
@@ -189,6 +202,7 @@ export default function Staff() {
                             value={editForm.title}
                             onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
                             placeholder="Title"
+                            className="input"
                             style={{ padding: "6px 10px", borderRadius: 6 }}
                           />
                           <input
@@ -196,6 +210,7 @@ export default function Staff() {
                             value={editForm.contact}
                             onChange={(e) => setEditForm((f) => ({ ...f, contact: e.target.value }))}
                             placeholder="Contact"
+                            className="input"
                             style={{ padding: "6px 10px", borderRadius: 6 }}
                           />
                           <span style={{ display: "flex", gap: 8 }}>
