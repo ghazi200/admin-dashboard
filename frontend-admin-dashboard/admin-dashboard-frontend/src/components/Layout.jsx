@@ -30,7 +30,9 @@ export default function Layout() {
   const isInspectionsPage = location.pathname === "/inspections" || location.pathname.startsWith("/inspections/");
   const isUsersPage =
     location.pathname === "/users" || location.pathname.startsWith("/users/");
-  const isAIRankingPage = location.pathname === "/ai-ranking";
+  /* Exact /ai-ranking or /ai-ranking/... (trailing slash breaks strict === otherwise) */
+  const isAIRankingPage =
+    location.pathname === "/ai-ranking" || location.pathname.startsWith("/ai-ranking/");
   const isSearchOrange =
     location.pathname === "/" ||
     location.pathname === "/staff" ||

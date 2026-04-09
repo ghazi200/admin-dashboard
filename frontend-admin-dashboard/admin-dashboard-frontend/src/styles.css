@@ -268,7 +268,13 @@ code{
 /* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps, Callout Risk, Reports, Users, AI Ranking — main column black */
 .layoutMain--home {
   background: #000000;
+  background-color: #000000 !important;
   min-height: 100vh;
+}
+
+/* Ensure body gradient never shows through the main column */
+.layoutMain.layoutMain--home {
+  background-image: none;
 }
 
 @media (max-width: 900px) {
@@ -277,7 +283,11 @@ code{
   }
 }
 
-/* AI Ranking page — orange heading on black main (layoutMain--home) */
+/* AI Ranking page — orange heading; black fill behind content */
+.aiRankingPage {
+  background-color: #000000;
+}
+
 .aiRankingPage .aiRankingPageHeading {
   color: var(--home-accent) !important;
   font-weight: 800;
