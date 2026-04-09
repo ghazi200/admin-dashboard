@@ -328,7 +328,7 @@ code{
   opacity: 0.45 !important;
 }
 
-/* Guards page — orange primary (Create / Update Guard) on black */
+/* Guards page — orange primary (Create / Update Guard, Refresh) on black */
 .guardsPage .btnPrimary {
   background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
   border-color: rgba(249, 115, 22, 0.55) !important;
@@ -342,6 +342,35 @@ code{
 .guardsPage .btnPrimary:disabled {
   opacity: 0.55;
   filter: none;
+}
+
+.guardsPage .guardsSearchInput {
+  border: 1px solid rgba(249, 115, 22, 0.5) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.guardsPage .guardsSearchInput::placeholder {
+  color: rgba(249, 115, 22, 0.45);
+}
+
+.guardsPage .guardsSearchInput:focus {
+  outline: none;
+  border-color: rgba(249, 115, 22, 0.85) !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.22);
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Card panels — orange outline */
+.guardsPage section {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(249, 115, 22, 0.38) !important;
+  box-shadow:
+    0 14px 48px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(249, 115, 22, 0.08) !important;
+}
+
+.guardsPage section header div {
+  color: var(--home-accent) !important;
 }
 
 .staffPage {

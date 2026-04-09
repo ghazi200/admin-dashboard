@@ -696,15 +696,15 @@ export default function Guards() {
           <div style={s.hint}>Create, edit, and manage guard availability.</div>
         </div>
 
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10 }} className="guardsToolbar">
           <input
-            className="input"
+            className="input guardsSearchInput"
             style={{ width: 280 }}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search guards…"
           />
-          <button className="btn" onClick={load}>
+          <button type="button" className="btn btnPrimary" onClick={load}>
             Refresh
           </button>
         </div>
