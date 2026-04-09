@@ -329,6 +329,11 @@ code{
 }
 
 /* Guards page — orange primary (Create / Update Guard, Refresh) on black */
+.guardsPage h1 {
+  color: var(--home-accent);
+  font-weight: 800;
+}
+
 .guardsPage .btnPrimary {
   background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
   border-color: rgba(249, 115, 22, 0.55) !important;
