@@ -248,7 +248,7 @@ export default function Shifts() {
     guards.find((g) => String(g.id) === String(id))?.name || "—";
 
   return (
-    <div className="container">
+    <div className="container shiftsPage">
       <div style={s.head}>
         <div>
           <h1 style={s.h1}>Shifts</h1>
