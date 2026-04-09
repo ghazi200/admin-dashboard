@@ -409,13 +409,10 @@ export default function Shifts() {
                         </button>
                         {!guardId && canWrite && (
                           <button
-                            className="btn"
+                            className="btn btnPrimary"
                             onClick={() => loadRecommendations(sh.id)}
                             disabled={recommendationsLoading}
-                            style={{
-                              background: "rgba(59, 130, 246, 0.2)",
-                              color: "#3b82f6",
-                            }}
+                            type="button"
                           >
                             🤖 AI Suggest
                           </button>

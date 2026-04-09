@@ -33,7 +33,8 @@ export default function Layout() {
     location.pathname === "/staff" ||
     location.pathname === "/messages" ||
     location.pathname === "/guards" ||
-    location.pathname === "/shifts";
+    location.pathname === "/shifts" ||
+    location.pathname === "/shift-swaps";
 
   // Session timeout: 15–60 min inactivity (default 30). Set REACT_APP_SESSION_TIMEOUT_MINUTES in .env
   useSessionTimeout({ enabled: true });
@@ -342,14 +343,15 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main — black background on home (/), Staff, Messages, Guards, Shifts */}
+      {/* Main — black background on home (/), Staff, Messages, Guards, Shifts, Shift Swaps */}
       <div
         className={
           location.pathname === "/" ||
           location.pathname === "/staff" ||
           location.pathname === "/messages" ||
           location.pathname === "/guards" ||
-          location.pathname === "/shifts"
+          location.pathname === "/shifts" ||
+          location.pathname === "/shift-swaps"
             ? "layoutMain layoutMain--home"
             : "layoutMain"
         }

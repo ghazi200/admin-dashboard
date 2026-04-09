@@ -171,19 +171,20 @@ export default function ShiftSwaps() {
   };
 
   return (
-    <div className="container">
+    <div className="container shiftSwapsPage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 26 }}>Shift Swaps</h1>
-          <div style={{ opacity: 0.7, fontSize: 13, marginTop: 4 }}>
+          <div className="shiftSwapsHint">
             Review and manage shift swap requests from guards
           </div>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <select
+            className="shiftSwapsStatusSelect"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)" }}
+            aria-label="Filter by status"
           >
             <option value="">All Status</option>
             <option value="pending">Pending</option>

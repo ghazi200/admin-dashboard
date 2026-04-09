@@ -265,7 +265,7 @@ code{
   min-height: 100vh;
 }
 
-/* Admin home (/), Staff, Messages, Guards, Shifts — main column black */
+/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps — main column black */
 .layoutMain--home {
   background: #000000;
   min-height: 100vh;
@@ -425,6 +425,54 @@ code{
 }
 
 .shiftsPage section header div {
+  color: var(--home-accent) !important;
+}
+
+/* Shift Swaps page (/shift-swaps) — orange title, filter, cards; black main via Layout */
+.shiftSwapsPage h1 {
+  color: var(--home-accent);
+  font-weight: 800;
+}
+
+.shiftSwapsPage .shiftSwapsHint {
+  opacity: 0.88;
+  font-size: 13px;
+  margin-top: 4;
+  color: rgba(249, 115, 22, 0.88);
+}
+
+.shiftSwapsPage .shiftSwapsStatusSelect {
+  padding: 8px 12px;
+  border-radius: 8px;
+  min-width: 160px;
+  border: 1px solid rgba(249, 115, 22, 0.55) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--home-accent) !important;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.shiftSwapsPage .shiftSwapsStatusSelect:focus {
+  outline: none;
+  border-color: rgba(249, 115, 22, 0.9) !important;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.22);
+}
+
+.shiftSwapsPage .shiftSwapsStatusSelect option {
+  background: #0f0f0f;
+  color: #f97316;
+  font-weight: 600;
+}
+
+.shiftSwapsPage section {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(249, 115, 22, 0.38) !important;
+  box-shadow:
+    0 14px 48px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(249, 115, 22, 0.08) !important;
+}
+
+.shiftSwapsPage section header div {
   color: var(--home-accent) !important;
 }
 
