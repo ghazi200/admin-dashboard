@@ -347,10 +347,11 @@ code{
 .guardsPage .guardsSearchInput {
   border: 1px solid rgba(249, 115, 22, 0.5) !important;
   background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
 }
 
 .guardsPage .guardsSearchInput::placeholder {
-  color: rgba(249, 115, 22, 0.45);
+  color: rgba(255, 255, 255, 0.82) !important;
 }
 
 .guardsPage .guardsSearchInput:focus {
@@ -358,6 +359,7 @@ code{
   border-color: rgba(249, 115, 22, 0.85) !important;
   box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.22);
   background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
 }
 
 /* Card panels — orange outline */
