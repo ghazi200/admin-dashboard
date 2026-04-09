@@ -385,8 +385,11 @@ export default function Layout() {
                   style={{
                     padding: "8px 14px",
                     borderRadius: 10,
-                    border: "1px solid #0ea5e9",
-                    background: "#0ea5e9",
+                    border:
+                      location.pathname === "/"
+                        ? "1px solid #f97316"
+                        : "1px solid #0ea5e9",
+                    background: location.pathname === "/" ? "#f97316" : "#0ea5e9",
                     color: "white",
                     cursor: searchLoading ? "wait" : "pointer",
                     fontSize: 13,
