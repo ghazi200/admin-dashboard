@@ -256,12 +256,9 @@ export default function Shifts() {
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button
-            className="btn"
+            className="btn btnPrimary"
             onClick={() => navigate("/schedule-generation")}
-            style={{
-              background: "#8b5cf6",
-              color: "white",
-            }}
+            type="button"
           >
             🤖 Auto Generate Schedule
           </button>
