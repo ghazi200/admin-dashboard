@@ -60,8 +60,10 @@ export default function AuthLayout({
           <h2 className="auth-form-title">{formTitle}</h2>
           <p className="auth-form-subtitle">{formSubtitle}</p>
 
-          {/* ✅ MUST BE HERE */}
-          <div style={{ marginTop: 14 }}>{children}</div>
+          {/* Scoped so Login.css never overrides global .label / .input */}
+          <div className="auth-login-form" style={{ marginTop: 14 }}>
+            {children}
+          </div>
         </div>
       </div>
     </div>
