@@ -265,7 +265,7 @@ code{
   min-height: 100vh;
 }
 
-/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps, Callout Risk, Reports, Users, AI Ranking — main column black */
+/* Admin home (/), Staff, Messages, Guards, Shifts, Shift Swaps, Callout Risk, Reports, Users, AI Ranking, Schedule — main column black */
 .layoutMain--home {
   background: #000000;
   background-color: #000000 !important;
@@ -651,6 +651,27 @@ code{
 .usersPage section header div,
 [data-admin-page="users"] section header div {
   color: var(--home-accent) !important;
+}
+
+/* Schedule (/schedule) — orange “Schedule” title, orange Edit Schedule (btnPrimary); black main via Layout */
+.schedulePage h1 {
+  color: var(--home-accent) !important;
+  font-weight: 800;
+}
+
+.schedulePage .btnPrimary {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+  color: #fff !important;
+}
+
+.schedulePage .btnPrimary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.schedulePage .btnPrimary:disabled {
+  opacity: 0.55;
+  filter: none;
 }
 
 /* Report Builder (/reports) — orange title; black main via Layout */

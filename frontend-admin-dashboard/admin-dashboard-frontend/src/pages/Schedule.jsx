@@ -391,7 +391,7 @@ export default function Schedule() {
   };
 
   return (
-    <div style={{ padding: 20 }}>
+    <div className="container schedulePage" style={{ padding: 20 }}>
       <div style={{ marginBottom: 30, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ margin: 0, marginBottom: 8, fontSize: 28, fontWeight: 800 }}>
@@ -403,15 +403,13 @@ export default function Schedule() {
         </div>
         {!isEditing ? (
           <button
+            type="button"
+            className="btn btnPrimary"
             onClick={() => setIsEditing(true)}
             style={{
               padding: "10px 20px",
-              background: "#3b82f6",
-              color: "white",
-              border: "none",
               borderRadius: 8,
               fontWeight: 600,
-              cursor: "pointer",
               fontSize: 14,
             }}
           >
