@@ -424,7 +424,7 @@ export default function CommandCenter() {
       </div>
 
       {/* Natural Language Query Section */}
-      <Card style={{ marginBottom: 32, padding: 24 }}>
+      <Card className="commandCenterOrangeSection" style={{ marginBottom: 32, padding: 24 }}>
         <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 16, color: "#ffffff" }}>
           🤖 Ask Command Center
         </h2>

@@ -782,7 +782,7 @@ code{
 }
 
 /*
- * Command Center — Action History → Live Situation Room panels.
+ * Command Center — Ask Command Center, Action History → Live Situation Room panels.
  * Card applies default background as inline styles; this class must use !important to win.
  */
 .commandCenterOrangeSection {
