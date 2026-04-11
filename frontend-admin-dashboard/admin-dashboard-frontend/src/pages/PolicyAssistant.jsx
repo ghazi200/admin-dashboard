@@ -203,22 +203,11 @@ export default function PolicyAssistant() {
   ===================== */
 
   return (
-    <div>
+    <div className="policyAssistantPage">
       <h2>Policy Assistant</h2>
 
       {/* Animated Agent 24 Statement */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          borderRadius: 12,
-          padding: 20,
-          marginBottom: 24,
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-          color: "white",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      <div className="policyAssistantAgentBanner">
         <style>
           {`
             @keyframes agentBlink {
@@ -341,6 +330,8 @@ export default function PolicyAssistant() {
         </div>
 
         <button
+          type="button"
+          className="btnPrimary"
           onClick={handleUpload}
           disabled={!tenantId || !title || busy || (!file && (!rawText || rawText.trim().length < 20))}
           style={{ marginTop: 16, padding: "10px 20px", fontSize: "16px" }}
