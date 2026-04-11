@@ -424,7 +424,7 @@ export default function CommandCenter() {
       </div>
 
       {/* Natural Language Query Section */}
-      <Card className="commandCenterOrangeSection" style={{ marginBottom: 32, padding: 24 }}>
+      <Card variant="orange" style={{ marginBottom: 32, padding: 24 }}>
         <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 16, color: "#ffffff" }}>
           🤖 Ask Command Center
         </h2>
@@ -806,7 +806,7 @@ export default function CommandCenter() {
       )}
 
       {/* Action History / Audit Log */}
-      <Card className="commandCenterOrangeSection" style={{ marginBottom: 32, padding: 24 }}>
+      <Card variant="orange" style={{ marginBottom: 32, padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>📋 Action History & Audit Log</h2>
           <button
@@ -974,7 +974,7 @@ export default function CommandCenter() {
       </Card>
 
       {/* Site Health Dashboard */}
-      <Card className="commandCenterOrangeSection" style={{ marginBottom: 32, padding: 24 }}>
+      <Card variant="orange" style={{ marginBottom: 32, padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>🏢 Site Health Dashboard</h2>
           <button
@@ -1195,7 +1195,7 @@ export default function CommandCenter() {
       </Card>
 
       {/* Guard Readiness Panel */}
-      <Card className="commandCenterOrangeSection" style={{ marginBottom: 32, padding: 24 }}>
+      <Card variant="orange" style={{ marginBottom: 32, padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>👤 Guard Readiness Panel</h2>
           <button
@@ -1493,7 +1493,7 @@ export default function CommandCenter() {
       </Card>
 
       {/* Weekly Reports Section */}
-      <Card className="commandCenterOrangeSection" style={{ marginBottom: 32, padding: 24 }}>
+      <Card variant="orange" style={{ marginBottom: 32, padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>📊 Weekly Reports & AI Summaries</h2>
           <button
@@ -1748,7 +1748,7 @@ export default function CommandCenter() {
       </Card>
 
       {/* At-Risk Shifts */}
-      <Card className="commandCenterOrangeSection" style={{ marginBottom: 32, padding: 24 }}>
+      <Card variant="orange" style={{ marginBottom: 32, padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>At-Risk Shifts</h2>
           {!atRiskError && (
@@ -1855,7 +1855,7 @@ export default function CommandCenter() {
       </Card>
 
       {/* Live Feed */}
-      <Card className="commandCenterOrangeSection" style={{ padding: 24 }}>
+      <Card variant="orange" style={{ padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>Live Situation Room</h2>
           {!feedError && (

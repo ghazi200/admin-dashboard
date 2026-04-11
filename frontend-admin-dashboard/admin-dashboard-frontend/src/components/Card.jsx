@@ -1,8 +1,17 @@
 import React from "react";
 
-export default function Card({ title, subtitle, right, children, style, className }) {
+/** Merged after default card styles so orange panels always show (no reliance on global CSS). */
+const ORANGE_CARD_SURFACE = {
+  background: "linear-gradient(135deg, rgba(249, 115, 22, 0.42), rgba(234, 88, 12, 0.28))",
+  border: "1px solid rgba(249, 115, 22, 0.65)",
+  boxShadow:
+    "0 18px 60px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(249, 115, 22, 0.18)",
+};
+
+export default function Card({ title, subtitle, right, children, style, className, variant }) {
+  const variantStyle = variant === "orange" ? ORANGE_CARD_SURFACE : {};
   return (
-    <section className={className} style={{ ...s.card, ...style }}>
+    <section className={className} style={{ ...s.card, ...variantStyle, ...style }}>
       {(title || subtitle || right) && (
         <header style={s.head}>
           <div>
