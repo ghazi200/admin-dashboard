@@ -17,6 +17,8 @@ import {
 const DEFAULT_CENTER = { lat: 40.7128, lng: -74.006 };
 const DEFAULT_ZOOM = 10;
 
+const accentNumber = { color: "var(--home-accent)", fontWeight: 700 };
+
 export default function GeographicDashboard() {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -418,7 +420,7 @@ export default function GeographicDashboard() {
           style={{ width: "100%", maxWidth: 400, padding: "10px 14px", borderRadius: 8, marginBottom: 12 }}
         />
         <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
-          {filteredSites.length} site(s) {searchLower ? "matching search" : "total"} — click a site to see details
+          <span style={accentNumber}>{filteredSites.length}</span> site(s) {searchLower ? "matching search" : "total"} — click a site to see details
         </div>
         {deleteError && (
           <div style={{ color: "#dc2626", fontSize: 14, marginBottom: 8 }}>{deleteError}</div>
@@ -462,22 +464,22 @@ export default function GeographicDashboard() {
         >
           <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", background: "var(--card-bg, rgba(255,255,255,0.02))" }}>
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Total sites</div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{analytics.totalSites}</div>
+            <div style={{ fontSize: 20, ...accentNumber }}>{analytics.totalSites}</div>
           </div>
           <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", background: "var(--card-bg, rgba(255,255,255,0.02))" }}>
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>With coordinates</div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>{analytics.withCoordinates}</div>
+            <div style={{ fontSize: 20, ...accentNumber }}>{analytics.withCoordinates}</div>
           </div>
           {analytics.averageDistanceBetweenSitesKm != null && (
             <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", background: "var(--card-bg, rgba(255,255,255,0.02))" }}>
               <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Avg distance (km)</div>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{analytics.averageDistanceBetweenSitesKm}</div>
+              <div style={{ fontSize: 20, ...accentNumber }}>{analytics.averageDistanceBetweenSitesKm}</div>
             </div>
           )}
           {analytics.maxDistanceBetweenAnyTwoKm != null && (
             <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", background: "var(--card-bg, rgba(255,255,255,0.02))" }}>
               <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Max distance (km)</div>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{analytics.maxDistanceBetweenAnyTwoKm}</div>
+              <div style={{ fontSize: 20, ...accentNumber }}>{analytics.maxDistanceBetweenAnyTwoKm}</div>
             </div>
           )}
         </div>
@@ -544,7 +546,7 @@ export default function GeographicDashboard() {
               {routeResult.orderedSites.map((s, i) => `${i + 1}. ${s.name || s.id}`).join(" → ")}
               {routeResult.totalDistanceKm != null && (
                 <span style={{ color: "var(--muted)", marginLeft: 8 }}>
-                  (total {routeResult.totalDistanceKm} km)
+                  (total <span style={accentNumber}>{routeResult.totalDistanceKm}</span> km)
                 </span>
               )}
             </div>
@@ -691,7 +693,7 @@ export default function GeographicDashboard() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 16px", fontSize: 14, marginBottom: 12 }}>
                   <span style={{ color: "var(--muted)" }}>Staff</span>
-                  <span>{siteDetails.staffCount}</span>
+                  <span style={accentNumber}>{siteDetails.staffCount}</span>
                   <span style={{ color: "var(--muted)" }}>Supervisor</span>
                   <span>{siteDetails.supervisorName ?? "—"}</span>
                 </div>
@@ -725,7 +727,10 @@ export default function GeographicDashboard() {
       </div>
       {scriptLoaded && !isLoading && (
         <div style={{ marginTop: 12, fontSize: 14, color: "var(--muted)", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <span>{sites.length} site(s) total · {sitesWithCoords.length} with coordinates on map</span>
+          <span>
+            <span style={accentNumber}>{sites.length}</span> site(s) total ·{" "}
+            <span style={accentNumber}>{sitesWithCoords.length}</span> with coordinates on map
+          </span>
           {sites.length === 0 && !error && (
             <>
               <span>— No sites yet.</span>

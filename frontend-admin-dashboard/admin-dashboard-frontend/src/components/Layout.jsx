@@ -41,6 +41,7 @@ export default function Layout() {
     location.pathname === "/payroll" || location.pathname.startsWith("/payroll/");
   const isCommandCenterPage =
     location.pathname === "/command-center" || location.pathname.startsWith("/command-center/");
+  const isMapPage = location.pathname === "/map" || location.pathname.startsWith("/map/");
   const isSearchOrange =
     location.pathname === "/" ||
     location.pathname === "/staff" ||
@@ -55,7 +56,8 @@ export default function Layout() {
     isSchedulePage ||
     isPolicyPage ||
     isPayrollPage ||
-    isCommandCenterPage;
+    isCommandCenterPage ||
+    isMapPage;
 
   // Session timeout: 15–60 min inactivity (default 30). Set REACT_APP_SESSION_TIMEOUT_MINUTES in .env
   useSessionTimeout({ enabled: true });
@@ -380,7 +382,8 @@ export default function Layout() {
           isSchedulePage ||
           isPolicyPage ||
           isPayrollPage ||
-          isCommandCenterPage
+          isCommandCenterPage ||
+          isMapPage
             ? "layoutMain layoutMain--home"
             : "layoutMain"
         }
