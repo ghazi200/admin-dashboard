@@ -1,11 +1,12 @@
 import React from "react";
 
 /** Merged after default card styles so orange panels always show (no reliance on global CSS). */
+const WHITE_CARD_OUTLINE = "0 0 0 1px rgba(255,255,255,0.42)";
+
 const ORANGE_CARD_SURFACE = {
   background: "linear-gradient(135deg, rgba(249, 115, 22, 0.42), rgba(234, 88, 12, 0.28))",
   border: "1px solid rgba(249, 115, 22, 0.65)",
-  boxShadow:
-    "0 18px 60px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(249, 115, 22, 0.18)",
+  boxShadow: `0 18px 60px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(249, 115, 22, 0.18), ${WHITE_CARD_OUTLINE}`,
 };
 
 export default function Card({ title, subtitle, right, children, style, className, variant }) {
@@ -31,7 +32,7 @@ const s = {
     borderRadius: 18,
     border: "1px solid rgba(148,163,184,0.18)",
     background: "rgba(255,255,255,0.03)",
-    boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
+    boxShadow: `0 18px 60px rgba(0,0,0,0.35), ${WHITE_CARD_OUTLINE}`,
     overflow: "hidden",
   },
   head: {
