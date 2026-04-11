@@ -243,26 +243,30 @@ export default function PolicyAssistant() {
 
         <div>
           <label>Tenant</label>
-          <select className="select" value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
-            <option value="">Select tenant</option>
-            {tenants.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name || t.id}
-              </option>
-            ))}
-          </select>
+          <div className="policyAssistantSelectWrap">
+            <select className="select" value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
+              <option value="">Select tenant</option>
+              {tenants.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name || t.id}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div>
           <label>Site (optional)</label>
-          <select className="select" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
-            <option value="">Tenant-wide</option>
-            {sites.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name || s.id}
-              </option>
-            ))}
-          </select>
+          <div className="policyAssistantSelectWrap">
+            <select className="select" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+              <option value="">Tenant-wide</option>
+              {sites.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name || s.id}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div>
@@ -272,24 +276,28 @@ export default function PolicyAssistant() {
 
         <div>
           <label>Category</label>
-          <select className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="handbook">handbook</option>
-            <option value="post_orders">post_orders</option>
-            <option value="breaks">breaks</option>
-            <option value="uniforms">uniforms</option>
-            <option value="callouts">callouts</option>
-            <option value="overtime">overtime</option>
-          </select>
+          <div className="policyAssistantSelectWrap">
+            <select className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="handbook">handbook</option>
+              <option value="post_orders">post_orders</option>
+              <option value="breaks">breaks</option>
+              <option value="uniforms">uniforms</option>
+              <option value="callouts">callouts</option>
+              <option value="overtime">overtime</option>
+            </select>
+          </div>
         </div>
 
         <div>
           <label>Visibility</label>
-          <select className="select" value={visibility} onChange={(e) => setVisibility(e.target.value)}>
-            <option value="guard">guard</option>
-            <option value="supervisor">supervisor</option>
-            <option value="admin">admin</option>
-            <option value="all">all</option>
-          </select>
+          <div className="policyAssistantSelectWrap">
+            <select className="select" value={visibility} onChange={(e) => setVisibility(e.target.value)}>
+              <option value="guard">guard</option>
+              <option value="supervisor">supervisor</option>
+              <option value="admin">admin</option>
+              <option value="all">all</option>
+            </select>
+          </div>
         </div>
 
         <div>
