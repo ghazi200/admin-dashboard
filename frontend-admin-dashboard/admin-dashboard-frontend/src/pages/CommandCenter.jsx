@@ -25,6 +25,14 @@ import {
 import { listTenants } from "../services/superAdmin";
 import { getAdminInfo } from "../utils/access";
 
+/** Orange panel background for Action History → Live Situation Room (matches admin accent) */
+const COMMAND_CENTER_ORANGE_CARD = {
+  background: "linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.11))",
+  border: "1px solid rgba(249, 115, 22, 0.45)",
+  boxShadow:
+    "0 18px 60px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(249, 115, 22, 0.1)",
+};
+
 export default function CommandCenter() {
   const [briefingData, setBriefingData] = useState(null);
   const [briefingLoading, setBriefingLoading] = useState(false);
@@ -806,7 +814,7 @@ export default function CommandCenter() {
       )}
 
       {/* Action History / Audit Log */}
-      <Card style={{ marginBottom: 32, padding: 24 }}>
+      <Card style={{ marginBottom: 32, padding: 24, ...COMMAND_CENTER_ORANGE_CARD }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>📋 Action History & Audit Log</h2>
           <button
@@ -974,7 +982,7 @@ export default function CommandCenter() {
       </Card>
 
       {/* Site Health Dashboard */}
-      <Card style={{ marginBottom: 32, padding: 24 }}>
+      <Card style={{ marginBottom: 32, padding: 24, ...COMMAND_CENTER_ORANGE_CARD }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>🏢 Site Health Dashboard</h2>
           <button
@@ -1195,7 +1203,7 @@ export default function CommandCenter() {
       </Card>
 
       {/* Guard Readiness Panel */}
-      <Card style={{ marginBottom: 32, padding: 24 }}>
+      <Card style={{ marginBottom: 32, padding: 24, ...COMMAND_CENTER_ORANGE_CARD }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>👤 Guard Readiness Panel</h2>
           <button
@@ -1493,7 +1501,7 @@ export default function CommandCenter() {
       </Card>
 
       {/* Weekly Reports Section */}
-      <Card style={{ marginBottom: 32, padding: 24 }}>
+      <Card style={{ marginBottom: 32, padding: 24, ...COMMAND_CENTER_ORANGE_CARD }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>📊 Weekly Reports & AI Summaries</h2>
           <button
@@ -1748,7 +1756,7 @@ export default function CommandCenter() {
       </Card>
 
       {/* At-Risk Shifts */}
-      <Card style={{ marginBottom: 32, padding: 24 }}>
+      <Card style={{ marginBottom: 32, padding: 24, ...COMMAND_CENTER_ORANGE_CARD }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>At-Risk Shifts</h2>
           {!atRiskError && (
@@ -1855,7 +1863,7 @@ export default function CommandCenter() {
       </Card>
 
       {/* Live Feed */}
-      <Card style={{ padding: 24 }}>
+      <Card style={{ padding: 24, ...COMMAND_CENTER_ORANGE_CARD }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>Live Situation Room</h2>
           {!feedError && (
