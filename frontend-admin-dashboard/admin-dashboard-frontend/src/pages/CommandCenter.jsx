@@ -456,7 +456,9 @@ export default function CommandCenter() {
               padding: "12px 24px",
               borderRadius: 8,
               border: "none",
-              background: queryLoading || !queryText.trim() ? "rgba(59,130,246,0.3)" : "#3b82f6",
+              background: queryLoading || !queryText.trim()
+                ? "rgba(249, 115, 22, 0.35)"
+                : "linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88))",
               color: "#ffffff",
               cursor: queryLoading || !queryText.trim() ? "not-allowed" : "pointer",
               fontSize: 14,
