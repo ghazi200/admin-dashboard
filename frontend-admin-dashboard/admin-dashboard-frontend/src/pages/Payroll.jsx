@@ -18,7 +18,7 @@ import { getGuardAiOrigin } from "../api/apiOrigin";
 /** Orange-themed cards / buttons (match admin --home-accent) */
 const PAYROLL_ORANGE_CARD = {
   background: "linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.11))",
-  border: "1px solid rgba(249, 115, 22, 0.45)",
+  border: "2px solid rgba(255,255,255,0.72)",
   boxShadow:
     "0 18px 60px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(249, 115, 22, 0.1)",
 };
