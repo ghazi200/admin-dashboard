@@ -312,11 +312,17 @@ export default function PolicyAssistant() {
             Policy Content <span style={{ fontSize: 12, fontWeight: "normal", color: "#666" }}>(required if no PDF)</span>
           </label>
           <textarea
+            id="policyAssistantPolicyContent"
             className="policyAssistantPolicyContent"
             rows={8}
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
             placeholder="Paste or type your policy content here directly. This text will be processed and made searchable for policy questions. Minimum 20 characters required."
+            style={{
+              color: "#f97316",
+              caretColor: "#f97316",
+              WebkitTextFillColor: "#f97316",
+            }}
           />
           <div className="policyAssistantPolicyContentHint">
             {rawText.length > 0 ? (

@@ -727,29 +727,37 @@ code{
   background-image: none !important;
 }
 
-/* Policy Content textarea — orange text and placeholder (not default black) */
-.policyAssistantPage .policyAssistantPolicyContent {
+/* Policy Content textarea — orange text and placeholder (UA often forces black; id + !important + webkit fill) */
+#policyAssistantPolicyContent.policyAssistantPolicyContent,
+.policyAssistantPage textarea.policyAssistantPolicyContent {
   width: 100%;
   padding: 11px 12px;
   font-size: 14px;
   font-family: inherit;
   border-radius: 12px;
   border: 1px solid rgba(249, 115, 22, 0.42);
-  background: rgba(255, 255, 255, 0.04);
-  color: #f97316;
-  caret-color: #f97316;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #f97316 !important;
+  caret-color: #f97316 !important;
+  -webkit-text-fill-color: #f97316 !important;
   resize: vertical;
   outline: none;
   transition: border-color 0.18s ease, background 0.18s ease;
 }
 
-.policyAssistantPage .policyAssistantPolicyContent::placeholder {
-  color: rgba(249, 115, 22, 0.55);
+#policyAssistantPolicyContent::placeholder,
+.policyAssistantPage textarea.policyAssistantPolicyContent::placeholder {
+  color: rgba(249, 115, 22, 0.65) !important;
+  -webkit-text-fill-color: rgba(249, 115, 22, 0.65) !important;
+  opacity: 1 !important;
 }
 
-.policyAssistantPage .policyAssistantPolicyContent:focus {
+#policyAssistantPolicyContent:focus,
+.policyAssistantPage textarea.policyAssistantPolicyContent:focus {
   border-color: rgba(249, 115, 22, 0.65);
-  background: rgba(249, 115, 22, 0.07);
+  background: rgba(249, 115, 22, 0.07) !important;
+  color: #f97316 !important;
+  -webkit-text-fill-color: #f97316 !important;
 }
 
 .policyAssistantPage .policyAssistantPolicyContentHint {
