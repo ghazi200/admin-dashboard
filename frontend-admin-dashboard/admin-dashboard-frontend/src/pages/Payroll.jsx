@@ -15,6 +15,22 @@ import {
 import { getAdminInfo } from "../utils/access";
 import { getGuardAiOrigin } from "../api/apiOrigin";
 
+/** Orange-themed cards / buttons (match admin --home-accent) */
+const PAYROLL_ORANGE_CARD = {
+  background: "linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(234, 88, 12, 0.11))",
+  border: "1px solid rgba(249, 115, 22, 0.45)",
+  boxShadow:
+    "0 18px 60px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(249, 115, 22, 0.1)",
+};
+
+const PAYROLL_ORANGE_BTN = {
+  background: "linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88))",
+  color: "white",
+  border: "none",
+  borderRadius: 6,
+  fontWeight: 600,
+};
+
 export default function Payroll() {
   const adminInfo = getAdminInfo();
   const tenantId = adminInfo?.tenant_id;
@@ -252,7 +268,7 @@ export default function Payroll() {
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24 }}>💰 Payroll Management</h1>
 
       {/* Settings Card */}
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 24, ...PAYROLL_ORANGE_CARD }}>
         <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Payroll Settings</h2>
         <div style={{ display: "grid", gap: 16 }}>
           <div>
@@ -309,11 +325,7 @@ export default function Payroll() {
             disabled={loadingSettings}
             style={{
               padding: "10px 20px",
-              background: "#3b82f6",
-              color: "white",
-              border: "none",
-              borderRadius: 6,
-              fontWeight: 600,
+              ...PAYROLL_ORANGE_BTN,
               cursor: loadingSettings ? "not-allowed" : "pointer",
               opacity: loadingSettings ? 0.6 : 1,
             }}
@@ -325,7 +337,7 @@ export default function Payroll() {
 
       {/* AI Payroll Assistant */}
       {aiPayrollEnabled && (
-        <Card style={{ marginBottom: 24 }}>
+        <Card style={{ marginBottom: 24, ...PAYROLL_ORANGE_CARD }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>🤖 AI Payroll Assistant</h2>
           <div style={{ display: "grid", gap: 12 }}>
             <textarea
@@ -352,13 +364,9 @@ export default function Payroll() {
               disabled={aiLoading || !question.trim()}
               style={{
                 padding: "10px 20px",
-                background: "#3b82f6",
-                color: "white",
-                border: "none",
-                borderRadius: 6,
-                fontWeight: 600,
-              cursor: aiLoading || !question.trim() ? "not-allowed" : "pointer",
-              opacity: aiLoading || !question.trim() ? 0.6 : 1,
+                ...PAYROLL_ORANGE_BTN,
+                cursor: aiLoading || !question.trim() ? "not-allowed" : "pointer",
+                opacity: aiLoading || !question.trim() ? 0.6 : 1,
               }}
             >
               {aiLoading ? "Asking..." : "Ask Question"}
@@ -453,18 +461,14 @@ export default function Payroll() {
       </Card>
 
       {/* Pay Stubs & Upload */}
-      <Card>
+      <Card style={{ ...PAYROLL_ORANGE_CARD }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h2 style={{ fontSize: 18, fontWeight: 600 }}>📄 Pay Stubs</h2>
           <button
             onClick={() => setUploadModalOpen(true)}
             style={{
               padding: "8px 16px",
-              background: "#3b82f6",
-              color: "white",
-              border: "none",
-              borderRadius: 6,
-              fontWeight: 600,
+              ...PAYROLL_ORANGE_BTN,
               cursor: "pointer",
             }}
           >

@@ -37,6 +37,8 @@ export default function Layout() {
     location.pathname === "/schedule" || location.pathname.startsWith("/schedule/");
   const isPolicyPage =
     location.pathname === "/policy" || location.pathname.startsWith("/policy/");
+  const isPayrollPage =
+    location.pathname === "/payroll" || location.pathname.startsWith("/payroll/");
   const isSearchOrange =
     location.pathname === "/" ||
     location.pathname === "/staff" ||
@@ -49,7 +51,8 @@ export default function Layout() {
     isReportsPage ||
     isAIRankingPage ||
     isSchedulePage ||
-    isPolicyPage;
+    isPolicyPage ||
+    isPayrollPage;
 
   // Session timeout: 15–60 min inactivity (default 30). Set REACT_APP_SESSION_TIMEOUT_MINUTES in .env
   useSessionTimeout({ enabled: true });
@@ -372,7 +375,8 @@ export default function Layout() {
           isReportsPage ||
           isAIRankingPage ||
           isSchedulePage ||
-          isPolicyPage
+          isPolicyPage ||
+          isPayrollPage
             ? "layoutMain layoutMain--home"
             : "layoutMain"
         }
