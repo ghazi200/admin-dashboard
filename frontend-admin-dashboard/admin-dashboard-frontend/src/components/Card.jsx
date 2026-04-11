@@ -1,8 +1,8 @@
 import React from "react";
 
-export default function Card({ title, subtitle, right, children, style }) {
+export default function Card({ title, subtitle, right, children, style, className }) {
   return (
-    <section style={{ ...s.card, ...style }}>
+    <section className={className} style={{ ...s.card, ...style }}>
       {(title || subtitle || right) && (
         <header style={s.head}>
           <div>
