@@ -1,0 +1,281 @@
+================================================================================
+  AI OPERATIONS COMMAND CENTER — OVERVIEW FOR LEADERSHIP & OPERATIONS
+  ABE Security / Admin Dashboard
+================================================================================
+
+This document summarizes what the AI Agent Command Center does, how it fits
+together, and why it helps you run a security / guard-services company. You
+can paste this into an email or attach it as-is.
+
+
+--------------------------------------------------------------------------------
+1. WHAT IT IS (ONE PARAGRAPH)
+--------------------------------------------------------------------------------
+
+The Command Center is a single screen in the Admin Dashboard (“Command Center”
+in the navigation) that pulls together live operations data—shifts, incidents,
+callouts, clock activity, site and guard health—and layers AI on top for
+briefings, Q&A over your data, risk-ranked shifts, recommended actions (with
+human approve/reject), and weekly reporting with export. It is tenant-aware:
+each customer organization sees only its own data; platform super-admins can
+select a tenant where needed.
+
+IMPORTANT: The Command Center is the “situation room” for what is happening.
+It works together with separate but connected capabilities elsewhere in the
+same product:
+
+  • AI SCHEDULING & SHIFT OPTIMIZATION — When you create OPEN shifts (or use
+    the shift-optimization APIs), the system can rank guards by fit (availability,
+    experience, performance, fairness, conflicts) and store recommendations on
+    the shift. Schedule generation can also build batches of shifts from date
+    ranges and templates.
+
+  • CALLOUTS & SHIFT FILLS — When coverage is at risk, operators can trigger
+    callouts; eligible guards are notified (app/SMS per your setup). When a guard
+    accepts, the shift is assigned and closed—those events flow into the same
+    operational feed and realtime updates the Command Center listens for.
+
+So: AI helps you *staff* and *fill* shifts; the Command Center helps you *see*,
+*brief*, and *decide* across incidents, callouts, and risk.
+
+
+--------------------------------------------------------------------------------
+2. MAIN FUNCTIONS (FEATURE LIST)
+--------------------------------------------------------------------------------
+
+A) OPERATIONAL FEED (“Situation room”)
+   • GET feed of operational events (OpEvents): incidents, callouts, shift
+     events, severity, time filters.
+   • Purpose: one timeline of “what is happening” across the operation.
+
+B) AT-RISK SHIFTS
+   • Lists shifts scored by risk (rules + data such as coverage, timing,
+     patterns).
+   • Helps you prioritize which posts need attention before they fail.
+
+C) AI OPERATIONAL BRIEFING
+   • For a chosen time window (e.g. last 24h / 7d / 30d) and focus (coverage,
+     incidents, compliance, or all).
+   • Aggregates events + at-risk shifts + stats, then generates:
+     – Executive summary
+     – Top risks
+     – Insights and trends
+     – Recommended actions (e.g. backup, escalation, callout, inspection)
+   • If an AI key is configured (OpenAI / DeepSeek per your setup), analysis
+     is LLM-powered; otherwise a structured template briefing is used.
+
+D) NATURAL LANGUAGE “ASK” (RAG)
+   • You type a question in plain English (e.g. “Why did we miss coverage last
+     week?”).
+   • The system retrieves relevant operational records for your tenant and
+     returns an answer plus citations/confidence.
+   • Purpose: ad-hoc analysis without building a custom report each time.
+
+E) AI RECOMMENDED ACTIONS — APPROVE / REJECT / EXECUTE
+   • Briefings can create pending “Command Center actions” in the database.
+   • Admins can approve (triggers execution via the action runner), reject
+     (with a reason), or review history (pending / approved / rejected /
+     executed / failed).
+   • Manual creation of actions is also supported for workflows and testing.
+   • Keeps humans in the loop: AI suggests; leadership or dispatch decides.
+
+F) SITE HEALTH
+   • Overview of health signals across sites/locations (e.g. incident load,
+     operational stress over a period).
+   • Detail view per site for drill-down.
+   • Super-admins pick a tenant when viewing tenant-specific data.
+
+G) GUARD READINESS
+   • Overview of guard reliability / readiness-style metrics over a period.
+   • Detail view per guard.
+   • Supports filtering/search in the UI for large rosters.
+
+H) WEEKLY OPERATIONAL REPORT
+   • Generates a date-ranged operational report with AI-assisted summary.
+   • Export to CSV and PDF for leadership, clients, or compliance files.
+
+I) HISTORICAL EVENT PROCESSING (API)
+   • Admin API to backfill or process historical incidents/callouts/shifts into
+     the operational event stream (useful after go-live or data fixes).
+
+J) REAL-TIME REFRESH (UI)
+   • The Command Center page refreshes key panels on a timer and listens for
+     realtime socket events (e.g. incidents, callouts, clock in/out) to keep
+     the feed and risk view current.
+
+
+--------------------------------------------------------------------------------
+2B. RELATED PLATFORM FUNCTIONS (NOT ONLY THE COMMAND CENTER PAGE)
+--------------------------------------------------------------------------------
+
+These are part of the same operations stack and connect to what you see in the
+Command Center (feed, briefings, risk context)—but the primary UI/API entry
+points are under Shifts, Schedule, Callouts, and Guard mobile flows.
+
+K) AI SHIFT OPTIMIZATION & RANKED ASSIGNMENT
+   • When an OPEN shift is created without a guard, the backend can run shift
+     optimization: ranked list of best-fit guards with scores and reasons.
+   • Results are stored on the shift (e.g. ai_decision JSON) for admins to
+     review or auto-assign workflows.
+   • Dedicated APIs exist for recommendations, conflict checks, auto-assign, and
+     per-guard scoring (see /api/admin/shift-optimization in your deployment).
+
+L) SCHEDULE GENERATION
+   • Generate many shifts across a date range from time slots and constraints,
+     or from a saved template (/api/admin/schedule-generation).
+   • Emits realtime events when schedules are generated (tenant-scoped).
+   • Reduces manual data entry when building weekly/monthly coverage patterns.
+
+M) CALLOUT RISK & UPCOMING RISK SIGNALS
+   • Services score shifts/guards for callout likelihood (e.g. after assign or
+     in planning) to surface “likely to need backup” situations.
+   • Feeds into smarter dispatch and aligns with “at-risk” style monitoring.
+
+N) CALLOUT WORKFLOW — NOTIFY, ACCEPT, FILL SHIFT
+   • Operators trigger a callout for a shift; the system targets ranked or
+     selected guards (configuration and service: admin + abe-guard-ai as deployed).
+   • Guards respond in the mobile app; ACCEPT assigns the guard and closes the
+     OPEN shift—realtime events (e.g. callout_started, shift_filled) update
+     dashboards and the Command Center’s live picture.
+   • Briefings may recommend actions such as TRIGGER_CALLOUT; execution still
+     follows your approve/reject path where implemented.
+
+O) AI GUARD RANKING (CALLOUT LISTS / OVERRIDES)
+   • Admin AI-ranking endpoints let you inspect or override ranking for a shift
+     when human judgment should win over the model.
+
+
+--------------------------------------------------------------------------------
+3. HOW IT WORKS (SIMPLE ARCHITECTURE)
+--------------------------------------------------------------------------------
+
+1) DATA LAYER
+   • Your live data lives in the main application database (shifts, guards,
+     incidents, callouts, etc.).
+   • Important events are normalized into an “operations” style feed
+     (OpEvents) for the Command Center timeline and analytics.
+   • Shift records may carry AI optimization output (recommended guards,
+     scores) alongside OPEN/CLOSED status and assignments.
+
+2) INTELLIGENCE LAYER
+   • Risk scoring ranks shifts that may need intervention.
+   • Shift optimization scores guards for assignment; schedule generation plans
+     bulk shifts; callout risk highlights shifts that may need backup.
+   • The AI service builds briefings from aggregated JSON (events, stats,
+     at-risk shifts). It returns structured output: summary, risks, insights,
+     recommended actions, trends.
+   • The “Ask” feature uses RAG: retrieve tenant-scoped snippets, then the
+     model answers with citations.
+
+3) CONTROL LAYER
+   • Recommended actions are stored as records with status PENDING.
+   • Approve runs an execution service (actual side effects depend on action
+     type and implementation).
+   • Reject records the decision and reason for auditability.
+
+4) ACCESS LAYER
+   • All Command Center API routes require an authenticated admin session and
+     dashboard:read (and tenant scoping for non–super-admins).
+
+
+--------------------------------------------------------------------------------
+4. BENEFITS FOR RUNNING THE COMPANY
+--------------------------------------------------------------------------------
+
+FASTER SITUATIONAL AWARENESS
+   • Instead of jumping between Guards, Shifts, Incidents, and Messages,
+     leadership gets one feed plus risk-ranked shifts.
+
+EARLIER INTERVENTION
+   • At-risk shift scoring and briefing “top risks” help you act before a
+     no-show or incident becomes a client escalation.
+
+CONSISTENT DAILY / WEEKLY RHYTHM
+   • Briefings and weekly reports support stand-up meetings, client QBRs, and
+     internal performance reviews with exportable artifacts.
+
+SCALABLE DECISION SUPPORT
+   • Natural-language Q&A lowers the bar for supervisors to interrogate data
+     without SQL or BI tools.
+
+GOVERNANCE
+   • AI recommendations are not auto-fired for destructive operations without
+     your approval path (approve/reject, audit fields).
+
+MULTI-TENANT READY
+   • Each organization’s data stays scoped by tenant_id—appropriate for MSP
+     or multi-branch operators.
+
+
+--------------------------------------------------------------------------------
+5. PRACTICAL USE CASES
+--------------------------------------------------------------------------------
+
+• Morning stand-up: open Command Center → refresh feed → generate 24h briefing
+  → discuss top 3 risks and approve/reject suggested actions.
+
+• Client call: export weekly PDF + cite “Ask” answers with citations for
+  “what happened at Site X this month.”
+
+• Staffing crisis: sort at-risk shifts → use AI-ranked candidates on the shift
+  or trigger callouts so guards can accept and fill OPEN posts; Command Center
+  shows callout and shift_filled activity in the feed.
+
+• Weekly planning: run schedule generation for the next roster block, then
+  use optimization suggestions for any still-OPEN posts.
+
+• New site onboarding: run site health and guard readiness after first month
+  to tune coverage and supervision.
+
+
+--------------------------------------------------------------------------------
+6. REQUIREMENTS & NOTES
+--------------------------------------------------------------------------------
+
+• AI-enhanced briefings and “Ask” need a configured AI provider/key where
+  enabled; the product degrades gracefully to template-based briefings when
+  AI is unavailable or over quota.
+
+• Full value depends on accurate operational data: shifts assigned, clock
+  events, incidents and callouts entered, tenant IDs on records.
+
+• The in-app page is “Command Center” under the Admin Dashboard; API base path
+  is /api/admin/command-center/… for integrations or future mobile views.
+
+
+--------------------------------------------------------------------------------
+7. QUICK REFERENCE — API CAPABILITIES (FOR IT / INTEGRATORS)
+--------------------------------------------------------------------------------
+
+GET  /feed                    — Operational events feed
+GET  /at-risk-shifts          — Risk-ranked shifts
+POST /briefing                — AI (or template) operational briefing
+POST /ask                     — Natural language Q&A over operational data
+GET  /actions                 — List command center actions
+POST /actions                 — Create action manually
+POST /actions/:id/approve     — Approve and execute
+POST /actions/:id/reject      — Reject with optional reason
+POST /process-historical      — Backfill OpEvents from history
+GET  /site-health             — All sites health overview
+GET  /site-health/:siteId     — Site detail
+GET  /guard-readiness         — Guards readiness overview
+GET  /guard-readiness/:guardId — Guard detail
+POST /weekly-report           — Generate weekly report (AI summary)
+GET  /weekly-report/export    — CSV export
+GET  /weekly-report/export-pdf — PDF export
+
+RELATED (same product, other base paths — names may vary by deploy):
+
+GET/POST  /api/admin/shift-optimization/…  — Recommendations, auto-assign,
+             conflicts, guard scores
+POST      /api/admin/schedule-generation/generate
+POST      /api/admin/schedule-generation/generate-from-template
+GET/POST  /api/admin/callout-risk/…        — Shift/guard callout risk signals
+GET/POST  /api/admin/ai-ranking/…          — AI rankings & overrides for shifts
+(Callout trigger / guard accept may be on admin + abe-guard-ai services per your
+ Railway layout; events still surface in Command Center realtime + feed.)
+
+
+================================================================================
+End of document — suitable for email or attachment.
+================================================================================
