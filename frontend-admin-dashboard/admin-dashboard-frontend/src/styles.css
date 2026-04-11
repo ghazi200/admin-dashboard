@@ -686,6 +686,18 @@ code{
   overflow: hidden;
 }
 
+/* Upload Policy — dropdowns use orange border/focus (not purple/blue) */
+.policyAssistantPage .select {
+  border-color: rgba(249, 115, 22, 0.48) !important;
+  accent-color: #f97316;
+}
+
+.policyAssistantPage .select:focus {
+  border-color: rgba(249, 115, 22, 0.85) !important;
+  background: rgba(249, 115, 22, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.22);
+}
+
 .policyAssistantPage .btnPrimary {
   background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
   border-color: rgba(249, 115, 22, 0.55) !important;

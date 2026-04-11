@@ -243,7 +243,7 @@ export default function PolicyAssistant() {
 
         <div>
           <label>Tenant</label>
-          <select value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
+          <select className="select" value={tenantId} onChange={(e) => setTenantId(e.target.value)}>
             <option value="">Select tenant</option>
             {tenants.map((t) => (
               <option key={t.id} value={t.id}>
@@ -255,7 +255,7 @@ export default function PolicyAssistant() {
 
         <div>
           <label>Site (optional)</label>
-          <select value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+          <select className="select" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
             <option value="">Tenant-wide</option>
             {sites.map((s) => (
               <option key={s.id} value={s.id}>
@@ -272,7 +272,7 @@ export default function PolicyAssistant() {
 
         <div>
           <label>Category</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          <select className="select" value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value="handbook">handbook</option>
             <option value="post_orders">post_orders</option>
             <option value="breaks">breaks</option>
@@ -284,7 +284,7 @@ export default function PolicyAssistant() {
 
         <div>
           <label>Visibility</label>
-          <select value={visibility} onChange={(e) => setVisibility(e.target.value)}>
+          <select className="select" value={visibility} onChange={(e) => setVisibility(e.target.value)}>
             <option value="guard">guard</option>
             <option value="supervisor">supervisor</option>
             <option value="admin">admin</option>
