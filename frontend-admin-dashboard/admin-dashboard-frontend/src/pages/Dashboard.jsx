@@ -160,9 +160,9 @@ function LiveClock() {
           "linear-gradient(145deg, #0a0a0a 0%, rgba(249, 115, 22, 0.12) 48%, #0a0a0a 100%)",
         padding: "20px 30px",
         borderRadius: 12,
-        border: "2px solid rgba(249, 115, 22, 0.55)",
+        border: "2px solid rgba(255, 255, 255, 0.72)",
         boxShadow:
-          "0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(249, 115, 22, 0.22), inset 0 0 32px rgba(249, 115, 22, 0.1)",
+          "0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12), inset 0 0 28px rgba(255,255,255,0.06)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
