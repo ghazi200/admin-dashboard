@@ -159,8 +159,15 @@ export default function Incidents() {
     return acc;
   }, {});
 
+  const pageShell = {
+    padding: 24,
+    minHeight: "100%",
+    backgroundColor: "#000000",
+    boxSizing: "border-box",
+  };
+
   return (
-    <div>
+    <div className="incidentsPage" style={pageShell}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8, color: "#ffffff" }}>
           Incidents
@@ -371,7 +378,7 @@ export default function Incidents() {
           Loading incidents...
         </div>
       ) : incidentsList.length === 0 ? (
-        <Card style={{ padding: 40, textAlign: "center" }}>
+        <Card variant="orange" style={{ padding: 40, textAlign: "center" }}>
           <p style={{ color: "rgba(255,255,255,0.7)" }}>No incidents found</p>
         </Card>
       ) : (
@@ -382,7 +389,7 @@ export default function Incidents() {
               console.warn("⚠️ Incident missing ID:", incident);
             }
             return (
-              <Card key={incident?.id ?? idx} style={{ padding: 20 }}>
+              <Card key={incident?.id ?? idx} variant="orange" style={{ padding: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
@@ -693,6 +700,7 @@ export default function Incidents() {
           onClick={() => setSelectedIncident(null)}
         >
           <Card
+            variant="orange"
             style={{
               width: "90%",
               maxWidth: 500,
