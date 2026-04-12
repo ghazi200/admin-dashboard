@@ -11,6 +11,12 @@ const AGENT24_ORANGE_BTN = {
   color: "#fff",
 };
 
+/** Assistant chat bubbles — orange outline (welcome + all AI replies) */
+const ASSISTANT_BUBBLE_OUTLINE = {
+  border: `2px solid ${AGENT24_ORANGE}`,
+  boxShadow: "0 4px 18px rgba(249, 115, 22, 0.2), 0 0 0 1px rgba(249, 115, 22, 0.15)",
+};
+
 /** Bottom row — 6 quick-action tiles: orange surface, white copy */
 const QUICK_ACTION_CARD = {
   padding: "14px 12px",
@@ -204,10 +210,17 @@ export default function SupervisorAssistant() {
                   borderRadius: 12,
                   backgroundColor: message.role === "user" ? "#667eea" : message.isError ? "#fee" : "white",
                   color: message.role === "user" ? "white" : message.isError ? "#c00" : "#333",
-                  border: message.isError ? "1px solid #fcc" : "1px solid #e0e0e0",
+                  border: message.isError
+                    ? "1px solid #fcc"
+                    : message.role === "user"
+                      ? "1px solid rgba(0,0,0,0.06)"
+                      : `2px solid ${AGENT24_ORANGE}`,
                   whiteSpace: "pre-wrap",
                   lineHeight: 1.6,
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                  boxShadow:
+                    message.role === "assistant" && !message.isError
+                      ? ASSISTANT_BUBBLE_OUTLINE.boxShadow
+                      : "0 1px 2px rgba(0,0,0,0.1)",
                 }}
               >
                 <div style={{ marginBottom: 4, fontSize: 13, opacity: 0.8 }}>
@@ -348,7 +361,7 @@ export default function SupervisorAssistant() {
                   padding: "12px 16px",
                   borderRadius: 12,
                   backgroundColor: "white",
-                  border: "1px solid #e0e0e0",
+                  ...ASSISTANT_BUBBLE_OUTLINE,
                 }}
               >
                 <div style={{ display: "flex", gap: 4 }}>
