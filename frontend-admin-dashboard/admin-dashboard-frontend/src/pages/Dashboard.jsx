@@ -155,14 +155,15 @@ function LiveClock() {
 
   return (
     <div
+      className="dashboardLiveClock"
       style={{
         background:
           "linear-gradient(145deg, #0a0a0a 0%, rgba(249, 115, 22, 0.12) 48%, #0a0a0a 100%)",
         padding: "20px 30px",
         borderRadius: 12,
-        border: "2px solid rgba(255, 255, 255, 0.72)",
+        border: "3px solid #ffffff",
         boxShadow:
-          "0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12), inset 0 0 28px rgba(255,255,255,0.06)",
+          "0 0 0 2px rgba(0,0,0,0.45), 0 0 20px rgba(255,255,255,0.25), 0 8px 28px rgba(0,0,0,0.55)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
