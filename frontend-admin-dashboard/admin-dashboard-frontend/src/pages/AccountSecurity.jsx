@@ -163,10 +163,20 @@ export default function AccountSecurity() {
   const errorMessage = meError?.response?.data?.message || meError?.message || "Failed to load account.";
 
   return (
-    <div style={{ padding: 24, maxWidth: 560, minHeight: 400, color: "#0f172a", background: "#fff" }}>
-      <h1 style={{ marginBottom: 24, fontWeight: 800, color: "#0f172a" }}>Account & Security</h1>
+    <div
+      className="accountSecurityPage"
+      style={{
+        padding: 24,
+        maxWidth: 560,
+        minHeight: "100%",
+        boxSizing: "border-box",
+        backgroundColor: "#000000",
+        color: "rgba(255,255,255,0.92)",
+      }}
+    >
+      <h1 style={{ marginBottom: 24, fontWeight: 800, color: "var(--home-accent)" }}>Account & Security</h1>
       {meLoading ? (
-        <p style={{ marginBottom: 24, color: "#64748b" }}>Loading…</p>
+        <p style={{ marginBottom: 24, color: "rgba(255,255,255,0.65)" }}>Loading…</p>
       ) : meError ? (
         <p style={{ marginBottom: 24, padding: 12, background: "#fef2f2", color: "#b91c1c", borderRadius: 8 }}>
           {errorMessage}
@@ -186,8 +196,7 @@ export default function AccountSecurity() {
         )}
         <button
           type="button"
-          className="btn"
-          style={{ background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" }}
+          className="btn btnPrimary"
           disabled={logoutOtherDevicesMutation.isPending}
           onClick={() => logoutOtherDevicesMutation.mutate()}
         >
