@@ -19,6 +19,17 @@ const DEFAULT_ZOOM = 10;
 
 const accentNumber = { color: "var(--home-accent)", fontWeight: 700 };
 
+const mapOrangePrimaryBtn = {
+  whiteSpace: "nowrap",
+  padding: "10px 18px",
+  borderRadius: 12,
+  border: "none",
+  fontWeight: 600,
+  cursor: "pointer",
+  color: "#fff",
+  background: "linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88))",
+};
+
 export default function GeographicDashboard() {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -400,12 +411,7 @@ export default function GeographicDashboard() {
             Map, route optimization, and geographic analytics for sites.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn"
-          onClick={() => setShowAddForm((v) => !v)}
-          style={{ whiteSpace: "nowrap" }}
-        >
+        <button type="button" onClick={() => setShowAddForm((v) => !v)} style={mapOrangePrimaryBtn}>
           {showAddForm ? "Cancel" : "+ Add site"}
         </button>
       </div>
