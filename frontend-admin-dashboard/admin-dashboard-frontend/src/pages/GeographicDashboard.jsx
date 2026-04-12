@@ -386,7 +386,16 @@ export default function GeographicDashboard() {
     <div style={{ padding: 24, height: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
         <div>
-          <h1 style={{ marginTop: 0, marginBottom: 4 }}>Geographic Dashboard</h1>
+          <h1
+            style={{
+              marginTop: 0,
+              marginBottom: 4,
+              color: "var(--home-accent)",
+              fontWeight: 800,
+            }}
+          >
+            Geographic Dashboard
+          </h1>
           <p style={{ color: "var(--muted)", margin: 0 }}>
             Map, route optimization, and geographic analytics for sites.
           </p>
@@ -462,11 +471,27 @@ export default function GeographicDashboard() {
             marginBottom: 16,
           }}
         >
-          <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", background: "var(--card-bg, rgba(255,255,255,0.02))" }}>
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 12,
+              background: "var(--card-bg, rgba(255,255,255,0.02))",
+              border: "2px solid var(--home-accent)",
+              boxShadow: "0 0 0 1px rgba(249, 115, 22, 0.35)",
+            }}
+          >
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Total sites</div>
             <div style={{ fontSize: 20, ...accentNumber }}>{analytics.totalSites}</div>
           </div>
-          <div style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border)", background: "var(--card-bg, rgba(255,255,255,0.02))" }}>
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 12,
+              background: "var(--card-bg, rgba(255,255,255,0.02))",
+              border: "2px solid var(--home-accent)",
+              boxShadow: "0 0 0 1px rgba(249, 115, 22, 0.35)",
+            }}
+          >
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>With coordinates</div>
             <div style={{ fontSize: 20, ...accentNumber }}>{analytics.withCoordinates}</div>
           </div>
