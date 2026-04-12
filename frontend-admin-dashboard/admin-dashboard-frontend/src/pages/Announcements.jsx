@@ -468,7 +468,7 @@ const s = {
     alignItems: "center",
     marginBottom: 14,
   },
-  h1: { margin: 0, fontSize: 26 },
+  h1: { margin: 0, fontSize: 26, fontWeight: 800, color: "var(--home-accent)" },
   hint: { marginTop: 4, opacity: 0.7, fontSize: 14 },
   grid: {
     display: "grid",
