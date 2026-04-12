@@ -178,7 +178,7 @@ export default function Incidents() {
       </div>
 
       {/* Filters */}
-      <Card style={{ marginBottom: 24, padding: 16 }}>
+      <Card variant="orange" style={{ marginBottom: 24, padding: 16 }}>
         {/* Status Toggle Buttons */}
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", marginBottom: 8, fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>
