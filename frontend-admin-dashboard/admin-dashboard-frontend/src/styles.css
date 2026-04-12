@@ -822,6 +822,10 @@ code{
   filter: none;
 }
 
+.supervisorAgentPage .supervisorQuickActionCard:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
 /* Report Builder (/reports) — orange title; black main via Layout */
 .reportBuilderPage h1 {
   color: var(--home-accent);

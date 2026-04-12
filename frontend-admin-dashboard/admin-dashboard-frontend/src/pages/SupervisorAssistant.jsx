@@ -11,6 +11,22 @@ const AGENT24_ORANGE_BTN = {
   color: "#fff",
 };
 
+/** Bottom row — 6 quick-action tiles: orange surface, white copy */
+const QUICK_ACTION_CARD = {
+  padding: "14px 12px",
+  borderRadius: 12,
+  border: "1px solid rgba(255, 255, 255, 0.28)",
+  background: "linear-gradient(145deg, #ea580c 0%, #f97316 45%, #c2410c 100%)",
+  color: "#ffffff",
+  fontSize: 13,
+  fontWeight: 650,
+  lineHeight: 1.35,
+  cursor: "pointer",
+  textAlign: "center",
+  boxShadow: "0 8px 24px rgba(249, 115, 22, 0.35), inset 0 1px 0 rgba(255,255,255,0.15)",
+  transition: "filter 0.15s ease, transform 0.12s ease",
+};
+
 export default function SupervisorAssistant() {
   const navigate = useNavigate();
   const [messages, setMessages] = useState([
@@ -405,10 +421,32 @@ export default function SupervisorAssistant() {
           Press Enter to send, Shift+Enter for new line
         </div>
 
-        {/* Quick Actions */}
-        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #e0e0e0" }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: "#666" }}>Quick Actions:</div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {/* Quick Actions — 6 orange cards, white text */}
+        <div
+          style={{
+            marginTop: 16,
+            paddingTop: 16,
+            borderTop: "1px solid rgba(249, 115, 22, 0.35)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              marginBottom: 12,
+              color: "rgba(255, 255, 255, 0.92)",
+              letterSpacing: "0.02em",
+            }}
+          >
+            Quick Actions:
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(148px, 1fr))",
+              gap: 10,
+            }}
+          >
             {[
               "Show high-risk shifts",
               "List unfilled shifts",
@@ -418,19 +456,14 @@ export default function SupervisorAssistant() {
               "Find shifts at Downtown",
             ].map((action) => (
               <button
+                type="button"
                 key={action}
+                className="supervisorQuickActionCard"
                 onClick={() => {
                   setInput(action);
                   inputRef.current?.focus();
                 }}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 6,
-                  border: "1px solid #ccc",
-                  background: "white",
-                  cursor: "pointer",
-                  fontSize: 12,
-                }}
+                style={QUICK_ACTION_CARD}
               >
                 {action}
               </button>
