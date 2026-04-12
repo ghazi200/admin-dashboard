@@ -169,8 +169,15 @@ export default function Inspections() {
     return acc;
   }, {});
 
+  const pageShell = {
+    padding: 24,
+    minHeight: "100%",
+    backgroundColor: "#000000",
+    boxSizing: "border-box",
+  };
+
   return (
-    <div>
+    <div className="inspectionsPage" style={pageShell}>
       {!guardAiOrigin && (
         <div style={{ marginBottom: 16, padding: 16, background: "rgba(245, 158, 11, 0.15)", borderRadius: 8, border: "1px solid rgba(245,158,11,0.4)" }}>
           <p style={{ margin: 0, color: "#f59e0b" }}>
@@ -188,24 +195,16 @@ export default function Inspections() {
           </p>
         </div>
         <button
+          type="button"
+          className="btn btnPrimary"
           onClick={() => setShowCreateModal(true)}
-          style={{
-            padding: "12px 24px",
-            borderRadius: 8,
-            border: "none",
-            background: "#3b82f6",
-            color: "#ffffff",
-            cursor: "pointer",
-            fontWeight: 600,
-            fontSize: 14,
-          }}
         >
           + Create Request
         </button>
       </div>
 
       {/* Filters */}
-      <Card style={{ marginBottom: 24, padding: 16 }}>
+      <Card variant="orange" style={{ marginBottom: 24, padding: 16 }}>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div style={{ flex: 1, minWidth: 150 }}>
             <label style={{ display: "block", marginBottom: 6, fontSize: 12, color: "rgba(255,255,255,0.7)" }}>
@@ -313,11 +312,11 @@ export default function Inspections() {
       )}
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: "center", color: "rgba(255,255,255,0.7)" }}>
-          Loading inspection requests...
-        </div>
+        <Card variant="orange" style={{ padding: 40, textAlign: "center" }}>
+          <p style={{ color: "rgba(255,255,255,0.85)", margin: 0 }}>Loading inspection requests...</p>
+        </Card>
       ) : requestsList.length === 0 ? (
-        <Card style={{ padding: 40, textAlign: "center" }}>
+        <Card variant="orange" style={{ padding: 40, textAlign: "center" }}>
           <p style={{ color: "rgba(255,255,255,0.7)" }}>No inspection requests found</p>
         </Card>
       ) : (
@@ -330,7 +329,7 @@ export default function Inspections() {
             const latestSubmission = submissions.length > 0 ? submissions[0] : null;
 
             return (
-              <Card key={request?.id ?? reqIdx} style={{ padding: 20 }}>
+              <Card key={request?.id ?? reqIdx} variant="orange" style={{ padding: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
@@ -502,6 +501,7 @@ export default function Inspections() {
           onClick={() => setShowCreateModal(false)}
         >
           <Card
+            variant="orange"
             style={{
               width: "90%",
               maxWidth: 600,
@@ -668,17 +668,10 @@ export default function Inspections() {
                 Cancel
               </button>
               <button
+                type="button"
+                className="btn btnPrimary"
                 onClick={handleCreateRequest}
                 disabled={!createForm.site_id}
-                style={{
-                  padding: "10px 20px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: createForm.site_id ? "#3b82f6" : "rgba(59,130,246,0.5)",
-                  color: "#ffffff",
-                  cursor: createForm.site_id ? "pointer" : "not-allowed",
-                  fontWeight: 600,
-                }}
               >
                 Create Request
               </button>

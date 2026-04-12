@@ -72,7 +72,8 @@ export default function Layout() {
     isSupervisorAgentPage ||
     isSuperAdminPage ||
     isReputationPage ||
-    isIncidentsPage;
+    isIncidentsPage ||
+    isInspectionsPage;
 
   // Session timeout: 15–60 min inactivity (default 30). Set REACT_APP_SESSION_TIMEOUT_MINUTES in .env
   useSessionTimeout({ enabled: true });
@@ -403,7 +404,8 @@ export default function Layout() {
           isSupervisorAgentPage ||
           isSuperAdminPage ||
           isReputationPage ||
-          isIncidentsPage
+          isIncidentsPage ||
+          isInspectionsPage
             ? "layoutMain layoutMain--home"
             : "layoutMain"
         }
