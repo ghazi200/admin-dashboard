@@ -887,6 +887,28 @@ code{
   filter: none;
 }
 
+/* Announcements & Notices (/announcements) — black shell; orange header Search (Layout); orange primary buttons */
+.announcementsPage {
+  background-color: #000000 !important;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.announcementsPage .btnPrimary {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+  color: #fff !important;
+}
+
+.announcementsPage .btnPrimary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.announcementsPage .btnPrimary:disabled {
+  opacity: 0.55;
+  filter: none;
+}
+
 /* Report Builder (/reports) — orange title; black main via Layout */
 .reportBuilderPage h1 {
   color: var(--home-accent);

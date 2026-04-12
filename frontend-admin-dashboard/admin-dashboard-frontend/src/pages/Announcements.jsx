@@ -205,8 +205,15 @@ export default function Announcements() {
     return new Date(a.expiresAt) < new Date();
   });
 
+  const pageShell = {
+    padding: 24,
+    minHeight: "100%",
+    backgroundColor: "#000000",
+    boxSizing: "border-box",
+  };
+
   return (
-    <div className="container">
+    <div className="container announcementsPage" style={pageShell}>
       <div style={s.head}>
         <div>
           <h1 style={s.h1}>Announcements & Notices</h1>
@@ -214,7 +221,7 @@ export default function Announcements() {
             Create and manage announcements for guards. Active announcements appear in the guard UI.
           </div>
         </div>
-        <button className="btn" onClick={load}>
+        <button type="button" className="btn btnPrimary" onClick={load}>
           Refresh
         </button>
       </div>
