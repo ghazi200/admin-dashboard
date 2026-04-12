@@ -374,9 +374,9 @@ export default function Incidents() {
       )}
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: "center", color: "rgba(255,255,255,0.7)" }}>
-          Loading incidents...
-        </div>
+        <Card variant="orange" style={{ padding: 40, textAlign: "center" }}>
+          <p style={{ color: "rgba(255,255,255,0.85)", margin: 0 }}>Loading incidents...</p>
+        </Card>
       ) : incidentsList.length === 0 ? (
         <Card variant="orange" style={{ padding: 40, textAlign: "center" }}>
           <p style={{ color: "rgba(255,255,255,0.7)" }}>No incidents found</p>
