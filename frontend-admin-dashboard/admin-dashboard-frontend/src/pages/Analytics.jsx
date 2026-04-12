@@ -30,7 +30,7 @@ import { hasAccess } from "../utils/access";
 
 const COLORS = ["#4f46e5", "#22c55e", "#ef4444", "#f59e0b", "#8b5cf6"];
 
-/** Top KPI row — orange outline on black analytics page */
+/** KPI row + bottom section cards — orange outline on black analytics page */
 const ANALYTICS_KPI_CARD_OUTLINE = {
   border: "2px solid var(--home-accent)",
   boxShadow: "0 18px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(249, 115, 22, 0.35)",
@@ -309,7 +309,7 @@ export default function Analytics() {
       {/* Comparative Analytics */}
       {!comparativeLoading && comparative && comparative.weekOverWeek && comparative.monthOverMonth && (
         <div style={{ marginBottom: 24 }}>
-          <Card>
+          <Card style={ANALYTICS_KPI_CARD_OUTLINE}>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
               📈 Comparative Analytics
             </h2>
@@ -358,7 +358,7 @@ export default function Analytics() {
       {/* Trend Charts */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(500px, 1fr))", gap: 24, marginBottom: 24 }}>
         {/* Shifts & Callouts Trend */}
-        <Card>
+        <Card style={ANALYTICS_KPI_CARD_OUTLINE}>
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
             📊 Shifts & Callouts Trend
           </h2>
@@ -407,7 +407,7 @@ export default function Analytics() {
         </Card>
 
         {/* Coverage Rate Trend */}
-        <Card>
+        <Card style={ANALYTICS_KPI_CARD_OUTLINE}>
           <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
             📈 Coverage Rate Trend
           </h2>
@@ -443,7 +443,7 @@ export default function Analytics() {
       {/* Guard Performance */}
       {performance && (
         <div style={{ marginBottom: 24 }}>
-          <Card>
+          <Card style={ANALYTICS_KPI_CARD_OUTLINE}>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
               🏆 Top Performing Guards
             </h2>
@@ -487,7 +487,7 @@ export default function Analytics() {
       {/* Summary Statistics */}
       {trends?.summary && (
         <div style={{ marginBottom: 24 }}>
-          <Card>
+          <Card style={ANALYTICS_KPI_CARD_OUTLINE}>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
               📋 Summary Statistics ({selectedDays} days)
             </h2>
@@ -560,7 +560,7 @@ function ComparisonCard({ title, metric, current, previous, change }) {
         padding: 16,
         background: "#f9fafb",
         borderRadius: 8,
-        border: "1px solid #e5e7eb",
+        ...ANALYTICS_KPI_CARD_OUTLINE,
       }}
     >
       <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8, fontWeight: 600 }}>
@@ -592,7 +592,7 @@ function StatCard({ label, value }) {
         padding: 16,
         background: "#f9fafb",
         borderRadius: 8,
-        border: "1px solid #e5e7eb",
+        ...ANALYTICS_KPI_CARD_OUTLINE,
       }}
     >
       <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8, fontWeight: 600 }}>
