@@ -129,16 +129,6 @@ export default function Analytics() {
     }
   }, [kpisRefetching, trendsRefetching, performanceRefetching, comparativeRefetching]);
 
-  if (!canReadAnalytics) {
-    return (
-      <div style={{ padding: 24 }}>
-        <Card>
-          <p>You don't have permission to view analytics.</p>
-        </Card>
-      </div>
-    );
-  }
-
   // Debug: Log data to console
   useEffect(() => {
     console.log("📊 Analytics Data Debug:", {
@@ -157,10 +147,27 @@ export default function Analytics() {
     });
   }, [kpis, trends, performance, comparative, kpisError, trendsError, performanceError, comparativeError, kpisLoading, trendsLoading, performanceLoading, comparativeLoading]);
 
+  const pageShell = {
+    padding: 24,
+    minHeight: "100%",
+    backgroundColor: "#000000",
+    boxSizing: "border-box",
+  };
+
+  if (!canReadAnalytics) {
+    return (
+      <div style={pageShell}>
+        <Card>
+          <p>You don't have permission to view analytics.</p>
+        </Card>
+      </div>
+    );
+  }
+
   // Show error messages if any
   if (kpisError || trendsError || performanceError || comparativeError) {
     return (
-      <div style={{ padding: 24 }}>
+      <div style={pageShell}>
         <Card>
           <h2 style={{ color: "#ef4444", marginBottom: 16 }}>⚠️ Error Loading Analytics</h2>
           {kpisError && <p>KPIs Error: {kpisError.message}</p>}
@@ -194,13 +201,20 @@ export default function Analytics() {
   })) : [];
 
   return (
-    <div style={{ padding: 24 }}>
+    <div style={pageShell}>
       <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 800,
+              marginBottom: 8,
+              color: "var(--home-accent)",
+            }}
+          >
             📊 Analytics Dashboard
           </h1>
-          <p style={{ color: "#6b7280", fontSize: 14 }}>
+          <p style={{ color: "var(--muted)", fontSize: 14 }}>
             Real-time KPIs, trend analysis, and performance metrics
           </p>
         </div>
