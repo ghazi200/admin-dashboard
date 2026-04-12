@@ -3,6 +3,14 @@ import { useNavigate } from "react-router-dom";
 import Card from "../components/Card";
 import { chatWithAssistant, exportGuardReportPDF } from "../services/api";
 
+/** Inline orange so the AI AGENT 24 page always matches theme (CSS class backup in styles.css). */
+const AGENT24_ORANGE = "#f97316";
+const AGENT24_ORANGE_BTN = {
+  border: "1px solid rgba(249, 115, 22, 0.55)",
+  background: "linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88))",
+  color: "#fff",
+};
+
 export default function SupervisorAssistant() {
   const navigate = useNavigate();
   const [messages, setMessages] = useState([
@@ -123,13 +131,25 @@ export default function SupervisorAssistant() {
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div>
-            <h2 className="supervisorAgentPageTitle">🤖 AI AGENT 24</h2>
+            <h2
+              className="supervisorAgentPageTitle"
+              style={{ color: AGENT24_ORANGE, fontWeight: 800, margin: 0, fontSize: "1.5rem" }}
+            >
+              🤖 AI AGENT 24
+            </h2>
             <p className="muted">Ask questions, get insights, and execute tasks using natural language.</p>
           </div>
           <button
             type="button"
             onClick={clearChat}
             className="btn supervisorAgentClearChat"
+            style={{
+              padding: "8px 16px",
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 650,
+              ...AGENT24_ORANGE_BTN,
+            }}
           >
             Clear Chat
           </button>
@@ -369,6 +389,14 @@ export default function SupervisorAssistant() {
             className="btn btnPrimary supervisorAgentSend"
             onClick={handleSend}
             disabled={loading || !input.trim()}
+            style={{
+              padding: "12px 24px",
+              borderRadius: 10,
+              minWidth: 100,
+              height: "fit-content",
+              ...AGENT24_ORANGE_BTN,
+              ...(loading || !input.trim() ? { opacity: 0.55 } : {}),
+            }}
           >
             {loading ? "Sending..." : "Send"}
           </button>

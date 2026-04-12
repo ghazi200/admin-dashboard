@@ -77,10 +77,21 @@ function AIAssistant({ tenants, analytics, incidents }) {
   }
 
   return (
-    <Card
-      title="🤖 AI Assistant - Agent 24"
-      style={{ marginBottom: 20, maxHeight: "400px", display: "flex", flexDirection: "column" }}
-    >
+    <div className="supervisorAgentPage" style={{ marginBottom: 20 }}>
+      <Card
+        style={{ maxHeight: "400px", display: "flex", flexDirection: "column" }}
+      >
+        <h2
+          className="supervisorAgentPageTitle"
+          style={{
+            margin: "0 0 12px 0",
+            fontSize: "1.25rem",
+            fontWeight: 800,
+            color: "#f97316",
+          }}
+        >
+          🤖 AI Assistant - Agent 24
+        </h2>
       <div style={{ flex: 1, overflowY: "auto", marginBottom: 15, minHeight: 150 }}>
         {messages.length === 0 ? (
           <div style={{ padding: 20, textAlign: "center", opacity: 0.7 }}>
@@ -136,15 +147,25 @@ function AIAssistant({ tenants, analytics, incidents }) {
           }}
         />
         <button
-          className="btn btnPrimary"
+          type="button"
+          className="btn btnPrimary supervisorAgentSend"
           onClick={handleSend}
           disabled={!input.trim() || isTyping}
-          style={{ minWidth: 80 }}
+          style={{
+            minWidth: 80,
+            padding: "10px 16px",
+            borderRadius: 10,
+            border: "1px solid rgba(249, 115, 22, 0.55)",
+            background: "linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88))",
+            color: "#fff",
+            fontWeight: 650,
+          }}
         >
           Send
         </button>
       </div>
-    </Card>
+      </Card>
+    </div>
   );
 }
 
