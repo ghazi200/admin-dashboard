@@ -826,6 +826,22 @@ code{
   filter: brightness(1.08);
 }
 
+/* Guard Reputation & Trust Scores (/reputation) — orange title + Refresh; black page shell; header Search via Layout */
+.guardReputationPage .btnPrimary {
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+  color: #fff !important;
+}
+
+.guardReputationPage .btnPrimary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.guardReputationPage .btnPrimary:disabled {
+  opacity: 0.55;
+  filter: none;
+}
+
 /* Report Builder (/reports) — orange title; black main via Layout */
 .reportBuilderPage h1 {
   color: var(--home-accent);

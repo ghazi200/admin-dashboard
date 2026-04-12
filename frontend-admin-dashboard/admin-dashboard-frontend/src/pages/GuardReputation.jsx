@@ -120,12 +120,21 @@ export default function GuardReputation() {
     return "#ef4444"; // Red
   }
 
+  const pageShell = {
+    padding: 24,
+    minHeight: "100%",
+    backgroundColor: "#000000",
+    boxSizing: "border-box",
+  };
+
   return (
-    <div className="page">
+    <div className="page guardReputationPage" style={pageShell}>
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h2>Guard Reputation & Trust Scores</h2>
-          <button className="btnPrimary" onClick={loadGuards} disabled={loading}>
+          <h2 style={{ color: "var(--home-accent)", fontWeight: 800, margin: 0 }}>
+            Guard Reputation & Trust Scores
+          </h2>
+          <button type="button" className="btn btnPrimary" onClick={loadGuards} disabled={loading}>
             {loading ? "Loading..." : "Refresh"}
           </button>
         </div>
