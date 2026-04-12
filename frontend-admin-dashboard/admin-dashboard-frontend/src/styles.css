@@ -781,6 +781,47 @@ code{
   filter: none;
 }
 
+/* AI AGENT 24 (/supervisor) — orange title, Clear + Send; header Search orange via Layout */
+.supervisorAgentPage .supervisorAgentPageTitle {
+  color: var(--home-accent);
+  font-weight: 800;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.supervisorAgentPage .supervisorAgentClearChat {
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 650;
+  border: 1px solid rgba(249, 115, 22, 0.55) !important;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
+  color: #fff !important;
+}
+
+.supervisorAgentPage .supervisorAgentClearChat:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.supervisorAgentPage .supervisorAgentSend {
+  padding: 12px 24px !important;
+  border-radius: 10px !important;
+  min-width: 100px;
+  height: fit-content;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.95), rgba(234, 88, 12, 0.88)) !important;
+  border-color: rgba(249, 115, 22, 0.55) !important;
+  color: #fff !important;
+}
+
+.supervisorAgentPage .supervisorAgentSend:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.supervisorAgentPage .supervisorAgentSend:disabled {
+  opacity: 0.55;
+  filter: none;
+}
+
 /* Report Builder (/reports) — orange title; black main via Layout */
 .reportBuilderPage h1 {
   color: var(--home-accent);

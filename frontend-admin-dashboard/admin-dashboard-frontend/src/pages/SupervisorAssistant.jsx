@@ -119,23 +119,17 @@ export default function SupervisorAssistant() {
   };
 
   return (
-    <div className="page">
+    <div className="page supervisorAgentPage">
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <div>
-            <h2>🤖 AI AGENT 24</h2>
+            <h2 className="supervisorAgentPageTitle">🤖 AI AGENT 24</h2>
             <p className="muted">Ask questions, get insights, and execute tasks using natural language.</p>
           </div>
           <button
+            type="button"
             onClick={clearChat}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 6,
-              border: "1px solid #ccc",
-              background: "white",
-              cursor: "pointer",
-              fontSize: 14,
-            }}
+            className="btn supervisorAgentClearChat"
           >
             Clear Chat
           </button>
@@ -371,15 +365,10 @@ export default function SupervisorAssistant() {
             }}
           />
           <button
-            className="btnPrimary"
+            type="button"
+            className="btn btnPrimary supervisorAgentSend"
             onClick={handleSend}
             disabled={loading || !input.trim()}
-            style={{
-              padding: "12px 24px",
-              borderRadius: 8,
-              minWidth: 100,
-              height: "fit-content",
-            }}
           >
             {loading ? "Sending..." : "Send"}
           </button>
