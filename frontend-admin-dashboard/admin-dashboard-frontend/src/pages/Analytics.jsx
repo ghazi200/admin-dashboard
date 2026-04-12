@@ -30,6 +30,12 @@ import { hasAccess } from "../utils/access";
 
 const COLORS = ["#4f46e5", "#22c55e", "#ef4444", "#f59e0b", "#8b5cf6"];
 
+/** Top KPI row — orange outline on black analytics page */
+const ANALYTICS_KPI_CARD_OUTLINE = {
+  border: "2px solid var(--home-accent)",
+  boxShadow: "0 18px 60px rgba(0,0,0,0.4), 0 0 0 1px rgba(249, 115, 22, 0.35)",
+};
+
 export default function Analytics() {
   const canReadAnalytics = hasAccess("dashboard:read");
   const [selectedDays, setSelectedDays] = useState(30);
@@ -513,7 +519,7 @@ export default function Analytics() {
 function KPICard({ title, value, subtitle, color, loading }) {
   if (loading) {
     return (
-      <Card>
+      <Card style={ANALYTICS_KPI_CARD_OUTLINE}>
         <div style={{ padding: 20 }}>
           <div style={{ height: 20, background: "#e5e7eb", borderRadius: 4, marginBottom: 8 }} />
           <div style={{ height: 16, background: "#e5e7eb", borderRadius: 4, width: "60%" }} />
@@ -523,9 +529,9 @@ function KPICard({ title, value, subtitle, color, loading }) {
   }
 
   return (
-    <Card>
+    <Card style={ANALYTICS_KPI_CARD_OUTLINE}>
       <div style={{ padding: 20 }}>
-        <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 8, fontWeight: 600 }}>
+        <div style={{ fontSize: 14, color: "var(--muted)", marginBottom: 8, fontWeight: 600 }}>
           {title}
         </div>
         <div
@@ -538,7 +544,7 @@ function KPICard({ title, value, subtitle, color, loading }) {
         >
           {value}
         </div>
-        <div style={{ fontSize: 12, color: "#9ca3af" }}>{subtitle}</div>
+        <div style={{ fontSize: 12, color: "var(--muted)" }}>{subtitle}</div>
       </div>
     </Card>
   );
