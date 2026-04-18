@@ -66,8 +66,10 @@ export default function ShiftAlerts({ shiftId, shift, origin = null, dashboardOr
 
   const dashCardOutline = dashboardOrangeOutline
     ? {
-        border: "1px solid rgba(249, 115, 22, 0.95)",
-        boxShadow: "0 0 14px rgba(249, 115, 22, 0.12)",
+        boxSizing: "border-box",
+        border: "4px solid #f97316",
+        boxShadow:
+          "0 0 0 2px rgba(251, 146, 60, 0.55), 0 8px 32px rgba(249, 115, 22, 0.3)",
       }
     : undefined;
 
@@ -394,9 +396,10 @@ export default function ShiftAlerts({ shiftId, shift, origin = null, dashboardOr
           style={
             dashboardOrangeOutline
               ? {
-                  border: "1px solid rgba(249, 115, 22, 0.85)",
-                  borderLeft: "4px solid rgba(249, 115, 22, 0.95)",
-                  boxShadow: "0 0 14px rgba(249, 115, 22, 0.12)",
+                  border: "4px solid #f97316",
+                  borderLeft: "6px solid #ea580c",
+                  boxShadow:
+                    "0 0 0 2px rgba(251, 146, 60, 0.55), 0 8px 28px rgba(249, 115, 22, 0.28)",
                 }
               : {
                   borderLeftColor: getAlertColor(alerts.overallAlertLevel),
@@ -517,11 +520,12 @@ export default function ShiftAlerts({ shiftId, shift, origin = null, dashboardOr
                 style={
                   dashboardOrangeOutline
                     ? {
-                        border: `1px solid rgba(249, 115, 22, ${option === alerts.transit.bestOption ? 0.88 : 0.55})`,
-                        boxShadow: "0 0 10px rgba(249, 115, 22, 0.08)",
+                        boxSizing: "border-box",
+                        border: `3px solid rgba(249, 115, 22, ${option === alerts.transit.bestOption ? 1 : 0.65})`,
+                        boxShadow: "0 0 12px rgba(249, 115, 22, 0.15)",
                         background:
                           option === alerts.transit.bestOption
-                            ? "rgba(249, 115, 22, 0.12)"
+                            ? "rgba(249, 115, 22, 0.14)"
                             : "rgba(255, 255, 255, 0.03)",
                       }
                     : undefined

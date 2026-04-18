@@ -6,9 +6,13 @@ import { getGuardDashboard } from "../services/guardApi";
 import ShiftAlerts from "../components/ShiftAlerts";
 import "./home.css";
 
-/** Inline so outlines always show in WebViews (stylesheet !important can be flaky vs inline borders) */
-const DASH_CARD_BORDER = "1px solid rgba(249, 115, 22, 0.95)";
-const DASH_CARD_SHADOW = "0 0 14px rgba(249, 115, 22, 0.14)";
+/** Thick border + outer ring — easier to see on OLED / Android WebView than 1px */
+const DASH_CARD_OUTLINE = {
+  boxSizing: "border-box",
+  border: "4px solid #f97316",
+  boxShadow:
+    "0 0 0 2px rgba(251, 146, 60, 0.55), 0 8px 32px rgba(249, 115, 22, 0.3)",
+};
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -205,7 +209,7 @@ export default function Dashboard() {
           {(!achievements?.earned?.length && !achievements?.inProgress?.length) && (
             <div
               className="dashboardEmptyCard dashboardSurfaceCard"
-              style={{ padding: 24, textAlign: "center", opacity: 0.6, border: DASH_CARD_BORDER, boxShadow: DASH_CARD_SHADOW }}
+              style={{ padding: 24, textAlign: "center", opacity: 0.6, ...DASH_CARD_OUTLINE }}
             >
               Complete shifts to earn your first badge!
             </div>
@@ -226,7 +230,7 @@ export default function Dashboard() {
           ) : (
             <div
               className="dashboardEmptyCard dashboardSurfaceCard"
-              style={{ padding: 24, textAlign: "center", opacity: 0.6, border: DASH_CARD_BORDER, boxShadow: DASH_CARD_SHADOW }}
+              style={{ padding: 24, textAlign: "center", opacity: 0.6, ...DASH_CARD_OUTLINE }}
             >
               No upcoming shifts scheduled
             </div>
@@ -271,8 +275,7 @@ function StatCard({ title, value, subtitle, icon }) {
         padding: 20,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: DASH_CARD_BORDER,
-        boxShadow: DASH_CARD_SHADOW,
+        ...DASH_CARD_OUTLINE,
       }}
     >
       <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
@@ -295,9 +298,8 @@ function CircularProgress({ label, value, color, inverse = false }) {
         padding: 20,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: DASH_CARD_BORDER,
-        boxShadow: DASH_CARD_SHADOW,
         textAlign: "center",
+        ...DASH_CARD_OUTLINE,
       }}
     >
       <div style={{ position: "relative", width: 100, height: 100, margin: "0 auto 12px" }}>
@@ -354,8 +356,7 @@ function EarningsCard({ title, hours }) {
         padding: 20,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: DASH_CARD_BORDER,
-        boxShadow: DASH_CARD_SHADOW,
+        ...DASH_CARD_OUTLINE,
       }}
     >
       <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 8 }}>{title}</div>
@@ -376,9 +377,8 @@ function BadgeCard({ badge, earned }) {
           padding: 16,
           borderRadius: 12,
           background: "rgba(15, 23, 42, 0.5)",
-          border: DASH_CARD_BORDER,
-          boxShadow: DASH_CARD_SHADOW,
           textAlign: "center",
+          ...DASH_CARD_OUTLINE,
         }}
       >
         <div style={{ fontSize: 40, marginBottom: 8 }}>{badge.icon}</div>
@@ -399,8 +399,7 @@ function BadgeCard({ badge, earned }) {
         padding: 16,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: DASH_CARD_BORDER,
-        boxShadow: DASH_CARD_SHADOW,
+        ...DASH_CARD_OUTLINE,
       }}
     >
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
@@ -445,8 +444,7 @@ function ShiftCard({ shift }) {
         padding: 16,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: DASH_CARD_BORDER,
-        boxShadow: DASH_CARD_SHADOW,
+        ...DASH_CARD_OUTLINE,
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -491,9 +489,8 @@ function StreakCard({ label, value, icon }) {
         padding: 20,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: DASH_CARD_BORDER,
-        boxShadow: DASH_CARD_SHADOW,
         textAlign: "center",
+        ...DASH_CARD_OUTLINE,
       }}
     >
       <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>

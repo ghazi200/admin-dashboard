@@ -26,41 +26,7 @@
   color: #f97316;
 }
 
-/* Dashboard grids: orange outline on every card */
-.dashboardPage .dashboardCardGrid > * {
-  border: 1px solid rgba(249, 115, 22, 0.9) !important;
-  box-shadow: 0 0 12px rgba(249, 115, 22, 0.12);
-}
-
-/* Dashboard: nested cards (ShiftAlerts inside shift rows), banners, transit rows */
-.dashboardPage .shift-alerts .alert-card,
-.dashboardPage .shift-alerts .alerts-loading,
-.dashboardPage .shift-alerts .alerts-error {
-  border: 1px solid rgba(249, 115, 22, 0.9) !important;
-  box-shadow: 0 0 12px rgba(249, 115, 22, 0.1);
-}
-
-.dashboardPage .shift-alerts .alert-banner {
-  border: 1px solid rgba(249, 115, 22, 0.75) !important;
-  border-left: 4px solid rgba(249, 115, 22, 0.95) !important;
-  box-shadow: 0 0 12px rgba(249, 115, 22, 0.1);
-}
-
-.dashboardPage .shift-alerts .transit-option {
-  border: 1px solid rgba(249, 115, 22, 0.55) !important;
-}
-
-.dashboardPage .shift-alerts .transit-option.best-option {
-  border-color: rgba(249, 115, 22, 0.85) !important;
-  background: rgba(249, 115, 22, 0.12) !important;
-}
-
-/* Empty / notice panels on Dashboard */
-.dashboardPage .dashboardEmptyCard {
-  border: 1px solid rgba(249, 115, 22, 0.85);
-  border-radius: 12px;
-  box-shadow: 0 0 12px rgba(249, 115, 22, 0.1);
-}
+/* Dashboard card chrome is applied inline in Dashboard.jsx / ShiftAlerts (avoids !important vs WebView) */
 
 .grid {
   width: min(1100px, 100%);
