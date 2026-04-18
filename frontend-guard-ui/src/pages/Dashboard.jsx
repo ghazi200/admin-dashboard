@@ -6,6 +6,10 @@ import { getGuardDashboard } from "../services/guardApi";
 import ShiftAlerts from "../components/ShiftAlerts";
 import "./home.css";
 
+/** Inline so outlines always show in WebViews (stylesheet !important can be flaky vs inline borders) */
+const DASH_CARD_BORDER = "1px solid rgba(249, 115, 22, 0.95)";
+const DASH_CARD_SHADOW = "0 0 14px rgba(249, 115, 22, 0.14)";
+
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -199,7 +203,10 @@ export default function Dashboard() {
             </div>
           )}
           {(!achievements?.earned?.length && !achievements?.inProgress?.length) && (
-            <div className="dashboardEmptyCard" style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>
+            <div
+              className="dashboardEmptyCard dashboardSurfaceCard"
+              style={{ padding: 24, textAlign: "center", opacity: 0.6, border: DASH_CARD_BORDER, boxShadow: DASH_CARD_SHADOW }}
+            >
               Complete shifts to earn your first badge!
             </div>
           )}
@@ -217,7 +224,10 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <div className="dashboardEmptyCard" style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>
+            <div
+              className="dashboardEmptyCard dashboardSurfaceCard"
+              style={{ padding: 24, textAlign: "center", opacity: 0.6, border: DASH_CARD_BORDER, boxShadow: DASH_CARD_SHADOW }}
+            >
               No upcoming shifts scheduled
             </div>
           )}
@@ -256,11 +266,13 @@ export default function Dashboard() {
 function StatCard({ title, value, subtitle, icon }) {
   return (
     <div
+      className="dashboardSurfaceCard"
       style={{
         padding: 20,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: "1px solid rgba(148, 163, 184, 0.2)",
+        border: DASH_CARD_BORDER,
+        boxShadow: DASH_CARD_SHADOW,
       }}
     >
       <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
@@ -278,11 +290,13 @@ function CircularProgress({ label, value, color, inverse = false }) {
 
   return (
     <div
+      className="dashboardSurfaceCard"
       style={{
         padding: 20,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: "1px solid rgba(148, 163, 184, 0.2)",
+        border: DASH_CARD_BORDER,
+        boxShadow: DASH_CARD_SHADOW,
         textAlign: "center",
       }}
     >
@@ -335,11 +349,13 @@ function CircularProgress({ label, value, color, inverse = false }) {
 function EarningsCard({ title, hours }) {
   return (
     <div
+      className="dashboardSurfaceCard"
       style={{
         padding: 20,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: "1px solid rgba(148, 163, 184, 0.2)",
+        border: DASH_CARD_BORDER,
+        boxShadow: DASH_CARD_SHADOW,
       }}
     >
       <div style={{ fontSize: 14, opacity: 0.7, marginBottom: 8 }}>{title}</div>
@@ -355,11 +371,13 @@ function BadgeCard({ badge, earned }) {
   if (earned) {
     return (
       <div
+        className="dashboardSurfaceCard"
         style={{
           padding: 16,
           borderRadius: 12,
           background: "rgba(15, 23, 42, 0.5)",
-          border: "2px solid rgba(34, 197, 94, 0.3)",
+          border: DASH_CARD_BORDER,
+          boxShadow: DASH_CARD_SHADOW,
           textAlign: "center",
         }}
       >
@@ -376,11 +394,13 @@ function BadgeCard({ badge, earned }) {
 
   return (
     <div
+      className="dashboardSurfaceCard"
       style={{
         padding: 16,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: "1px solid rgba(148, 163, 184, 0.2)",
+        border: DASH_CARD_BORDER,
+        boxShadow: DASH_CARD_SHADOW,
       }}
     >
       <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
@@ -420,11 +440,13 @@ function ShiftCard({ shift }) {
 
   return (
     <div
+      className="dashboardSurfaceCard"
       style={{
         padding: 16,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: "1px solid rgba(148, 163, 184, 0.2)",
+        border: DASH_CARD_BORDER,
+        boxShadow: DASH_CARD_SHADOW,
       }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -456,7 +478,7 @@ function ShiftCard({ shift }) {
         </div>
       </div>
       {/* Weather, Traffic & Transit Alerts */}
-      <ShiftAlerts shiftId={shift.id} shift={shift} />
+      <ShiftAlerts shiftId={shift.id} shift={shift} dashboardOrangeOutline />
     </div>
   );
 }
@@ -464,11 +486,13 @@ function ShiftCard({ shift }) {
 function StreakCard({ label, value, icon }) {
   return (
     <div
+      className="dashboardSurfaceCard"
       style={{
         padding: 20,
         borderRadius: 12,
         background: "rgba(15, 23, 42, 0.5)",
-        border: "1px solid rgba(148, 163, 184, 0.2)",
+        border: DASH_CARD_BORDER,
+        boxShadow: DASH_CARD_SHADOW,
         textAlign: "center",
       }}
     >

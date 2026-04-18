@@ -9,7 +9,7 @@ import { getCombinedAlert } from "../services/guardApi";
 import { GEO_GET_CURRENT_RELAXED } from "../utils/geolocationOptions";
 import "./ShiftAlerts.css";
 
-export default function ShiftAlerts({ shiftId, shift, origin = null }) {
+export default function ShiftAlerts({ shiftId, shift, origin = null, dashboardOrangeOutline = false }) {
   const [alerts, setAlerts] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -64,10 +64,19 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
     loadAlerts();
   }, [shiftId, origin, retryCount]);
 
+  const dashCardOutline = dashboardOrangeOutline
+    ? {
+        border: "1px solid rgba(249, 115, 22, 0.95)",
+        boxShadow: "0 0 14px rgba(249, 115, 22, 0.12)",
+      }
+    : undefined;
+
   if (loading) {
     return (
       <div className="shift-alerts">
-        <div className="alerts-loading">Loading alerts...</div>
+        <div className="alerts-loading" style={dashCardOutline}>
+          Loading alerts...
+        </div>
       </div>
     );
   }
@@ -75,7 +84,19 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
   if (error && !errorDismissed) {
     return (
       <div className="shift-alerts" style={{ marginTop: 8 }}>
-        <div className="alerts-error" style={{ padding: "8px 10px", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <div
+          className="alerts-error"
+          style={{
+            padding: "8px 10px",
+            fontSize: 12,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+            flexWrap: "wrap",
+            ...dashCardOutline,
+          }}
+        >
           <span>Alerts unavailable. Start guard backend (port 4000) if needed.</span>
           <span style={{ display: "flex", gap: 6 }}>
             <button
@@ -189,10 +210,12 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
           className="alert-card" 
           style={{ 
             background: "rgba(59, 130, 246, 0.1)", 
-            border: "1px solid rgba(59, 130, 246, 0.3)",
             marginBottom: 12,
             padding: 12,
-            borderRadius: 8
+            borderRadius: 8,
+            ...(dashboardOrangeOutline
+              ? dashCardOutline
+              : { border: "1px solid rgba(59, 130, 246, 0.3)" }),
           }}
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
@@ -368,9 +391,17 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
       {alerts.overallAlertLevel !== "INFO" && (
         <div
           className="alert-banner"
-          style={{
-            borderLeftColor: getAlertColor(alerts.overallAlertLevel),
-          }}
+          style={
+            dashboardOrangeOutline
+              ? {
+                  border: "1px solid rgba(249, 115, 22, 0.85)",
+                  borderLeft: "4px solid rgba(249, 115, 22, 0.95)",
+                  boxShadow: "0 0 14px rgba(249, 115, 22, 0.12)",
+                }
+              : {
+                  borderLeftColor: getAlertColor(alerts.overallAlertLevel),
+                }
+          }
         >
           <div className="alert-banner-icon">
             {getAlertIcon(alerts.overallAlertLevel)}
@@ -391,7 +422,7 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
 
       {/* Weather Alert */}
       {alerts.weather && (
-        <div className="alert-card weather-alert">
+        <div className="alert-card weather-alert" style={dashCardOutline}>
           <div className="alert-card-header">
             <span className="alert-icon">🌤️</span>
             <span className="alert-title">Weather</span>
@@ -428,7 +459,7 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
 
       {/* Traffic Alert */}
       {alerts.traffic && (
-        <div className="alert-card traffic-alert">
+        <div className="alert-card traffic-alert" style={dashCardOutline}>
           <div className="alert-card-header">
             <span className="alert-icon">🚗</span>
             <span className="alert-title">Driving Route</span>
@@ -473,7 +504,7 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
 
       {/* Transit Options */}
       {alerts.transit && alerts.transit.options.length > 0 && (
-        <div className="alert-card transit-alert">
+        <div className="alert-card transit-alert" style={dashCardOutline}>
           <div className="alert-card-header">
             <span className="alert-icon">🚌</span>
             <span className="alert-title">Public Transit</span>
@@ -483,6 +514,18 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
               <div
                 key={idx}
                 className={`transit-option ${option === alerts.transit.bestOption ? "best-option" : ""}`}
+                style={
+                  dashboardOrangeOutline
+                    ? {
+                        border: `1px solid rgba(249, 115, 22, ${option === alerts.transit.bestOption ? 0.88 : 0.55})`,
+                        boxShadow: "0 0 10px rgba(249, 115, 22, 0.08)",
+                        background:
+                          option === alerts.transit.bestOption
+                            ? "rgba(249, 115, 22, 0.12)"
+                            : "rgba(255, 255, 255, 0.03)",
+                      }
+                    : undefined
+                }
               >
                 <div className="transit-header">
                   <span className="transit-mode-icon">
@@ -522,7 +565,7 @@ export default function ShiftAlerts({ shiftId, shift, origin = null }) {
 
       {/* Comparison */}
       {alerts.comparison && alerts.comparison.available && (
-        <div className="alert-card comparison-alert">
+        <div className="alert-card comparison-alert" style={dashCardOutline}>
           <div className="alert-card-header">
             <span className="alert-icon">📊</span>
             <span className="alert-title">Best Option</span>
