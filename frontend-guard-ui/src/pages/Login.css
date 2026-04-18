@@ -35,8 +35,7 @@
     0 4px 8px rgba(0, 0, 0, 0.7);
   position: relative;
   filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.55));
-  -webkit-text-stroke: 2px #000;
-  paint-order: stroke fill;
+  /* Avoid thick -webkit-text-stroke: on some WebViews it breaks fill and shows inherited white */
 }
 
 .loginPage .aiAgentLetter {
@@ -53,7 +52,6 @@
     0 2px 4px rgba(0, 0, 0, 1),
     0 4px 8px rgba(0, 0, 0, 0.8);
   filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.45));
-  -webkit-text-stroke: 2px #000;
 }
 
 .aiAgentSpace {

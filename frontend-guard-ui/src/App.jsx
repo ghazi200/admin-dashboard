@@ -27,6 +27,8 @@ import EmergencySOS from "./pages/EmergencySOS";
 import Announcements from "./pages/Announcements";
 import Dashboard from "./pages/Dashboard";
 import "./styles/styles.css";
+/* Login page styles must load after globals so agent header colors win the cascade */
+import "./pages/Login.css";
 
 export default function App() {
   useEffect(() => {
