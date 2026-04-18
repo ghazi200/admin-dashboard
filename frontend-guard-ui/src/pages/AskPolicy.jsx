@@ -81,7 +81,7 @@ export default function AskPolicy() {
               padding: 20,
               marginBottom: 24,
               boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-              color: "white",
+              color: "#f97316",
               position: "relative",
               overflow: "hidden",
             }}
@@ -96,7 +96,7 @@ export default function AskPolicy() {
                   display: inline-block;
                   width: 2px;
                   height: 20px;
-                  background: white;
+                  background: #f97316;
                   margin-left: 4px;
                   animation: agentBlink 1s infinite;
                 }
@@ -108,6 +108,7 @@ export default function AskPolicy() {
                 fontWeight: 600,
                 lineHeight: 1.6,
                 minHeight: 28,
+                textShadow: "0 1px 2px rgba(0,0,0,0.35)",
               }}
             >
               {displayedText}

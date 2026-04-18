@@ -4,7 +4,7 @@
 /* src/pages/Login.css */
 /* Guard Login: maps component classNames to shared auth theme */
 
-/* AI AGENT 24 Animated Header – darker for better visibility */
+/* AI AGENT 24 Animated Header */
 .aiAgentHeader {
   text-align: center;
   margin-bottom: 30px;
@@ -21,8 +21,8 @@
   font-weight: 900;
   margin: 0;
   letter-spacing: 0.1em;
-  color: #dc2626;
-  -webkit-text-fill-color: #dc2626;
+  color: #f97316;
+  -webkit-text-fill-color: #f97316;
   animation: aiAgentPulse 2s ease-in-out infinite;
   text-shadow:
     -2px -2px 0 #000,
@@ -33,7 +33,7 @@
     0 2px 4px rgba(0, 0, 0, 0.9),
     0 4px 8px rgba(0, 0, 0, 0.7);
   position: relative;
-  filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.5));
+  filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.55));
   -webkit-text-stroke: 2px #000;
   paint-order: stroke fill;
 }
@@ -41,8 +41,8 @@
 .aiAgentLetter {
   display: inline-block;
   animation: aiAgentBounce 1.5s ease-in-out infinite;
-  color: #dc2626;
-  -webkit-text-fill-color: #dc2626;
+  color: #f97316;
+  -webkit-text-fill-color: #f97316;
   text-shadow:
     -2px -2px 0 #000,
     2px -2px 0 #000,
@@ -51,7 +51,7 @@
     0 0 0 2px #000,
     0 2px 4px rgba(0, 0, 0, 1),
     0 4px 8px rgba(0, 0, 0, 0.8);
-  filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.4));
+  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.45));
   -webkit-text-stroke: 2px #000;
 }
 
@@ -95,17 +95,21 @@
   }
 }
 
-/* Page background */
+/* Page: black background, orange accents (replaces purple), white copy */
 .loginPage {
+  --brand-1: #f97316;
+  --brand-2: #ea580c;
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.82);
+  --bg-1: #000000;
+  --bg-2: #000000;
+
   min-height: 100vh;
   display: grid;
   place-items: center;
   padding: 48px 18px;
   color: var(--text);
-  background:
-    radial-gradient(900px 420px at 18% 40%, rgba(124, 58, 237, 0.14), transparent 55%),
-    radial-gradient(900px 520px at 72% 22%, rgba(59, 130, 246, 0.12), transparent 58%),
-    linear-gradient(180deg, var(--bg-1), var(--bg-2));
+  background: #000000;
 }
 
 /* Your component includes loginBg; we don’t need it visually */
@@ -143,7 +147,7 @@
   height: 38px;
   border-radius: 12px;
   background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
-  box-shadow: 0 10px 26px rgba(124, 58, 237, 0.18);
+  box-shadow: 0 10px 26px rgba(249, 115, 22, 0.28);
   position: relative;
   overflow: hidden;
 }
@@ -177,10 +181,10 @@
   padding: 7px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.25);
   font-size: 12px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.86);
+  color: #ffffff;
 }
 
 .roleBadge.admin::before,
@@ -238,7 +242,7 @@
 
 .fieldLabel {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .fieldControl {
@@ -252,8 +256,8 @@
 }
 
 .fieldControl:focus-within {
-  border-color: rgba(124, 58, 237, 0.55);
-  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12);
+  border-color: rgba(249, 115, 22, 0.65);
+  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.15);
 }
 
 .fieldIcon {
@@ -292,10 +296,10 @@ textarea.fieldInput {
   border: 0;
   border-radius: 12px;
   cursor: pointer;
-  color: white;
+  color: #ffffff;
   font-weight: 800;
   background: linear-gradient(90deg, var(--brand-1), var(--brand-2));
-  box-shadow: 0 12px 30px rgba(124, 58, 237, 0.18);
+  box-shadow: 0 12px 30px rgba(249, 115, 22, 0.28);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -324,7 +328,7 @@ textarea.fieldInput {
   gap: 10px;
   align-items: center;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .loginFooter .dot {
@@ -342,7 +346,7 @@ textarea.fieldInput {
   justify-content: space-between;
   gap: 10px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.88);
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
@@ -352,7 +356,7 @@ textarea.fieldInput {
 .linkBtn {
   border: 0;
   background: transparent;
-  color: rgba(255, 255, 255, 0.85);
+  color: #ffffff;
   font-weight: 800;
   cursor: pointer;
   pointer-events: auto;
@@ -379,14 +383,15 @@ textarea.fieldInput {
   flex-shrink: 0;
 }
 .loginEmulatorBtn {
-  background: rgba(124, 58, 237, 0.25);
-  border: 1px solid rgba(124, 58, 237, 0.4);
+  background: rgba(249, 115, 22, 0.22);
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  color: #ffffff;
 }
 .loginEmulatorBtn:hover {
-  background: rgba(124, 58, 237, 0.35);
+  background: rgba(249, 115, 22, 0.32);
 }
 .loginEmulatorBtn:active {
-  background: rgba(124, 58, 237, 0.45);
+  background: rgba(249, 115, 22, 0.42);
 }
 
 /* Helpful: avoid global CSS fighting inputs/buttons on login only */
