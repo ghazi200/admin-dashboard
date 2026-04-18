@@ -28,9 +28,9 @@ body {
   overflow-x: hidden;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   background:
-    radial-gradient(900px 500px at 15% 10%, rgba(124,58,237,0.16), transparent 60%),
-    radial-gradient(700px 420px at 85% 20%, rgba(59,130,246,0.12), transparent 60%),
-    radial-gradient(800px 500px at 50% 110%, rgba(16,185,129,0.10), transparent 55%),
+    radial-gradient(900px 500px at 15% 10%, rgba(249,115,22,0.14), transparent 60%),
+    radial-gradient(700px 420px at 85% 20%, rgba(234,88,12,0.10), transparent 60%),
+    radial-gradient(800px 500px at 50% 110%, rgba(194,65,12,0.09), transparent 55%),
     var(--bg);
   color: var(--text);
   -webkit-overflow-scrolling: touch;
@@ -340,7 +340,7 @@ code{
 }
 
 /* =========================
-   TOP NAV BAR (ABE Guard)
+   TOP NAV BAR (ABE Guard) — orange bar, white chrome
    ========================= */
 
 .nav {
@@ -349,6 +349,10 @@ code{
   justify-content: space-between;
   padding: 10px 16px;
   gap: 16px;
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 38%, #ea580c 72%, #c2410c 100%);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.18);
+  box-shadow: 0 4px 22px rgba(15, 23, 42, 0.28);
+  color: #ffffff;
 }
 
 /* Left side: brand + links */
@@ -365,6 +369,7 @@ code{
   letter-spacing: 0.4px;
   margin-right: 8px;
   white-space: nowrap;
+  color: #ffffff;
 }
 
 /* Nav links */
@@ -375,7 +380,7 @@ code{
   padding: 8px 12px;      /* ✅ clickable area */
   border-radius: 14px;
   text-decoration: none;
-  color: rgba(255,255,255,0.85);
+  color: rgba(255,255,255,0.95);
   font-weight: 650;
   white-space: nowrap;
   transition: background 0.18s ease, border-color 0.18s ease;
@@ -383,16 +388,27 @@ code{
 }
 
 /* Hover */
-.navItem:hover {
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(148,163,184,0.18);
+.nav .navItem:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(255,255,255,0.28);
 }
 
 /* Active route */
 .navItem.active {
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.22);
+  background: rgba(0,0,0,0.15);
+  border-color: rgba(255,255,255,0.35);
   color: #fff;
+}
+
+/* Account / Logout on the orange bar */
+.nav .btn {
+  border-color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+}
+.nav .btn:hover {
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.55);
 }
 
 /* Right side (logout) */
@@ -415,17 +431,17 @@ code{
   width: 40px;
   height: 40px;
   padding: 0;
-  border: 1px solid rgba(148,163,184,0.25);
+  border: 1px solid rgba(255,255,255,0.4);
   border-radius: 10px;
-  background: rgba(255,255,255,0.06);
-  color: #e2e8f0;
+  background: rgba(255,255,255,0.14);
+  color: #ffffff;
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .navHamburger:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(148,163,184,0.4);
+  background: rgba(255,255,255,0.24);
+  border-color: rgba(255,255,255,0.55);
 }
 
 .navHamburgerBar {
@@ -453,7 +469,7 @@ code{
   padding: 10px;
   padding-right: 6px;
   background: rgba(15,23,42,0.97);
-  border: 1px solid rgba(148,163,184,0.2);
+  border: 1px solid rgba(249,115,22,0.35);
   border-radius: 14px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.4);
   z-index: 100;
@@ -498,10 +514,11 @@ code{
     padding: 10px 12px;
     position: sticky;
     top: 0;
-    background: rgba(15, 23, 42, 0.60);
-    border-bottom: 1px solid rgba(148,163,184,0.14);
+    background: linear-gradient(135deg, #fb923c 0%, #f97316 45%, #ea580c 100%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.18);
     backdrop-filter: blur(10px);
     z-index: 20;
+    color: #ffffff;
   }
 }
 
