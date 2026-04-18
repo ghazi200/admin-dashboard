@@ -16,42 +16,41 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
-/* Scoped so body/page copy stays white; pulse must not use filter:brightness() — it washes orange to near-white */
+/*
+ * Orange headline: gradient + background-clip:text paints pixels reliably in iOS/Android WebViews.
+ * Do NOT use filter: drop-shadow() on the same node as text fill — WebKit often rasterizes wrong (white wash).
+ */
 .loginPage .aiAgentText {
   font-size: clamp(3rem, 8vw, 6rem);
   font-weight: 900;
   margin: 0;
   letter-spacing: 0.1em;
-  color: #f97316;
-  -webkit-text-fill-color: #f97316;
   animation: aiAgentPulse 2s ease-in-out infinite;
-  text-shadow:
-    -2px -2px 0 #000,
-    2px -2px 0 #000,
-    -2px 2px 0 #000,
-    2px 2px 0 #000,
-    0 0 0 3px #000,
-    0 2px 4px rgba(0, 0, 0, 0.9),
-    0 4px 8px rgba(0, 0, 0, 0.7);
   position: relative;
-  filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.55));
-  /* Avoid thick -webkit-text-stroke: on some WebViews it breaks fill and shows inherited white */
+}
+
+.loginPage .aiAgentLetter,
+.loginPage .aiAgentSpace {
+  display: inline-block;
+  background-color: #f97316;
+  background-image: linear-gradient(180deg, #fb923c 0%, #f97316 42%, #ea580c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
 .loginPage .aiAgentLetter {
-  display: inline-block;
   animation: aiAgentBounce 1.5s ease-in-out infinite;
-  color: #f97316;
-  -webkit-text-fill-color: #f97316;
-  text-shadow:
-    -2px -2px 0 #000,
-    2px -2px 0 #000,
-    -2px 2px 0 #000,
-    2px 2px 0 #000,
-    0 0 0 2px #000,
-    0 2px 4px rgba(0, 0, 0, 1),
-    0 4px 8px rgba(0, 0, 0, 0.8);
-  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.45));
+}
+
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .loginPage .aiAgentLetter,
+  .loginPage .aiAgentSpace {
+    background: none !important;
+    color: #f97316 !important;
+    -webkit-text-fill-color: #f97316 !important;
+  }
 }
 
 .aiAgentSpace {

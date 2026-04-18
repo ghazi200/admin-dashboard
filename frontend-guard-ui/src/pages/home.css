@@ -8,6 +8,30 @@
   /* background handled globally in body from styles.css */
 }
 
+/* Guard Home only: solid black behind content (navbar uses global body; main column is black) */
+.page.homePage {
+  background: #000000;
+}
+
+/* Guard Dashboard page */
+.dashboardPage {
+  background: #000000;
+  min-height: calc(100vh - 64px);
+}
+
+.dashboardPageTitle {
+  margin: 0 0 24px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #f97316;
+}
+
+/* Dashboard grids: orange outline on every card */
+.dashboardPage .dashboardCardGrid > * {
+  border: 1px solid rgba(249, 115, 22, 0.9) !important;
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.12);
+}
+
 .grid {
   width: min(1100px, 100%);
   margin: 0 auto;
@@ -219,4 +243,88 @@
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .welcomeText, .welcomeGlow { animation: none !important; }
+}
+
+/* ===== Home only: orange buttons (SOS + Call Out stay red via inline styles) ===== */
+
+.homePage .btnPrimary,
+.homePage .btnPrimaryLink {
+  border: 1px solid rgba(249, 115, 22, 0.55);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.94), rgba(234, 88, 12, 0.78));
+  color: #fff;
+}
+
+.homePage .btnPrimary:hover,
+.homePage .btnPrimaryLink:hover {
+  filter: brightness(1.06);
+}
+
+.homePage .btn {
+  border: 1px solid rgba(249, 115, 22, 0.42);
+  background: rgba(249, 115, 22, 0.14);
+  color: var(--text);
+}
+
+.homePage .btn:hover {
+  background: rgba(249, 115, 22, 0.24);
+  border-color: rgba(249, 115, 22, 0.55);
+}
+
+/* Shift notifications (only used on Home) */
+.homePage .mark-all-read-btn {
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  color: #ffedd5;
+}
+
+.homePage .mark-all-read-btn:hover {
+  background: rgba(249, 115, 22, 0.2);
+}
+
+.homePage .mark-read-btn {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+}
+
+.homePage .mark-read-btn:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+}
+
+.homePage .show-more-btn {
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  color: #fed7aa;
+}
+
+.homePage .show-more-btn:hover {
+  background: rgba(249, 115, 22, 0.18);
+}
+
+/* Overtime offer modal (only on Home) */
+.homePage .overtime-offer-header {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+}
+
+.homePage .overtime-offer-intro strong {
+  color: #ea580c;
+}
+
+.homePage .overtime-offer-btn.decline {
+  background: rgba(249, 115, 22, 0.12);
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  color: #ffedd5;
+}
+
+.homePage .overtime-offer-btn.decline:hover {
+  background: rgba(249, 115, 22, 0.2);
+}
+
+.homePage .overtime-offer-btn.accept {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+}
+
+.homePage .overtime-offer-btn.accept:hover {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.35);
 }

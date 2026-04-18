@@ -18,12 +18,7 @@ import {
 import { nativePost, isNativeCapable, probeBackendBase } from "../utils/nativeHttp";
 import { appHardNavigate } from "../utils/appNavigation";
 
-const AGENT24_ORANGE = "#f97316";
-const agentLetterStyle = (animationDelay) => ({
-  animationDelay,
-  color: AGENT24_ORANGE,
-  WebkitTextFillColor: AGENT24_ORANGE,
-});
+const agentLetterStyle = (animationDelay) => ({ animationDelay });
 
 const WHY_CHANGE_LOCATION =
   "Each Wi‑Fi network gives your computer a different IP address. The app remembers the last Server URL (your old IP). After changing location, that saved IP is no longer your computer, so the app can't connect. Reset URLs below, then set Server URL to this computer's current IP (or use emulator URL on emulator).";
@@ -245,10 +240,7 @@ export default function Login() {
       <div className="loginShell">
         {/* AI AGENT 24 Animated Header */}
         <div className="aiAgentHeader">
-          <h1
-            className="aiAgentText"
-            style={{ color: AGENT24_ORANGE, WebkitTextFillColor: AGENT24_ORANGE }}
-          >
+          <h1 className="aiAgentText">
             <span className="aiAgentLetter" style={agentLetterStyle("0s")}>A</span>
             <span className="aiAgentLetter" style={agentLetterStyle("0.1s")}>I</span>
             <span className="aiAgentSpace"> </span>

@@ -34,52 +34,60 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="container">
+      <>
         <NavBar />
-        <div style={{ padding: 40, textAlign: "center" }}>
-          <div>Loading dashboard...</div>
+        <div className="dashboardPage">
+          <div className="container" style={{ padding: 40, textAlign: "center" }}>
+            <div>Loading dashboard...</div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (error) {
     return (
-      <div className="container">
+      <>
         <NavBar />
-        <div style={{ padding: 40, textAlign: "center" }}>
-          <div style={{ color: "#ef4444", marginBottom: 16 }}>Error: {error}</div>
-          <button className="btn" onClick={loadDashboard}>
-            Retry
-          </button>
+        <div className="dashboardPage">
+          <div className="container" style={{ padding: 40, textAlign: "center" }}>
+            <div style={{ color: "#ef4444", marginBottom: 16 }}>Error: {error}</div>
+            <button className="btn" onClick={loadDashboard}>
+              Retry
+            </button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!data) {
     return (
-      <div className="container">
+      <>
         <NavBar />
-        <div style={{ padding: 40, textAlign: "center" }}>
-          <div>No data available</div>
+        <div className="dashboardPage">
+          <div className="container" style={{ padding: 40, textAlign: "center" }}>
+            <div>No data available</div>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   const { upcomingShifts, performance, earnings, achievements, streaks } = data;
 
   return (
-    <div className="container">
+    <>
       <NavBar />
-      <div style={{ padding: 20, maxWidth: 1200, margin: "0 auto" }}>
-        <h1 style={{ marginBottom: 24, fontSize: 28, fontWeight: 700 }}>
-          My Dashboard
-        </h1>
+      <div className="dashboardPage">
+        <div className="container" style={{ padding: 20 }}>
+          <h1 className="dashboardPageTitle">My Dashboard</h1>
 
-        {/* Quick Stats Row */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+        {/* Quick Stats Row — orange outlines via .dashboardCardGrid */}
+        <div
+          className="dashboardCardGrid"
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}
+        >
           <StatCard
             title="Upcoming Shifts"
             value={upcomingShifts?.length || 0}
@@ -111,7 +119,7 @@ export default function Dashboard() {
           <h2 style={{ marginBottom: 16, fontSize: 20, fontWeight: 600 }}>
             Performance Scorecard
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+          <div className="dashboardCardGrid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
             <CircularProgress
               label="Reliability"
               value={performance?.reliabilityScore || 0}
@@ -141,7 +149,7 @@ export default function Dashboard() {
           <h2 style={{ marginBottom: 16, fontSize: 20, fontWeight: 600 }}>
             Hours & Earnings
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+          <div className="dashboardCardGrid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
             <EarningsCard
               title="This Week"
               hours={earnings?.thisWeek?.hours || 0}
@@ -171,7 +179,7 @@ export default function Dashboard() {
               <h3 style={{ marginBottom: 12, fontSize: 16, fontWeight: 500, opacity: 0.8 }}>
                 Earned Badges
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
+              <div className="dashboardCardGrid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
                 {achievements.earned.map((badge) => (
                   <BadgeCard key={badge.id} badge={badge} earned={true} />
                 ))}
@@ -183,7 +191,7 @@ export default function Dashboard() {
               <h3 style={{ marginBottom: 12, fontSize: 16, fontWeight: 500, opacity: 0.8 }}>
                 In Progress
               </h3>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
+              <div className="dashboardCardGrid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
                 {achievements.inProgress.map((badge) => (
                   <BadgeCard key={badge.id} badge={badge} earned={false} />
                 ))}
@@ -203,7 +211,7 @@ export default function Dashboard() {
             Upcoming Shifts
           </h2>
           {upcomingShifts?.length > 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="dashboardCardGrid" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {upcomingShifts.map((shift) => (
                 <ShiftCard key={shift.id} shift={shift} />
               ))}
@@ -220,7 +228,7 @@ export default function Dashboard() {
           <h2 style={{ marginBottom: 16, fontSize: 20, fontWeight: 600 }}>
             Current Streaks
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+          <div className="dashboardCardGrid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
             <StreakCard
               label="On-Time Streak"
               value={streaks?.onTime || 0}
@@ -239,7 +247,8 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

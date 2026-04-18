@@ -88,10 +88,10 @@ const OvertimeRequestButton = ({ shiftId, currentEndTime }) => {
         style={{
           marginTop: 8,
           padding: "8px 16px",
-          background: "rgba(59, 130, 246, 0.1)",
-          border: "1px solid rgba(59, 130, 246, 0.3)",
+          background: "rgba(249, 115, 22, 0.12)",
+          border: "1px solid rgba(249, 115, 22, 0.4)",
           borderRadius: 8,
-          color: "#3b82f6",
+          color: "#fdba74",
           cursor: "pointer",
           fontSize: 13,
           fontWeight: 500,

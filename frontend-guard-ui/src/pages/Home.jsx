@@ -641,7 +641,7 @@ export default function Home() {
   return (
     <>
       <NavBar />
-      <div className="page">
+      <div className="page homePage">
         {/* ✅ Emergency SOS Button - Prominent at top */}
         <div style={{ marginBottom: 20, textAlign: "center" }}>
           <Link
