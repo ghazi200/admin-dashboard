@@ -199,7 +199,7 @@ export default function Dashboard() {
             </div>
           )}
           {(!achievements?.earned?.length && !achievements?.inProgress?.length) && (
-            <div style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>
+            <div className="dashboardEmptyCard" style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>
               Complete shifts to earn your first badge!
             </div>
           )}
@@ -217,7 +217,7 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (
-            <div style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>
+            <div className="dashboardEmptyCard" style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>
               No upcoming shifts scheduled
             </div>
           )}
