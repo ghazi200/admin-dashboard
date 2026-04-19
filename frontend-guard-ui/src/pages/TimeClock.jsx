@@ -257,7 +257,7 @@ export default function TimeClock() {
       <NavBar />
       <div className="page">
         <div className="card">
-          <h2>Timeclock</h2>
+          <h2 className="timeClockPageTitle">Timeclock</h2>
           <p className="muted" style={{ fontSize: 12, marginBottom: 12, lineHeight: 1.4 }}>
             API base:{" "}
             <strong style={{ wordBreak: "break-all" }}>{getGuardApiUrl()}</strong>

@@ -1,3 +1,18 @@
+.timeClockPageTitle {
+  margin: 0 0 8px;
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 45%, #ea580c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@supports not ((-webkit-background-clip: text) or (background-clip: text)) {
+  .timeClockPageTitle {
+    background: none;
+    color: #f97316;
+  }
+}
+
 /* Overrides global purple .btnPrimary only for Time Clock primary action */
 button.timeClockClockIn.btnPrimary {
   background: linear-gradient(
