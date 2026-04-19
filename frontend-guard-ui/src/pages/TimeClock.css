@@ -1,0 +1,19 @@
+/* Overrides global purple .btnPrimary only for Time Clock primary action */
+button.timeClockClockIn.btnPrimary {
+  background: linear-gradient(
+    135deg,
+    rgba(251, 146, 60, 0.98),
+    rgba(249, 115, 22, 0.92),
+    rgba(234, 88, 12, 0.88)
+  );
+  border-color: rgba(249, 115, 22, 0.62);
+  color: #ffffff;
+}
+
+button.timeClockClockIn.btnPrimary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+button.timeClockClockIn.btnPrimary:disabled {
+  opacity: 0.68;
+}

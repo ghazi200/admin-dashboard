@@ -10,6 +10,7 @@ import {
 } from "../services/guardApi";
 import { getGuardApiUrl } from "../config/apiUrls";
 import { GEO_GET_CURRENT_RELAXED } from "../utils/geolocationOptions";
+import "./TimeClock.css";
 
 function formatShiftDate(d) {
   if (d == null || d === "") return "?";
@@ -345,7 +346,7 @@ export default function TimeClock() {
 
           <div className="row">
             <button
-              className="btnPrimary"
+              className="btn btnPrimary timeClockClockIn"
               type="button"
               onClick={() => handleClockIn({ skipGps: false })}
               disabled={isGettingLocation}
