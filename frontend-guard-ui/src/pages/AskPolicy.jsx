@@ -76,12 +76,12 @@ export default function AskPolicy() {
           {/* Animated Agent 24 Statement */}
           <div
             style={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              background: "linear-gradient(135deg, #fb923c 0%, #ea580c 100%)",
               borderRadius: 12,
               padding: 20,
               marginBottom: 24,
               boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-              color: "#f97316",
+              color: "#ffffff",
               position: "relative",
               overflow: "hidden",
             }}
@@ -96,7 +96,7 @@ export default function AskPolicy() {
                   display: inline-block;
                   width: 2px;
                   height: 20px;
-                  background: #f97316;
+                  background: #ffffff;
                   margin-left: 4px;
                   animation: agentBlink 1s infinite;
                 }
@@ -108,7 +108,8 @@ export default function AskPolicy() {
                 fontWeight: 600,
                 lineHeight: 1.6,
                 minHeight: 28,
-                textShadow: "0 1px 2px rgba(0,0,0,0.35)",
+                color: "#ffffff",
+                textShadow: "0 1px 2px rgba(0,0,0,0.25)",
               }}
             >
               {displayedText}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import NavBar from "../components/NavBar";
 import { askPayroll, getGuardEarnings, getPayStubs } from "../services/guardApi";
 import { getGuardApiUrl } from "../config/apiUrls";
+import "./Payroll.css";
 
 export default function Payroll() {
   const [question, setQuestion] = useState("");
@@ -268,7 +269,7 @@ export default function Payroll() {
           {/* Animated Agent 24 Statement */}
           <div
             style={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              background: "#000000",
               borderRadius: 12,
               padding: 20,
               marginBottom: 24,
@@ -336,7 +337,8 @@ export default function Payroll() {
 
           {/* Submit Button */}
           <button
-            className="btnPrimary"
+            type="button"
+            className="btn btnPrimary payrollAskBtn"
             onClick={submit}
             disabled={loading || !question.trim()}
             style={{ width: "100%", marginBottom: 16 }}
