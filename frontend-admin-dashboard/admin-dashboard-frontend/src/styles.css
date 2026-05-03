@@ -365,6 +365,41 @@ code{
   background: transparent;
 }
 
+/* Messages — single large shell with strong white frame (matches home live clock treatment) */
+.messagesPageLargeCard {
+  border-radius: 18px;
+  border: 3px solid #ffffff;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.5),
+    0 0 22px rgba(255, 255, 255, 0.35),
+    0 10px 36px rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.messagesPageLargeCard .messagesLayout--admin {
+  height: calc(100vh - 152px);
+  min-height: 400px;
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .messagesPageLargeCard .messagesLayout--admin {
+    flex-direction: column;
+    height: auto;
+    min-height: min(70vh, calc(100vh - 152px));
+    max-height: calc(100vh - 140px);
+  }
+
+  .messagesPageLargeCard .messagesLayout--admin > div:first-child {
+    max-height: 42vh;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+}
+
 .messagesPage .messagesPageHeading,
 .messagesPage h1.messagesPageHeading {
   color: var(--home-accent);

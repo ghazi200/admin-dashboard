@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import Card from "../components/Card";
 import {
   listConversations,
   getConversation,
@@ -19,7 +18,6 @@ const MESSAGES_PAGE_STYLES = {
   layout: {
     display: "flex",
     gap: 16,
-    height: "calc(100vh - 120px)",
     minHeight: 400,
   },
   sidebar: {
@@ -493,7 +491,8 @@ export default function Messages() {
           {error}
         </div>
       )}
-      <div style={MESSAGES_PAGE_STYLES.layout}>
+      <div className="messagesPageLargeCard">
+        <div className="messagesLayout messagesLayout--admin" style={MESSAGES_PAGE_STYLES.layout}>
         <div style={MESSAGES_PAGE_STYLES.sidebar}>
           <div style={MESSAGES_PAGE_STYLES.sidebarHeader}>
             <span style={{ fontWeight: 700 }}>Conversations</span>
@@ -682,6 +681,7 @@ export default function Messages() {
               </div>
             </>
           )}
+        </div>
         </div>
       </div>
 
