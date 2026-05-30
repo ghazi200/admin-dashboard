@@ -17,14 +17,14 @@
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.5) rgba(15, 23, 42, 0.45);
+  scrollbar-color: rgba(148, 163, 184, 0.5) rgba(0, 0, 0, 0.5);
 }
 
 .messagesConversationList::-webkit-scrollbar {
   width: 10px;
 }
 .messagesConversationList::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(0, 0, 0, 0.45);
   border-radius: 8px;
 }
 .messagesConversationList::-webkit-scrollbar-thumb {
@@ -52,7 +52,7 @@
   min-height: 56px !important;
   padding: 12px 14px !important;
   border-top: 1px solid rgba(148, 163, 184, 0.2) !important;
-  background: #0f172a !important;
+  background: #000000 !important;
 }
 
 /* Fixed bar at bottom – always visible on web and Android WebView */
@@ -72,7 +72,7 @@
   padding-left: max(14px, env(safe-area-inset-left, 14px)) !important;
   padding-right: max(14px, env(safe-area-inset-right, 14px)) !important;
   padding-bottom: max(14px, env(safe-area-inset-bottom, 14px)) !important;
-  background: #0f172a !important;
+  background: #000000 !important;
   border-top: 2px solid rgba(148, 163, 184, 0.4) !important;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5) !important;
   -webkit-transform: translateZ(0) !important;
@@ -85,7 +85,8 @@
   min-width: 0;
 }
 
-.messagesInputRowFixed button {
+.messagesInputRowFixed button,
+.messagesInputRowFixed .messagesSendPill {
   flex-shrink: 0;
 }
 
@@ -118,8 +119,35 @@
   appearance: none !important;
 }
 
+/* Bottom composer — same orange as admin bubbles, white type (overrides .messagesPageInput) */
+.messagesInputRowFixed .messagesPageInput.messagesComposerInput {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%) !important;
+  background-image: linear-gradient(135deg, #fb923c 0%, #ea580c 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+}
+
+.messagesInputRowFixed .messagesPageInput.messagesComposerInput:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+.messagesInputRowFixed .messagesPageInput.messagesComposerInput::placeholder {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.messagesInputRowFixed .messagesPageInput.messagesComposerInput::-webkit-input-placeholder {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.messagesInputRowFixed .messagesPageInput.messagesComposerInput::-moz-placeholder {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
 /* When input is inside the fixed bar (in body), ensure it's visible */
-.messagesInputRowFixed input {
+.messagesInputRowFixed input:not(.messagesComposerInput) {
   color: #e2e8f0 !important;
   -webkit-text-fill-color: #e2e8f0 !important;
 }
@@ -136,15 +164,89 @@
   color: rgba(226, 232, 240, 0.6);
 }
 
-/* Force text visibility in message area on Android WebView */
-.messagesPageBubble {
-  color: #e2e8f0 !important;
-  -webkit-text-fill-color: #e2e8f0 !important;
-  background-color: rgba(255, 255, 255, 0.07) !important;
-  border: 1px solid rgba(148, 163, 184, 0.15) !important;
+/* Message bubbles — Android WebView text visibility */
+.messagesPageBubble.messagesPageBubble--fromAdmin {
+  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
-.messagesPageBubble * {
-  color: inherit !important;
-  -webkit-text-fill-color: inherit !important;
+.messagesPageBubble.messagesPageBubble--fromAdmin .messagesPageBubbleBody {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.messagesPageBubble.messagesPageBubble--fromAdmin .messagesPageBubbleMeta {
+  color: rgba(255, 255, 255, 0.88) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.88) !important;
+}
+
+.messagesPageBubble.messagesPageBubble--fromGuard {
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0 !important;
+  background-color: rgba(59, 130, 246, 0.22) !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+}
+
+.messagesPageBubble.messagesPageBubble--fromGuard .messagesPageBubbleBody {
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0 !important;
+}
+
+.messagesPageBubble.messagesPageBubble--fromGuard .messagesPageBubbleMeta {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+}
+
+/* Delete — red button, white label (WebView-safe) */
+button.messagesBubbleDeleteBtn.messagesPageBubbleDelete {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  background: #dc2626 !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border: 1px solid #b91c1c !important;
+}
+
+button.messagesBubbleDeleteBtn.messagesPageBubbleDelete:hover:not(:disabled) {
+  background: #ef4444 !important;
+  filter: none;
+}
+
+button.messagesBubbleDeleteBtn.messagesPageBubbleDelete:disabled {
+  opacity: 0.65 !important;
+  cursor: not-allowed !important;
+}
+
+/* Send — orange pill is a <div role="button"> (not <button>) for WebView; backup rules */
+.messagesInputRowFixed .messagesSendPill {
+  box-sizing: border-box !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Send — same gradient family as admin bubbles */
+.messagesInputRowFixed .messagesSendPill[aria-disabled="true"] {
+  background: linear-gradient(135deg, #ea580c 0%, #9a3412 100%) !important;
+  background-image: linear-gradient(135deg, #ea580c 0%, #9a3412 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  cursor: not-allowed !important;
+  opacity: 0.88 !important;
+}
+
+.messagesInputRowFixed .messagesSendPill:not([aria-disabled="true"]) {
+  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%) !important;
+  background-image: linear-gradient(135deg, #fb923c 0%, #ea580c 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.messagesInputRowFixed .messagesSendPill:not([aria-disabled="true"]):active {
+  filter: brightness(0.95);
 }

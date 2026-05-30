@@ -305,7 +305,7 @@ export default function ShiftSwapMarketplace() {
     return (
       <div>
         <NavBar />
-        <div style={{ padding: 40, textAlign: "center" }}>
+        <div className="page shiftSwap-page" style={{ padding: 40, textAlign: "center" }}>
           <h3>Please log in to view shift swaps.</h3>
           <div style={{ marginTop: 20, fontSize: 12, opacity: 0.7 }}>
             <div>Debug Info:</div>
@@ -323,7 +323,7 @@ export default function ShiftSwapMarketplace() {
   return (
     <>
       <NavBar />
-      <div className="page">
+      <div className="page shiftSwap-page">
         <div className="card">
           <h2>Shift Swap Marketplace</h2>
         
@@ -347,13 +347,15 @@ export default function ShiftSwapMarketplace() {
           
           <div className="row" style={{ gap: 10, marginBottom: 20 }}>
             <button
-              className={`btn ${activeTab === "browse" ? "btnPrimary" : ""}`}
+              type="button"
+              className={`btn shiftSwapTabBrowse ${activeTab === "browse" ? "btnPrimary" : ""}`}
               onClick={() => setActiveTab("browse")}
             >
               Browse Swaps ({swaps.length})
               {mySwaps.length > 0 && ` (${mySwaps.length} yours)`}
             </button>
             <button
+              type="button"
               className={`btn ${activeTab === "post" ? "btnPrimary" : ""}`}
               onClick={() => setActiveTab("post")}
             >

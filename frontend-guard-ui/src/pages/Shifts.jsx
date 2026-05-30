@@ -143,7 +143,12 @@ export default function Shifts() {
           <h2>Available Shifts {countText}</h2>
 
           <div className="row" style={{ gap: 8 }}>
-            <button className="btnPrimary" onClick={load} disabled={loading}>
+            <button
+              type="button"
+              className="btn btnPrimary shiftsRefreshBtn"
+              onClick={load}
+              disabled={loading}
+            >
               {loading ? "Loading..." : "Refresh"}
             </button>
           </div>

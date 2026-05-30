@@ -19,9 +19,9 @@
 }
 
 .ot-badge.regular {
-  background: #22c55e !important;
+  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%) !important;
   color: white !important;
-  border: 1px solid #16a34a;
+  border: 1px solid #ea580c;
 }
 
 .ot-badge.overtime {
@@ -66,7 +66,7 @@
 }
 
 .ot-bar.regular {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
 }
 
 .ot-bar.overtime {

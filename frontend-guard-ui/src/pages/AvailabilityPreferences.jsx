@@ -5,6 +5,7 @@ import {
   getAvailabilityPreferences,
   updateAvailabilityPreferences,
 } from "../services/shiftManagement.api";
+import "./availability.css";
 
 export default function AvailabilityPreferences() {
   const { user } = useAuth();
@@ -115,7 +116,7 @@ export default function AvailabilityPreferences() {
     return (
       <div>
         <NavBar />
-        <div style={{ padding: 40, textAlign: "center" }}>
+        <div className="page availability-page" style={{ textAlign: "center", paddingTop: 40 }}>
           Please log in to view availability preferences.
         </div>
       </div>
@@ -126,7 +127,9 @@ export default function AvailabilityPreferences() {
     return (
       <div>
         <NavBar />
-        <div style={{ padding: 40, textAlign: "center" }}>Loading preferences...</div>
+        <div className="page availability-page" style={{ textAlign: "center", paddingTop: 40 }}>
+          Loading preferences...
+        </div>
       </div>
     );
   }
@@ -134,18 +137,19 @@ export default function AvailabilityPreferences() {
   return (
     <div>
       <NavBar />
-      <div style={{ padding: 20, maxWidth: 800, margin: "0 auto" }}>
+      <div className="page availability-page">
+        <div style={{ maxWidth: 800, margin: "0 auto", width: "100%" }}>
         <h2 style={{ marginBottom: 20 }}>Availability Preferences</h2>
         
         {error && (
-          <div style={{ padding: 12, background: "#fee", color: "#c33", borderRadius: 8, marginBottom: 20 }}>
+          <div className="availability-card availability-card--error" style={{ marginBottom: 20 }}>
             {error}
           </div>
         )}
         
         <form onSubmit={handleSubmit}>
           {/* Preferred Days */}
-          <div style={{ marginBottom: 24 }}>
+          <div className="availability-card">
             <label style={{ display: "block", marginBottom: 12, fontWeight: 600 }}>
               Preferred Days
             </label>
@@ -165,7 +169,7 @@ export default function AvailabilityPreferences() {
           </div>
 
           {/* Preferred Times */}
-          <div style={{ marginBottom: 24 }}>
+          <div className="availability-card">
             <label style={{ display: "block", marginBottom: 12, fontWeight: 600 }}>
               Preferred Times
             </label>
@@ -185,7 +189,7 @@ export default function AvailabilityPreferences() {
           </div>
 
           {/* Hours Per Week */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+          <div className="availability-card" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
               <label style={{ display: "block", marginBottom: 8, fontWeight: 600 }}>
                 Min Hours/Week
@@ -223,7 +227,7 @@ export default function AvailabilityPreferences() {
           </div>
 
           {/* Blocked Dates */}
-          <div style={{ marginBottom: 24 }}>
+          <div className="availability-card">
             <label style={{ display: "block", marginBottom: 12, fontWeight: 600 }}>
               Blocked Dates (Unavailable)
             </label>
@@ -273,15 +277,18 @@ export default function AvailabilityPreferences() {
             )}
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={saving}
-            style={{ padding: "10px 20px" }}
-          >
-            {saving ? "Saving..." : "Save Preferences"}
-          </button>
+          <div className="availability-card" style={{ marginTop: 18 }}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={saving}
+              style={{ padding: "10px 20px" }}
+            >
+              {saving ? "Saving..." : "Save Preferences"}
+            </button>
+          </div>
         </form>
+        </div>
       </div>
     </div>
   );

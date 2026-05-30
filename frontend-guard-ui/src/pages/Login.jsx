@@ -20,9 +20,6 @@ import { appHardNavigate } from "../utils/appNavigation";
 
 const agentLetterStyle = (animationDelay) => ({ animationDelay });
 
-const WHY_CHANGE_LOCATION =
-  "Each Wi‑Fi network gives your computer a different IP address. The app remembers the last Server URL (your old IP). After changing location, that saved IP is no longer your computer, so the app can't connect. Reset URLs below, then set Server URL to this computer's current IP (or use emulator URL on emulator).";
-
 export default function Login() {
   const { loginWithToken } = useAuth();
 
@@ -97,7 +94,7 @@ export default function Login() {
         setAdminApiUrl(cloud);
         setServerUrl(cloud);
         setAdminApiUrlState(cloud);
-        setConnectionHint("Updated emulator-only URL to cloud backend for this device.");
+        setConnectionHint("Using cloud backend.");
       }
     } catch (_) {}
   }, []);
@@ -214,9 +211,9 @@ export default function Login() {
       const msg = e2?.response?.data?.message || e2?.response?.data?.error || e2?.message;
       const status = e2?.response?.status;
       if (isNetworkError) {
-        setErr("Cannot reach server. 1) Tap 'Use Railway backend' to set the URL. 2) On this device, open Chrome and go to the same URL – if it does not load, the device cannot reach the server (try another Wi‑Fi or mobile data).");
+        setErr("Cannot reach server. Check Server URL or tap Railway.");
       } else if (isTimeout) {
-        setErr("Request timed out. Tap 'Changed location? Reset URLs', then set Server URL to your backend API URL (same as Admin API; e.g. https://your-backend.railway.app).");
+        setErr("Request timed out. Check Server URL.");
       } else if (status === 401) {
         setErr(msg || "Invalid email or password");
       } else if (status === 423) {
@@ -263,29 +260,16 @@ export default function Login() {
 
             <div>
               <h2 className="loginTitle">Guard Login</h2>
-              <p className="loginSubtitle">
-                Sign in to view shifts and manage callouts
-              </p>
             </div>
           </div>
-
-          <div className="roleBadge supervisor">
-            <span>Guard Portal</span>
-          </div>
-
-          {/* Why connection fails after changing location */}
-          <details style={{ marginBottom: 12, fontSize: 11, color: "var(--muted, #888)" }}>
-            <summary style={{ cursor: "pointer", textDecoration: "underline" }}>Why does it fail when I change location?</summary>
-            <p style={{ marginTop: 6 }}>{WHY_CHANGE_LOCATION}</p>
-          </details>
 
           {showStaleUrlHint && (
             <div style={{ marginBottom: 10, padding: "8px 12px", background: "rgba(251,191,36,0.15)", borderRadius: 8, fontSize: 12, color: "#fcd34d" }}>
-              Using a saved IP that may be from a previous location. If login fails, tap <strong>Changed location? Reset URLs</strong> and set Server URL to this computer’s current IP.
+              Saved server URL may be outdated. Tap Reset URLs if login fails.
             </div>
           )}
 
-          <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ marginBottom: 8 }}>
             <button
               type="button"
               className="linkBtn"
@@ -312,18 +296,12 @@ export default function Login() {
                 setShowStaleUrlHint(false);
               }}
             >
-              Changed location? Reset URLs
+              Reset URLs
             </button>
-            <span style={{ fontSize: 11, color: "var(--muted, #888)" }}>
-              On Android this clears saved URLs and shows the cloud default. Need the Mac instead? Tap <strong>Use emulator URL</strong>. On phone, set your PC’s LAN IP if using a local backend.
-            </span>
           </div>
 
-          {/* Editable Server URL – unified backend default port 5000; legacy split guard-only may use 4000 */}
           <div className="field" style={{ marginBottom: 8 }}>
-            <label className="fieldLabel">
-              Server URL (emulator: {EMULATOR_GUARD_URL.replace(/^https?:\/\//, "")}; phone: your Mac/PC LAN IP — update after changing Wi‑Fi)
-            </label>
+            <label className="fieldLabel">Server URL</label>
             <div className="fieldControl">
               <input
                 className="fieldInput"
@@ -342,12 +320,8 @@ export default function Login() {
                 style={{ fontSize: 11 }}
                 onClick={() => persistGuardUrlFromField()}
               >
-                Save URL
+                Save
               </button>
-              <span style={{ fontSize: 11, color: "var(--muted, #888)" }}>Emulator:</span>
-              <code style={{ fontSize: 11, padding: "2px 6px", background: "rgba(255,255,255,0.08)", borderRadius: 6 }}>
-                {EMULATOR_GUARD_URL}
-              </code>
               <button
                 type="button"
                 className="linkBtn loginEmulatorBtn"
@@ -362,7 +336,7 @@ export default function Login() {
                   setAdminApiUrl(emulatorUrl);
                 }}
               >
-                Use emulator URL
+                Emulator
               </button>
               <button
                 type="button"
@@ -380,19 +354,7 @@ export default function Login() {
                   setErr("");
                 }}
               >
-                Use Railway backend
-              </button>
-              <button
-                type="button"
-                className="linkBtn"
-                style={{ fontSize: 11 }}
-                onClick={() => {
-                  if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(EMULATOR_GUARD_URL).catch(() => {});
-                  }
-                }}
-              >
-                Copy emulator URL
+                Railway
               </button>
             </div>
           </div>
@@ -414,63 +376,28 @@ export default function Login() {
                     setServerUrl(EMULATOR_GUARD_URL);
                     setAdminApiUrlState(EMULATOR_GUARD_URL);
                     setConnectionStatus("ok");
-                    setConnectionHint(`Switched to emulator URL (${EMULATOR_GUARD_URL}).`);
+                    setConnectionHint("Using emulator URL.");
                     return;
                   }
                 }
                 setConnectionStatus(r.ok ? "ok" : "fail");
                 if (!r.ok) {
-                  const parts = [
-                    `Tried ${r.lastUrl || `${url}/health`}${r.alsoTried ? ` and ${r.alsoTried}` : ""}.`,
-                    r.error || (r.status ? `status ${r.status}` : "No response"),
-                  ];
-                  if (r.detail) parts.push(r.detail);
-                  const dnsHintSrc = `${r.error || ""} ${r.detail || ""}`;
-                  if (/unable to resolve|no address associated with hostname|unknownhost|failed to fetch/i.test(dnsHintSrc)) {
-                    parts.push(
-                      "If the host name has a typo it will never resolve — copy the exact https host from Railway → your Node service → Networking (public URL / domain). Or tap Use Railway backend."
-                    );
-                    parts.push(
-                      "Still failing? In the emulator open Chrome: (1) https://www.google.com — if it fails, the AVD has no internet or DNS (cold boot AVD, try a “Google Play” system image, disable Mac VPN briefly). (2) Then open YOUR-RAILWAY-URL/health — must show JSON."
-                    );
-                  }
-                  if (String(url).startsWith("https://")) {
-                    parts.push(
-                      "Cloud (HTTPS) needs internet from the emulator. 10.0.2.2 only reaches your Mac — no public network. If HTTPS keeps failing: open Chrome inside the emulator and visit the same Railway URL; if that fails, fix emulator networking (Wi‑Fi, DNS, or cold boot AVD)."
-                    );
-                  }
-                  if (isAndroidApp() && !isProbablyAndroidEmulator() && url.includes("10.0.2.2")) {
-                    parts.push(
-                      "10.0.2.2 only works on the emulator. On a real phone use http://YOUR_PC_IP:5000 (same Wi‑Fi)."
-                    );
-                  } else if (isAndroidApp() && isProbablyAndroidEmulator()) {
-                    parts.push(
-                      "Emulator: start backend with npm start (port 5000), bind 0.0.0.0. On Mac, allow incoming connections for Node if the firewall asks."
-                    );
-                  } else if (isLanIpUrl(url)) {
-                    parts.push("After changing Wi‑Fi, your PC’s IP changed — update Server URL to the new IP.");
-                  }
-                  parts.push('Or tap "Use Railway backend" if you use cloud.');
-                  setConnectionHint(parts.join(" "));
+                  setConnectionHint(r.error || (r.status ? `Failed (${r.status})` : "Cannot reach server."));
                 }
               } catch (e) {
                 setConnectionStatus("fail");
-                setConnectionHint(`Error: ${e?.message || e}. Tried ${url}/health`);
+                setConnectionHint(e?.message || "Connection failed.");
               }
             }}
           >
-            {connectionStatus === "checking" ? "Checking…" : connectionStatus === "ok" ? "✓ Connection OK" : connectionStatus === "fail" ? "✗ Connection failed" : "Test connection"}
+            {connectionStatus === "checking" ? "Checking…" : connectionStatus === "ok" ? "Connected" : connectionStatus === "fail" ? "Failed" : "Test connection"}
           </button>
           {connectionHint ? (
             <p style={{ fontSize: 11, color: "var(--muted, #aaa)", margin: "6px 0 12px", lineHeight: 1.4 }}>{connectionHint}</p>
           ) : null}
 
-          {/* Admin API URL – required for shift swap & availability on emulator/phone */}
           <div className="field" style={{ marginBottom: 8 }}>
-            <label className="fieldLabel">
-              Admin API URL (same host as Server URL on Railway / unified local — emulator:{" "}
-              {EMULATOR_GUARD_URL.replace(/^https?:\/\//, "")})
-            </label>
+            <label className="fieldLabel">Admin API URL</label>
             <div className="fieldControl">
               <input
                 className="fieldInput"
@@ -513,7 +440,7 @@ export default function Login() {
                   setAdminApiUrl(u);
                 }}
               >
-                Use emulator ({EMULATOR_GUARD_URL.replace(/^https?:\/\//, "")})
+                Emulator
               </button>
               <button
                 type="button"
@@ -530,7 +457,7 @@ export default function Login() {
                   }
                 }}
               >
-                {adminConnectionStatus === "checking" ? "Checking…" : adminConnectionStatus === "ok" ? "✓ Admin OK" : adminConnectionStatus === "fail" ? "✗ Admin failed" : "Test Admin"}
+                {adminConnectionStatus === "checking" ? "Checking…" : adminConnectionStatus === "ok" ? "Connected" : adminConnectionStatus === "fail" ? "Failed" : "Test"}
               </button>
             </div>
           </div>
@@ -539,7 +466,6 @@ export default function Login() {
             <div className="loginAlert" role="alert">
               <div className="loginAlertDot" />
               <div className="loginAlertText">
-                <strong>Login error</strong>
                 <span>{err}</span>
               </div>
             </div>
@@ -587,48 +513,39 @@ export default function Login() {
                   <span className="spinner" />
                   Signing in…
                 </>
-              ) : devToken.trim() ? (
-                "Use Dev Token"
               ) : (
-                "Login"
+                "Sign in"
               )}
             </button>
 
-            <div className="loginMeta" style={{ marginTop: 14 }}>
-              <span>Dev Testing</span>
-              <button
-                type="button"
-                className="linkBtn"
-                onClick={() => {
-                  setDevToken("");
-                  localStorage.removeItem("guardDevToken");
-                  // Optional: also clear runtime token
-                  localStorage.removeItem("guardToken");
-                }}
-              >
-                Clear saved token
-              </button>
-            </div>
-
-            <div className="field">
-              <label className="fieldLabel">Dev Token (paste JWT)</label>
-              <div className="fieldControl" style={{ alignItems: "stretch" }}>
-                <textarea
-                  className="fieldInput"
-                  rows={3}
-                  value={devToken}
-                  onChange={(e) => setDevToken(e.target.value)}
-                  placeholder="Paste JWT here for dev testing"
-                  style={{ resize: "vertical" }}
-                />
+            <details className="loginAdvanced" style={{ marginTop: 14 }}>
+              <summary style={{ cursor: "pointer", fontSize: 12, color: "var(--muted)" }}>Advanced</summary>
+              <div className="field" style={{ marginTop: 10 }}>
+                <label className="fieldLabel">Dev token</label>
+                <div className="fieldControl" style={{ alignItems: "stretch" }}>
+                  <textarea
+                    className="fieldInput"
+                    rows={2}
+                    value={devToken}
+                    onChange={(e) => setDevToken(e.target.value)}
+                    placeholder="JWT"
+                    style={{ resize: "vertical" }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="linkBtn"
+                  style={{ marginTop: 6, fontSize: 11 }}
+                  onClick={() => {
+                    setDevToken("");
+                    localStorage.removeItem("guardDevToken");
+                    localStorage.removeItem("guardToken");
+                  }}
+                >
+                  Clear token
+                </button>
               </div>
-            </div>
-
-            <div className="loginFooter">
-              <span>ABE Guard</span>
-              <span className="dot" />
-              <span>Secure Access</span>
-            </div>
+            </details>
           </form>
         </div>
       </div>

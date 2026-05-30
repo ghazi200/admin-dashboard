@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { getShiftHistory, getShiftAnalytics } from "../services/shiftManagement.api";
 import OvertimeBreakdown from "../components/OvertimeBreakdown";
 import "../styles/styles.css";
+import "./ShiftHistory.css";
 
 export default function ShiftHistory() {
   const { user } = useAuth();
@@ -77,8 +78,13 @@ export default function ShiftHistory() {
     if (!status) return "";
     const statusStr = String(status).toLowerCase().trim();
     
+    // Closed: orange badge on history page (see .badge.state--closed)
+    if (statusStr === "closed") {
+      return "state--closed";
+    }
+
     // Match the status mapping from ShiftSwapMarketplace
-    if (["closed", "filled", "assigned", "completed", "accepted", "approved", "finished"].includes(statusStr)) {
+    if (["filled", "assigned", "completed", "accepted", "approved", "finished"].includes(statusStr)) {
       return "state--ok"; // Green
     }
     
@@ -108,7 +114,7 @@ export default function ShiftHistory() {
     <div>
       <NavBar />
       <div style={{ padding: 20, maxWidth: 1200, margin: "0 auto" }}>
-        <h2 style={{ marginBottom: 20, color: "#111827" }}>Shift History & Analytics</h2>
+        <h2 className="shift-history-page__title">Shift History & Analytics</h2>
         
         {/* Filters and Period Selector */}
         <div style={{ marginBottom: 20, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
@@ -179,23 +185,17 @@ export default function ShiftHistory() {
             gap: 16, 
             marginBottom: 30 
           }}>
-            <div style={{ 
-              padding: 20, 
-              background: "#fff", 
-              borderRadius: 12, 
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-              border: "1px solid rgba(0,0,0,0.1)"
-            }}>
+            <div
+              className="shift-history-card"
+              style={{ padding: 20 }}
+            >
               <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>Total Shifts</div>
               <div style={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>{analytics.total_shifts || 0}</div>
             </div>
-            <div style={{ 
-              padding: 20, 
-              background: "#fff", 
-              borderRadius: 12, 
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-              border: "1px solid rgba(0,0,0,0.1)"
-            }}>
+            <div
+              className="shift-history-card"
+              style={{ padding: 20 }}
+            >
               <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>Hours Worked</div>
               <div style={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>
                 {analytics.total_hours != null && analytics.total_hours > 0 
@@ -213,13 +213,10 @@ export default function ShiftHistory() {
               )}
             </div>
             {analytics.overtime_hours != null && (analytics.overtime_hours > 0 || analytics.double_time_hours > 0) && (
-              <div style={{ 
-                padding: 20, 
-                background: "#fff", 
-                borderRadius: 12, 
-                boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                border: "1px solid rgba(0,0,0,0.1)"
-              }}>
+              <div
+                className="shift-history-card"
+                style={{ padding: 20 }}
+              >
                 <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>Overtime</div>
                 <div style={{ fontSize: 24, fontWeight: 600, color: "#f97316" }}>
                   {(analytics.overtime_hours + analytics.double_time_hours).toFixed(1)}h
@@ -234,13 +231,10 @@ export default function ShiftHistory() {
                 )}
               </div>
             )}
-            <div style={{ 
-              padding: 20, 
-              background: "#fff", 
-              borderRadius: 12, 
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-              border: "1px solid rgba(0,0,0,0.1)"
-            }}>
+            <div
+              className="shift-history-card"
+              style={{ padding: 20 }}
+            >
               <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>Avg Hours/Shift</div>
               <div style={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>
                 {analytics.avg_hours_per_shift != null && analytics.avg_hours_per_shift > 0
@@ -250,13 +244,10 @@ export default function ShiftHistory() {
                     : "—"}
               </div>
             </div>
-            <div style={{ 
-              padding: 20, 
-              background: "#fff", 
-              borderRadius: 12, 
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-              border: "1px solid rgba(0,0,0,0.1)"
-            }}>
+            <div
+              className="shift-history-card"
+              style={{ padding: 20 }}
+            >
               <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8 }}>Completion Rate</div>
               <div style={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>
                 {analytics.completion_rate ? `${(analytics.completion_rate * 100).toFixed(0)}%` : "0%"}
@@ -315,13 +306,10 @@ export default function ShiftHistory() {
               return (
                 <div
                   key={shift.shift_id || shift.id}
+                  className="shift-history-card"
                   style={{
                     padding: 16,
-                    border: "1px solid rgba(0,0,0,0.1)",
-                    borderRadius: 12,
-                    background: "#fff",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    color: "#1f2937", // Dark text color
+                    color: "#1f2937",
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: 8 }}>

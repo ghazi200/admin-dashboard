@@ -36,9 +36,9 @@ export default function OvertimeBreakdown({
               borderRadius: '6px',
               fontSize: '12px',
               fontWeight: 600,
-              background: '#22c55e',
+              background: 'linear-gradient(135deg, #fb923c 0%, #ea580c 100%)',
               color: 'white',
-              border: '1px solid #16a34a',
+              border: '1px solid #ea580c',
               boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
             }}
           >

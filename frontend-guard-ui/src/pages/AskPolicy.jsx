@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import NavBar from "../components/NavBar";
 import Modal from "../components/Modal";
 import { askPolicy } from "../services/guardApi";
+import "./AskPolicy.css";
 
 export default function AskPolicy() {
   const [question, setQuestion] = useState("");
@@ -69,57 +70,22 @@ export default function AskPolicy() {
   return (
     <>
       <NavBar />
-      <div className="page">
+      <div className="page askPolicy-page">
         <div className="card">
           <h2>Ask Policy</h2>
 
           {/* Animated Agent 24 Statement */}
-          <div
-            style={{
-              background: "linear-gradient(135deg, #fb923c 0%, #ea580c 100%)",
-              borderRadius: 12,
-              padding: 20,
-              marginBottom: 24,
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-              color: "#ffffff",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            <style>
-              {`
-                @keyframes agentBlink {
-                  0%, 50% { opacity: 1; }
-                  51%, 100% { opacity: 0; }
-                }
-                .agent-cursor {
-                  display: inline-block;
-                  width: 2px;
-                  height: 20px;
-                  background: #ffffff;
-                  margin-left: 4px;
-                  animation: agentBlink 1s infinite;
-                }
-              `}
-            </style>
-            <div
-              style={{
-                fontSize: 18,
-                fontWeight: 600,
-                lineHeight: 1.6,
-                minHeight: 28,
-                color: "#ffffff",
-                textShadow: "0 1px 2px rgba(0,0,0,0.25)",
-              }}
-            >
+          <div className="askPolicy-agentBanner">
+            <div className="askPolicy-agentBannerText">
               {displayedText}
-              <span className="agent-cursor" />
+              <span className="askPolicy-agentCursor" aria-hidden />
             </div>
           </div>
 
           <div className="field">
-            <label>Your question</label>
+            <label className="askPolicy-fieldLabel">Your question</label>
             <textarea
+              className="askPolicy-messageBox"
               rows={3}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
@@ -127,7 +93,12 @@ export default function AskPolicy() {
             />
           </div>
 
-          <button className="btnPrimary" onClick={submit} disabled={loading}>
+          <button
+            type="button"
+            className="btn btnPrimary askPolicy-submitBtn"
+            onClick={submit}
+            disabled={loading}
+          >
             {loading ? "Asking..." : "Ask"}
           </button>
 
@@ -203,23 +174,13 @@ export default function AskPolicy() {
                 </div>
                 <div style={{ fontSize: 14, marginBottom: 8, color: "var(--muted)" }}>
                   <strong style={{ color: "var(--text)" }}>Phone:</strong>{" "}
-                  <a 
-                    href="tel:+1-555-123-4567" 
-                    style={{ color: "var(--accent)", textDecoration: "none" }}
-                    onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-                    onMouseLeave={(e) => e.target.style.textDecoration = "none"}
-                  >
+                  <a className="askPolicy-contactLink" href="tel:+1-555-123-4567">
                     (555) 123-4567
                   </a>
                 </div>
                 <div style={{ fontSize: 14, color: "var(--muted)" }}>
                   <strong style={{ color: "var(--text)" }}>Email:</strong>{" "}
-                  <a 
-                    href="mailto:hr@abesecurity.com" 
-                    style={{ color: "var(--accent)", textDecoration: "none" }}
-                    onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-                    onMouseLeave={(e) => e.target.style.textDecoration = "none"}
-                  >
+                  <a className="askPolicy-contactLink" href="mailto:hr@abesecurity.com">
                     hr@abesecurity.com
                   </a>
                 </div>
@@ -239,23 +200,13 @@ export default function AskPolicy() {
                 </div>
                 <div style={{ fontSize: 14, marginBottom: 8, color: "var(--muted)" }}>
                   <strong style={{ color: "var(--text)" }}>Phone:</strong>{" "}
-                  <a 
-                    href="tel:+1-555-234-5678" 
-                    style={{ color: "var(--accent)", textDecoration: "none" }}
-                    onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-                    onMouseLeave={(e) => e.target.style.textDecoration = "none"}
-                  >
+                  <a className="askPolicy-contactLink" href="tel:+1-555-234-5678">
                     (555) 234-5678
                   </a>
                 </div>
                 <div style={{ fontSize: 14, color: "var(--muted)" }}>
                   <strong style={{ color: "var(--text)" }}>Email:</strong>{" "}
-                  <a 
-                    href="mailto:supervisor@abesecurity.com" 
-                    style={{ color: "var(--accent)", textDecoration: "none" }}
-                    onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-                    onMouseLeave={(e) => e.target.style.textDecoration = "none"}
-                  >
+                  <a className="askPolicy-contactLink" href="mailto:supervisor@abesecurity.com">
                     supervisor@abesecurity.com
                   </a>
                 </div>
@@ -275,23 +226,13 @@ export default function AskPolicy() {
                 </div>
                 <div style={{ fontSize: 14, marginBottom: 8, color: "var(--muted)" }}>
                   <strong style={{ color: "var(--text)" }}>Phone:</strong>{" "}
-                  <a 
-                    href="tel:+1-555-345-6789" 
-                    style={{ color: "var(--accent)", textDecoration: "none" }}
-                    onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-                    onMouseLeave={(e) => e.target.style.textDecoration = "none"}
-                  >
+                  <a className="askPolicy-contactLink" href="tel:+1-555-345-6789">
                     (555) 345-6789
                   </a>
                 </div>
                 <div style={{ fontSize: 14, color: "var(--muted)" }}>
                   <strong style={{ color: "var(--text)" }}>Email:</strong>{" "}
-                  <a 
-                    href="mailto:payroll@abesecurity.com" 
-                    style={{ color: "var(--accent)", textDecoration: "none" }}
-                    onMouseEnter={(e) => e.target.style.textDecoration = "underline"}
-                    onMouseLeave={(e) => e.target.style.textDecoration = "none"}
-                  >
+                  <a className="askPolicy-contactLink" href="mailto:payroll@abesecurity.com">
                     payroll@abesecurity.com
                   </a>
                 </div>

@@ -123,7 +123,7 @@ export default function IncidentReport() {
   return (
     <>
       <NavBar />
-      <div className="page">
+      <div className="incident-report-page">
         <div className="container">
           <div className="card">
             <h1>Report Incident</h1>

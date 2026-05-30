@@ -11,10 +11,23 @@ import {
 } from "../services/messaging.service";
 import "./Messages.css";
 
+/** API may return id, conversation_id, or conversationId — normalize so selection + Send state work */
+function normalizeConversationRow(row) {
+  if (!row || typeof row !== "object") return null;
+  const id = row.id ?? row.conversation_id ?? row.conversationId;
+  if (id == null) return null;
+  return { ...row, id };
+}
+
+/** Same orange as admin/supervisor bubbles on this page */
+const MSG_ORANGE_GRADIENT = "linear-gradient(135deg, #fb923c 0%, #ea580c 100%)";
+const MSG_ORANGE_GRADIENT_DIM = "linear-gradient(135deg, #ea580c 0%, #9a3412 100%)";
+const MSG_ORANGE_BORDER = "1px solid rgba(255, 255, 255, 0.28)";
+
 // Page wrapper so content is always visible (background + min height)
 const pageWrap = {
   minHeight: "100vh",
-  background: "#0f172a",
+  background: "#000000",
   color: "#e2e8f0",
 };
 
@@ -201,10 +214,14 @@ export default function Messages() {
   const [deletingMessageId, setDeletingMessageId] = useState(null);
   const [leavingConversationId, setLeavingConversationId] = useState(null);
   const messagesEndRef = useRef(null);
+  const sendPillRef = useRef(null);
   /** Only scroll when thread tail changes (new message), not on identical poll payloads. */
   const scrollTailRef = useRef({ n: 0, lastId: "" });
 
-  const selected = conversations.find((c) => c.id === selectedId);
+  const selected =
+    selectedId == null
+      ? undefined
+      : conversations.find((c) => String(c?.id) === String(selectedId));
 
   const loadConversations = useCallback(function loadConversations() {
     setLoading(true);
@@ -213,8 +230,9 @@ export default function Messages() {
       .then((res) => {
         const raw = res.data?.conversations ?? res.data?.data?.conversations;
         const list = Array.isArray(raw) ? raw : [];
-        setConversations(list);
-        if (list.length) setSelectedId((prev) => prev || list[0].id);
+        const normalized = list.map(normalizeConversationRow).filter(Boolean);
+        setConversations(normalized);
+        if (normalized.length) setSelectedId((prev) => prev || normalized[0].id);
       })
       .catch((e) => {
         const msg = e?.response?.data?.message || e?.message || "Failed to load conversations";
@@ -319,6 +337,19 @@ export default function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages]);
 
+  /* Portaled Send pill — match admin bubble orange gradient + white label */
+  useEffect(() => {
+    const el = sendPillRef.current;
+    if (!el || typeof el.style?.setProperty !== "function") return;
+    const active = !!(selected && input.trim() && !sending);
+    el.style.setProperty("background", active ? MSG_ORANGE_GRADIENT : MSG_ORANGE_GRADIENT_DIM, "important");
+    el.style.setProperty("background-image", active ? MSG_ORANGE_GRADIENT : MSG_ORANGE_GRADIENT_DIM, "important");
+    el.style.setProperty("color", "#ffffff", "important");
+    el.style.setProperty("border", MSG_ORANGE_BORDER, "important");
+    el.style.setProperty("-webkit-text-fill-color", "#ffffff", "important");
+    el.style.setProperty("opacity", active ? "1" : "0.88", "important");
+  }, [selected, input, sending]);
+
   function handleSend() {
     const text = input.trim();
     if (!text || sending || !selectedId) return;
@@ -409,6 +440,8 @@ export default function Messages() {
       })
       .finally(() => setLeavingConversationId(null));
   }
+
+  const sendButtonActive = !!(selected && input.trim() && !sending);
 
   return (
     <div className="messagesPageWrap" style={pageWrap}>
@@ -516,29 +549,38 @@ export default function Messages() {
                   {!messagesLoading && messages.map((msg) => (
                     <div
                       key={msg.id}
-                      className="messagesPageBubble"
+                      className={`messagesPageBubble ${
+                        isOwnMessage(msg) ? "messagesPageBubble--fromGuard" : "messagesPageBubble--fromAdmin"
+                      }`}
                       style={{
                         ...styles.messageBubble,
                         ...(isOwnMessage(msg) ? styles.messageBubbleOwn : {}),
                       }}
                     >
-                      <div style={{ color: "#e2e8f0", wordBreak: "break-word" }}>{msg.content || "(no text)"}</div>
-                      <div style={styles.messageMeta}>
+                      <div className="messagesPageBubbleBody" style={{ wordBreak: "break-word" }}>
+                        {msg.content || "(no text)"}
+                      </div>
+                      <div className="messagesPageBubbleMeta" style={styles.messageMeta}>
                         {formatTime(msg.created_at || msg.createdAt)} {isOwnMessage(msg) ? "· You" : ""}
                         {!String(msg.id).startsWith("temp-") && (
                           <span style={{ marginLeft: 8 }}>
                             <button
                               type="button"
+                              className="messagesPageBubbleDelete messagesBubbleDeleteBtn"
                               onClick={() => handleDeleteMessage(msg)}
                               disabled={deletingMessageId === msg.id}
                               style={{
-                                padding: "2px 8px",
+                                padding: "4px 10px",
                                 fontSize: 12,
+                                fontWeight: 600,
                                 borderRadius: 8,
-                                border: "1px solid rgba(148,163,184,0.3)",
-                                background: "rgba(239,68,68,0.2)",
-                                color: "#fca5a5",
+                                border: "1px solid #b91c1c",
+                                background: "#dc2626",
+                                color: "#ffffff",
                                 cursor: deletingMessageId === msg.id ? "not-allowed" : "pointer",
+                                opacity: deletingMessageId === msg.id ? 0.7 : 1,
+                                WebkitAppearance: "none",
+                                appearance: "none",
                               }}
                             >
                               {deletingMessageId === msg.id ? "…" : "Delete"}
@@ -580,14 +622,14 @@ export default function Messages() {
               paddingLeft: "max(14px, env(safe-area-inset-left, 14px))",
               paddingRight: "max(14px, env(safe-area-inset-right, 14px))",
               paddingBottom: "max(14px, env(safe-area-inset-bottom, 14px))",
-              background: "#0f172a",
+              background: "#000000",
               borderTop: "2px solid rgba(148,163,184,0.4)",
               boxShadow: "0 -8px 32px rgba(0,0,0,0.5)",
             }}
           >
             <input
               type="text"
-              className="messagesPageInput"
+              className="messagesPageInput messagesComposerInput"
               placeholder={selected ? "Type a message…" : "Select a conversation above"}
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -597,32 +639,54 @@ export default function Messages() {
                 flex: 1,
                 padding: "14px 16px",
                 borderRadius: 12,
-                border: "2px solid rgba(148,163,184,0.5)",
-                background: selected ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.06)",
-                color: "#e2e8f0",
                 fontSize: 16,
                 minHeight: 48,
               }}
             />
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={!selected || !input.trim() || sending}
+            {/* <div> not <button> — Android WebView often themes native buttons and hides custom colors */}
+            <div
+              ref={sendPillRef}
+              role="button"
+              tabIndex={sendButtonActive ? 0 : -1}
+              aria-disabled={!sendButtonActive}
+              aria-label="Send message"
+              className="messagesSendPill"
+              id="messages-send-pill"
+              onClick={(e) => {
+                if (!sendButtonActive) return;
+                e.preventDefault();
+                handleSend();
+              }}
+              onKeyDown={(e) => {
+                if (!sendButtonActive) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                userSelect: "none",
                 padding: "14px 24px",
                 borderRadius: 12,
                 fontWeight: 700,
-                background: selected && input.trim() && !sending ? "#3b82f6" : "#475569",
-                border: "none",
-                color: "#fff",
                 fontSize: 16,
                 minHeight: 48,
                 minWidth: 80,
-                cursor: selected && input.trim() && !sending ? "pointer" : "default",
+                boxSizing: "border-box",
+                cursor: sendButtonActive ? "pointer" : "not-allowed",
+                color: "#ffffff",
+                background: sendButtonActive ? MSG_ORANGE_GRADIENT : MSG_ORANGE_GRADIENT_DIM,
+                backgroundImage: sendButtonActive ? MSG_ORANGE_GRADIENT : MSG_ORANGE_GRADIENT_DIM,
+                border: MSG_ORANGE_BORDER,
+                opacity: sendButtonActive ? 1 : 0.88,
               }}
             >
               {sending ? "…" : "Send"}
-            </button>
+            </div>
           </div>,
           document.body
         )}

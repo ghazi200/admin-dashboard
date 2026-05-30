@@ -1,6 +1,7 @@
 package com.abe.guardui;
 
 import android.os.Bundle;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 
 import androidx.core.splashscreen.SplashScreen;
@@ -26,6 +27,9 @@ public class MainActivity extends BridgeActivity {
         if (getBridge() != null && getBridge().getWebView() != null) {
             WebView wv = getBridge().getWebView();
             wv.setScrollbarFadingEnabled(false);
+            WebSettings ws = wv.getSettings();
+            /* Avoid stale bundled JS/CSS after cap sync — local assets should always reload from APK */
+            ws.setCacheMode(WebSettings.LOAD_NO_CACHE);
         }
     }
 }

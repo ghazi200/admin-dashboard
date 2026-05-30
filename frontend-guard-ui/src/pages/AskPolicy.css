@@ -1,0 +1,98 @@
+/* Loads with Ask Policy page — overrides global .page textarea from home.css */
+
+.page.askPolicy-page {
+  background: #000000;
+  min-height: calc(100vh - 64px);
+}
+
+/* Primary Ask — orange, white label text (overrides global purple .btnPrimary) */
+button.askPolicy-submitBtn.btnPrimary {
+  background: linear-gradient(
+    135deg,
+    rgba(251, 146, 60, 0.98),
+    rgba(249, 115, 22, 0.92),
+    rgba(234, 88, 12, 0.88)
+  );
+  border-color: rgba(249, 115, 22, 0.62);
+  color: #ffffff;
+}
+
+button.askPolicy-submitBtn.btnPrimary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+button.askPolicy-submitBtn.btnPrimary:disabled {
+  opacity: 0.68;
+}
+
+.askPolicy-agentBanner {
+  background: #000000;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  color: #fb923c;
+  position: relative;
+  overflow: hidden;
+}
+
+.askPolicy-agentBannerText {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.6;
+  min-height: 28px;
+  color: #fb923c;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes askPolicy-agentBlink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.askPolicy-agentCursor {
+  display: inline-block;
+  width: 2px;
+  height: 20px;
+  background: #fb923c;
+  margin-left: 4px;
+  vertical-align: text-bottom;
+  animation: askPolicy-agentBlink 1s infinite;
+}
+
+.page .card .askPolicy-fieldLabel {
+  color: #ffffff;
+}
+
+.page .card textarea.askPolicy-messageBox {
+  background: #000000;
+  color: #ffb86b;
+  border: 1px solid rgba(255, 184, 107, 0.45);
+  caret-color: #ffb86b;
+}
+
+.page .card textarea.askPolicy-messageBox:focus {
+  border-color: rgba(255, 184, 107, 0.65);
+  background: #000000;
+  color: #ffb86b;
+}
+
+.page .card textarea.askPolicy-messageBox::placeholder {
+  color: rgba(255, 184, 107, 0.88);
+}
+
+.page .card a.askPolicy-contactLink {
+  color: #fb923c;
+  text-decoration: none;
+}
+
+.page .card a.askPolicy-contactLink:hover {
+  color: #ea580c;
+  text-decoration: underline;
+}

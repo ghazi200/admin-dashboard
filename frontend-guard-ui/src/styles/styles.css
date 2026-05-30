@@ -683,6 +683,18 @@ code{
   color: #fecaca;
 }
 
+/* Shift history: "closed" status — orange badge, black text */
+.badge.state--closed {
+  border-color: rgba(234, 88, 12, 0.85);
+  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+  color: #000000;
+  font-weight: 600;
+}
+
+.state--closed {
+  color: #000000;
+}
+
 /* -------- BUTTON STATES -------- */
 .btn.state--ok {
   background: linear-gradient(

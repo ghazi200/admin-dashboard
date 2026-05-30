@@ -1,11 +1,11 @@
 /* src/pages/incident-report.css */
 /* Uses tokens from src/styles/styles.css (already loaded globally) */
 
-.page {
+.incident-report-page {
   min-height: calc(100vh - 64px);
   padding: 18px;
   color: var(--text);
-  /* background handled globally in body from styles.css */
+  background: #000000;
 }
 
 .container {
@@ -13,16 +13,16 @@
   margin: 0 auto;
 }
 
-.card {
+.incident-report-page .card {
   background: var(--panel2);
-  border: 1px solid var(--border);
+  border: 2px solid #c2410c;
   border-radius: var(--r2);
   box-shadow: var(--shadow);
   padding: 18px;
   backdrop-filter: blur(10px);
 }
 
-.card h1 {
+.incident-report-page .card h1 {
   margin: 0 0 10px;
   font-size: 28px;
   font-weight: 900;
@@ -30,56 +30,61 @@
   color: var(--text);
 }
 
-.card p {
+.incident-report-page .card p {
   color: var(--muted);
   font-size: 14px;
   margin: 8px 0;
 }
 
-.infoBox {
+.incident-report-page .infoBox {
   margin-top: 8px;
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid rgba(34,197,94,0.35);
-  background: rgba(34,197,94,0.10);
-  color: rgba(170, 255, 210, 0.95);
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 2px solid #c2410c;
+  background: rgba(249, 115, 22, 0.08);
+  color: rgba(254, 243, 199, 0.95);
   font-size: 12px;
 }
 
-.error {
+.incident-report-page .error {
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid rgba(239,68,68,0.35);
-  background: rgba(239,68,68,0.10);
+  border: 2px solid #c2410c;
+  background: rgba(239, 68, 68, 0.08);
   color: #fecaca;
   font-size: 12.5px;
   margin-bottom: 16px;
 }
 
-.success {
+.incident-report-page .success {
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid rgba(34,197,94,0.35);
-  background: rgba(34,197,94,0.10);
-  color: rgba(170, 255, 210, 0.95);
+  border: 2px solid #c2410c;
+  background: rgba(34, 197, 94, 0.08);
+  color: rgba(167, 243, 208, 0.95);
   font-size: 12.5px;
   margin-bottom: 16px;
 }
 
-.formCard {
+.incident-report-page .formCard {
   background: var(--panel2);
-  border: 1px solid var(--border);
+  border: 2px solid #c2410c;
   border-radius: var(--r2);
   box-shadow: var(--shadow);
   padding: 24px;
   backdrop-filter: blur(10px);
 }
 
-.formGroup {
-  margin-bottom: 20px;
+/* Each field block as an orange-outlined subcard */
+.incident-report-page .formCard .formGroup {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 2px solid #c2410c;
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.formLabel {
+.incident-report-page .formLabel {
   display: block;
   margin-bottom: 6px;
   font-size: 14px;
@@ -87,13 +92,13 @@
   color: var(--text);
 }
 
-.formLabel .required {
+.incident-report-page .formLabel .required {
   color: #ef4444;
 }
 
-.formInput,
-.formSelect,
-.formTextarea {
+.incident-report-page .formInput,
+.incident-report-page .formSelect,
+.incident-report-page .formTextarea {
   width: 100%;
   padding: 11px 12px;
   border-radius: 12px;
@@ -106,37 +111,42 @@
   font-family: inherit;
 }
 
-.formInput:focus,
-.formSelect:focus,
-.formTextarea:focus {
-  border-color: rgba(124,58,237,0.55);
+.incident-report-page .formInput:focus,
+.incident-report-page .formSelect:focus,
+.incident-report-page .formTextarea:focus {
+  border-color: rgba(249, 115, 22, 0.65);
   background: rgba(255,255,255,0.06);
 }
 
-.formTextarea {
+.incident-report-page .formTextarea {
   resize: vertical;
   min-height: 120px;
 }
 
-.fileInfo {
+.incident-report-page .fileInfo {
   margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 2px solid #c2410c;
+  background: rgba(249, 115, 22, 0.06);
   font-size: 12px;
   color: var(--muted);
 }
 
-.fileList {
+.incident-report-page .fileList {
   margin-top: 4px;
   padding-left: 20px;
 }
 
-.buttonGroup {
+.incident-report-page .formCard .buttonGroup {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  margin-top: 24px;
+  margin-top: 20px;
+  padding-top: 4px;
 }
 
-.btnSecondary {
+.incident-report-page .btnSecondary {
   appearance: none;
   border: 1px solid var(--border2);
   background: rgba(255,255,255,0.06);
@@ -149,20 +159,21 @@
   transition: transform .08s ease, background .18s ease, border-color .18s ease;
 }
 
-.btnSecondary:hover {
+.incident-report-page .btnSecondary:hover {
   background: rgba(255,255,255,0.09);
   border-color: rgba(148,163,184,0.34);
 }
 
-.btnSecondary:active {
+.incident-report-page .btnSecondary:active {
   transform: translateY(1px);
 }
 
-.btnPrimary {
+/* Orange primary — scoped so other routes keep global .btnPrimary */
+.incident-report-page .btnPrimary {
   appearance: none;
-  border: 1px solid rgba(124,58,237,0.55);
-  background: linear-gradient(135deg, rgba(124,58,237,0.90), rgba(59,130,246,0.70));
-  color: var(--text);
+  border: 1px solid rgba(234, 88, 12, 0.85);
+  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+  color: #ffffff;
   padding: 12px 24px;
   border-radius: 12px;
   cursor: pointer;
@@ -171,26 +182,27 @@
   transition: transform .08s ease, filter .18s ease, opacity .18s ease;
 }
 
-.btnPrimary:hover {
-  filter: brightness(1.05);
+.incident-report-page .btnPrimary:hover:not(:disabled) {
+  filter: brightness(1.06);
 }
 
-.btnPrimary:active {
+.incident-report-page .btnPrimary:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-.btnPrimary:disabled {
+.incident-report-page .btnPrimary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  filter: grayscale(0.15);
 }
 
 @media (max-width: 520px) {
-  .page { padding: 14px; }
-  .formCard { padding: 14px; }
-  .buttonGroup {
+  .incident-report-page { padding: 14px; }
+  .incident-report-page .formCard { padding: 14px; }
+  .incident-report-page .formCard .buttonGroup {
     flex-direction: column;
   }
-  .buttonGroup button {
+  .incident-report-page .formCard .buttonGroup button {
     width: 100%;
   }
 }

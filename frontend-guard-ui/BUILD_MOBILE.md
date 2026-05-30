@@ -147,6 +147,69 @@ npm run cap:android
 
 Then build and run in Android Studio (emulator or device).
 
+**Open the correct folder:** `frontend-guard-ui/android` (not the repo root).
+
+---
+
+## Android Studio: app won’t build or launch
+
+### “Unable to locate a Java Runtime” / Gradle sync fails
+
+macOS may have **no system JDK**. The project sets Gradle to Android Studio’s embedded JDK in `android/gradle.properties` (`org.gradle.java.home`).
+
+Also in Android Studio: **Settings → Build, Execution, Deployment → Build Tools → Gradle → Gradle JDK** → choose **Embedded JDK** (or the same JBR path as in `gradle.properties`).
+
+Terminal builds:
+
+```bash
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+cd frontend-guard-ui/android && ./gradlew assembleDebug
+```
+
+### SDK location
+
+`android/local.properties` must point at a valid SDK (`sdk.dir=...`). Copy `android/local.properties.example` to `local.properties` and uncomment the path that exists on your machine. In Android Studio: **Settings → Languages & Frameworks → Android SDK** → note the SDK path and use it in `local.properties`.
+
+### Before Run in Android Studio
+
+1. Sync web assets: `cd frontend-guard-ui && npm run build:mobile`
+2. **File → Sync Project with Gradle Files**
+3. Choose a device/emulator, then **Run** (green play)
+
+If the app installs but stays on a **black/splash screen**, rebuild with `npm run build:mobile` and run again (MainActivity uses the Android 12+ splash API so the WebView can show).
+
+### Run succeeds in Studio but nothing installs / “Can’t find service: package”
+
+The **emulator is often broken**, not the app. Gradle builds the APK, but `adb install` fails when the emulator’s package manager is down.
+
+**Check from terminal:**
+
+```bash
+chmod +x frontend-guard-ui/scripts/android-run-check.sh
+./frontend-guard-ui/scripts/android-run-check.sh
+```
+
+**Emulator won’t stop (Cold Boot greyed out):** force-quit it from Terminal:
+
+```bash
+./frontend-guard-ui/scripts/android-kill-emulator.sh
+```
+
+If it still won’t die, quit **Android Studio** completely, run the script again, then reopen Studio.
+
+**Fix the emulator:**
+
+1. Android Studio → **Device Manager**
+2. On your virtual device → **⋮** → **Cold Boot Now**
+3. If install still fails → **Wipe Data**, or delete the AVD and create a new **Pixel** image (API 34 recommended)
+4. Wait until the home screen is fully up, then **Run** again
+
+**Or use a physical phone:** enable USB debugging, connect, select the phone in the device dropdown, Run.
+
+### Gradle / Android Studio version
+
+This project uses **Gradle 8.2.1** and **Android Gradle Plugin 8.2.1** (Capacitor-friendly). Do not bump to Gradle 8.13 unless your Android Studio release explicitly supports it.
+
 ---
 
 ## Scripts
@@ -157,6 +220,7 @@ Then build and run in Android Studio (emulator or device).
 | `npm run cap:sync` | Copy `build` into native projects only |
 | `npm run cap:ios` | Open iOS project in Xcode |
 | `npm run cap:android` | Open Android project in Android Studio |
+| `./scripts/android-run-check.sh` | Diagnose JDK, SDK, emulator, and assembleDebug |
 
 ---
 
