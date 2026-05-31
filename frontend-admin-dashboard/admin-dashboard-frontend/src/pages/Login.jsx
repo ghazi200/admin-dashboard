@@ -37,11 +37,10 @@ const showProductionApiWarning = false;
 export default function Login() {
   const nav = useNavigate();
 
-  const [email, setEmail] = useState("admin@test.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [mfaToken, setMfaToken] = useState("");
   const [mfaCode, setMfaCode] = useState("");
-  const [mfaChannel, setMfaChannel] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -116,7 +115,6 @@ export default function Login() {
 
       if (data.requiresMfa && data.mfaToken) {
         setMfaToken(data.mfaToken);
-        setMfaChannel(data.channel || "email");
         setMfaCode("");
         setError("");
         setLoading(false);
@@ -147,13 +145,6 @@ export default function Login() {
     }
   };
 
-  const backToEmailPassword = () => {
-    setMfaToken("");
-    setMfaCode("");
-    setMfaChannel("");
-    setError("");
-  };
-
   return (
     <form className="loginForm" onSubmit={onSubmit}>
       {showProductionApiWarning ? (
@@ -172,7 +163,6 @@ export default function Login() {
         <div className="loginAlert" role="alert">
           <div className="loginAlertDot" />
           <div className="loginAlertText">
-            <strong>{mfaToken ? "Verification error" : "Login error"}</strong>
             <span>{error}</span>
           </div>
         </div>
@@ -180,12 +170,9 @@ export default function Login() {
 
       {mfaToken ? (
         <>
-          <p style={{ marginBottom: 12, color: "rgba(255,255,255,0.85)", fontSize: 14 }}>
-            We sent a 6-digit code to your {mfaChannel === "sms" ? "phone" : "email"}. Enter it below.
-          </p>
           <div className="field">
             <label className="label" htmlFor="mfaCode">
-              Verification code
+              Code
             </label>
             <input
               id="mfaCode"
@@ -201,16 +188,7 @@ export default function Login() {
             />
           </div>
           <button className="btnPrimaryFull" type="submit" disabled={loading}>
-            {loading ? "Verifying…" : "Verify and sign in"}
-          </button>
-          <button
-            type="button"
-            className="btn"
-            style={{ marginTop: 8, width: "100%" }}
-            onClick={backToEmailPassword}
-            disabled={loading}
-          >
-            Back to sign in
+            {loading ? "Signing in…" : "Sign in"}
           </button>
         </>
       ) : (
@@ -227,7 +205,6 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
-              placeholder="admin@test.com"
             />
           </div>
 
@@ -243,21 +220,12 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
-              placeholder="password123"
             />
           </div>
 
           <button className="btnPrimaryFull" type="submit" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}
           </button>
-
-          <div className="loginFooter">
-            <div className="hint">
-              Admin: <code>admin@test.com</code> / <code>password123</code>
-              <br />
-              Supervisor: <code>supervisor@test.com</code> / <code>password123</code>
-            </div>
-          </div>
         </>
       )}
     </form>

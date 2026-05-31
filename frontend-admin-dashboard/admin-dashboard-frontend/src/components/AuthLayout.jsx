@@ -2,17 +2,12 @@ import React from "react";
 import "../styles/auth.css";
 
 export default function AuthLayout({
-  // LEFT PANEL
   leftKicker = "ABE",
-  leftTitle = "Admin Scheduling Console",
-  leftSubtitle = "Manage guards, shifts, and coverage issues in one place. Secure JWT auth with Admin API.",
-  badges = ["Auth: JWT", "Ops: Live Callouts", "CRUD: Guards/Shifts"],
-
-  // RIGHT PANEL
+  leftTitle = "",
+  leftSubtitle = "",
+  badges = [],
   formTitle = "Sign in",
-  formSubtitle = "Use your credentials",
-
-  // CHILDREN (THE FORM)
+  formSubtitle = "",
   children,
 }) {
   return (
@@ -25,8 +20,8 @@ export default function AuthLayout({
             <div className="auth-kicker">{leftKicker}</div>
           </div>
 
-          <h1 className="auth-left-title">{leftTitle}</h1>
-          <p className="auth-left-subtitle">{leftSubtitle}</p>
+          <h1 className="auth-left-title">{leftTitle || leftKicker}</h1>
+          {leftSubtitle ? <p className="auth-left-subtitle">{leftSubtitle}</p> : null}
 
           {/* AI AGENT 24 Animated Header (same as guard-ui) */}
           <div className="aiAgentHeader">
@@ -45,6 +40,7 @@ export default function AuthLayout({
             </h1>
           </div>
 
+          {badges.length > 0 ? (
           <div className="auth-badges">
             {badges.map((b) => (
               <span className="badge" key={b}>
@@ -53,12 +49,13 @@ export default function AuthLayout({
               </span>
             ))}
           </div>
+          ) : null}
         </div>
 
         {/* RIGHT */}
         <div className="auth-panel auth-panel--right">
           <h2 className="auth-form-title">{formTitle}</h2>
-          <p className="auth-form-subtitle">{formSubtitle}</p>
+          {formSubtitle ? <p className="auth-form-subtitle">{formSubtitle}</p> : null}
 
           {/* Scoped so Login.css never overrides global .label / .input */}
           <div className="auth-login-form" style={{ marginTop: 14 }}>

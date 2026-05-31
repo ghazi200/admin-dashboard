@@ -149,6 +149,8 @@ Then build and run in Android Studio (emulator or device).
 
 **Open the correct folder:** `frontend-guard-ui/android` (not the repo root).
 
+**Beta builds:** production `capacitor.config.json` disables WebView debugging. For local emulator HTTP, see `capacitor.config.dev.json` and `docs/BETA_PHASE_0.md`.
+
 ---
 
 ## Android Studio: app won’t build or launch

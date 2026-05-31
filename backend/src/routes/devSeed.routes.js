@@ -4,6 +4,13 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const { DEFAULT_TEST_TENANT_ID } = require("../config/tenantConfig");
 
+router.use((req, res, next) => {
+  if (process.env.NODE_ENV === "production") {
+    return res.status(404).json({ message: "Not found" });
+  }
+  next();
+});
+
 router.post("/seed-admin", async (req, res) => {
   try {
     const { Admin } = req.app.locals.models;

@@ -26,7 +26,9 @@ You can also set `GUARD_APP_URL` and `ADMIN_APP_URL` instead of (or in addition 
 
 ## 2. CORS
 
-In production, **only origins you list are allowed**. If you deploy the frontend to e.g. `https://app.mycompany.com`, you must add that origin on **both** backends (via `CORS_ORIGINS` or the URL-specific vars above). Otherwise the browser will block requests with CORS errors. The backends log a one-time warning when they block an origin so you can fix this quickly.
+In production, the admin backend **restricts CORS by default** (mobile Capacitor origins and localhost are still allowed for `/health` and login). Set **`CORS_ORIGINS`** to your deployed admin/guard web URLs. Do not set `CORS_ALLOW_ALL=true` on a public beta.
+
+If you deploy the frontend to e.g. `https://app.mycompany.com`, add that origin via `CORS_ORIGINS` (or `GUARD_APP_URL` / `ADMIN_APP_URL`). Otherwise the browser will block requests with CORS errors.
 
 ---
 

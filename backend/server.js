@@ -94,6 +94,8 @@ if (process.env.NODE_ENV === "production") {
   }
 }
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const http = require("http");
@@ -110,6 +112,9 @@ const PORT = process.env.PORT || 5000;
 app.get("/api/cron/shift-reminders", async (req, res) => {
   const secret = req.query.secret || req.get("X-Cron-Secret") || "";
   const want = process.env.CRON_SECRET;
+  if (isProduction && !want) {
+    return res.status(503).json({ ok: false, error: "CRON_SECRET is required in production" });
+  }
   if (want && secret !== want) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
@@ -170,9 +175,11 @@ const corsOrigins = [
   .flatMap((s) => s.split(",").map((o) => o.trim().replace(/[\/?]+$/, "")).filter(Boolean))
   .forEach((o) => { if (o && !corsOrigins.includes(o)) corsOrigins.push(o); });
 
-// Allow all origins so guard mobile app (Capacitor/WebView) can reach /health and /auth/login.
-// Set CORS_ORIGINS_ONLY=true in .env to restrict to CORS_ORIGINS list instead.
-const allowAllOrigins = process.env.CORS_ORIGINS_ONLY !== "true";
+// Production: strict CORS by default (Capacitor/localhost still allowed below).
+// Dev: allow all unless CORS_ORIGINS_ONLY=true. Emergency override: CORS_ALLOW_ALL=true.
+const allowAllOrigins =
+  process.env.CORS_ALLOW_ALL === "true" ||
+  (!isProduction && process.env.CORS_ORIGINS_ONLY !== "true");
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -389,7 +396,11 @@ app.post("/api/internal/socket/join-conversation", async (req, res) => {
 });
 
 const devSeedRoutes = require("./src/routes/devSeed.routes");
-app.use("/api/dev", devSeedRoutes);
+if (!isProduction) {
+  app.use("/api/dev", devSeedRoutes);
+} else {
+  app.use("/api/dev", (_req, res) => res.status(404).json({ message: "Not found" }));
+}
 
 // Login/register: app.all catches every method so OPTIONS gets 204 and POST gets login (no 404)
 const adminAuthController = require("./src/controllers/adminAuth.Controller");
@@ -436,6 +447,9 @@ app.all("/api/admin/login", (req, res, next) => {
 app.all("/api/admin/register", (req, res, next) => {
   const method = (req.method || "").toUpperCase();
   if (method === "OPTIONS") return res.sendStatus(204);
+  if (isProduction && process.env.ALLOW_ADMIN_REGISTER !== "true") {
+    return res.status(403).json({ message: "Registration is disabled." });
+  }
   if (method !== "POST") return res.status(400).json({ message: "Use POST", path: req.originalUrl });
   adminAuthController.register(req, res);
 });
@@ -690,20 +704,21 @@ app.get("/api/backend-ping", (req, res) =>
   })
 );
 
-// Debug: see exactly what path/method the server receives (proves deploy is latest)
-app.get("/api/admin/login-debug", (req, res) => {
-  res.json({
-    message: "login-endpoint-active",
-    path: req.originalUrl,
-    method: req.method,
-    pathNoQuery: (req.originalUrl || "").split("?")[0],
+if (!isProduction) {
+  app.get("/api/admin/login-debug", (req, res) => {
+    res.json({
+      message: "login-endpoint-active",
+      path: req.originalUrl,
+      method: req.method,
+      pathNoQuery: (req.originalUrl || "").split("?")[0],
+    });
   });
-});
+}
 
-// Guard app login: create/update bob@abe.com — MUST be before catch-all /api (otherwise 404)
+// Guard app login: create/update bob@abe.com — dev only
 const bcryptSeedBob = require("bcryptjs");
 const { DEFAULT_TEST_TENANT_ID: TENANT_SEED_BOB } = require("./src/config/tenantConfig");
-app.post("/api/dev/seed-guard-bob", async (req, res) => {
+const seedGuardBobHandler = async (req, res) => {
   try {
     const { Guard } = req.app.locals.models;
     const email = "bob@abe.com";
@@ -743,7 +758,10 @@ app.post("/api/dev/seed-guard-bob", async (req, res) => {
     console.error("seed-guard-bob failed:", e);
     return res.status(500).json({ message: "Seed failed", error: e.message });
   }
-});
+};
+if (!isProduction) {
+  app.post("/api/dev/seed-guard-bob", seedGuardBobHandler);
+}
 
 // Catch ALL /api requests — handle OPTIONS (CORS preflight) and login/register
 app.use("/api", (req, res, next) => {

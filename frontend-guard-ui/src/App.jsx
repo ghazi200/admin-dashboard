@@ -29,6 +29,7 @@ import Dashboard from "./pages/Dashboard";
 import "./styles/styles.css";
 /* Login page styles must load after globals so agent header colors win the cascade */
 import "./pages/Login.css";
+import { isProductionBuild } from "./config/buildFlags";
 
 export default function App() {
   useEffect(() => {
@@ -47,11 +48,28 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
 
-          {/* Put /incident BEFORE / route to ensure it matches */}
-          {/* Try direct component first */}
-          <Route path="/incident-direct" element={<IncidentReport />} />
           <Route path="/incident" element={<IncidentRoute />} />
-          <Route path="/incident-test2" element={<div style={{ padding: 40, fontSize: 24 }}>✅ Route /incident-test2 works!</div>} />
+
+          {!isProductionBuild && (
+            <>
+              <Route path="/incident-direct" element={<IncidentReport />} />
+              <Route path="/incident-test2" element={<div style={{ padding: 40, fontSize: 24 }}>Route test</div>} />
+              <Route
+                path="/shifts/swap-test"
+                element={<div style={{ padding: 40, fontSize: 24, background: "#fff", minHeight: "100vh" }}>Route test</div>}
+              />
+              <Route
+                path="/shifts/swap-test-protected"
+                element={
+                  <ProtectedRoute>
+                    <div style={{ padding: 40, fontSize: 24, background: "#fff", minHeight: "100vh" }}>Route test</div>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/incident-test" element={<IncidentReport />} />
+              <Route path="/incident-simple-test" element={<IncidentReportSimple />} />
+            </>
+          )}
 
           <Route
             path="/"
@@ -72,24 +90,13 @@ export default function App() {
           />
 
           {/* Shift Management Routes - MUST come before /shifts */}
-          {/* Test route first - without ProtectedRoute */}
-          <Route
-            path="/shifts/swap-test"
-            element={<div style={{ padding: 40, fontSize: 24, background: "#fff", minHeight: "100vh" }}>✅ Route /shifts/swap-test works!</div>}
-          />
-          {/* Test route with ProtectedRoute */}
-          <Route
-            path="/shifts/swap-test-protected"
-            element={
-              <ProtectedRoute>
-                <div style={{ padding: 40, fontSize: 24, background: "#fff", minHeight: "100vh" }}>✅ Protected route works!</div>
-              </ProtectedRoute>
-            }
-          />
-          {/* Main shift swap route - try without ProtectedRoute first to test */}
           <Route
             path="/shifts/swap"
-            element={<ShiftSwapMarketplace />}
+            element={
+              <ProtectedRoute>
+                <ShiftSwapMarketplace />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/shifts/availability"
@@ -224,28 +231,17 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          
-          {/* Temporary: Direct route without ProtectedRoute for testing */}
-          <Route
-            path="/incident-test"
-            element={<IncidentReport />}
-          />
-          
-          {/* Simple test component to verify routing works */}
-          <Route
-            path="/incident-simple"
-            element={
-              <ProtectedRoute>
-                <IncidentReportSimple />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Simple test without auth */}
-          <Route
-            path="/incident-simple-test"
-            element={<IncidentReportSimple />}
-          />
+
+          {!isProductionBuild && (
+            <Route
+              path="/incident-simple"
+              element={
+                <ProtectedRoute>
+                  <IncidentReportSimple />
+                </ProtectedRoute>
+              }
+            />
+          )}
 
           {/* Fallback - redirect unknown routes to home */}
           <Route path="*" element={<Navigate to="/" replace />} />

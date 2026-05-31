@@ -97,7 +97,6 @@ exports.register = async (req, res) => {
     });
     const sequelize = req.app.locals.models?.sequelize;
     if (sequelize) await addToHistory(sequelize, admin.id, hash);
-    console.log("JWT_SECRET seen by auth controller:", process.env.JWT_SECRET);
 
     // ✅ Multi-tenant: Include tenant_id in JWT token
     const token = jwt.sign(

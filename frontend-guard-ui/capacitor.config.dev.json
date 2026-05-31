@@ -3,11 +3,11 @@
   "appName": "Guard UI",
   "webDir": "build",
   "android": {
-    "allowMixedContent": false,
-    "webContentsDebuggingEnabled": false
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": true
   },
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "http"
   },
   "plugins": {
     "CapacitorHttp": {

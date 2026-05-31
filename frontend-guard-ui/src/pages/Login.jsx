@@ -17,6 +17,7 @@ import {
 } from "../config/apiUrls";
 import { nativePost, isNativeCapable, probeBackendBase } from "../utils/nativeHttp";
 import { appHardNavigate } from "../utils/appNavigation";
+import { isProductionBuild } from "../config/buildFlags";
 
 const agentLetterStyle = (animationDelay) => ({ animationDelay });
 
@@ -25,20 +26,13 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [devToken, setDevToken] = useState("");
   const [err, setErr] = useState("");
-
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState(null); // "checking" | "ok" | "fail"
   const [serverUrl, setServerUrl] = useState(() => getGuardApiUrl());
   const [adminApiUrl, setAdminApiUrlState] = useState(() => getAdminApiUrl());
-  const [adminConnectionStatus, setAdminConnectionStatus] = useState(null);
-  const [showStaleUrlHint, setShowStaleUrlHint] = useState(false);
-  const [connectionHint, setConnectionHint] = useState("");
 
-  /** What you see in Server URL is what we use — avoids testing stale localStorage. */
   const persistGuardUrlFromField = () => {
     let u = normalizeBackendBaseUrl(serverUrl);
     if (u && u !== serverUrl.trim()) setServerUrl(u);
@@ -49,7 +43,6 @@ export default function Login() {
         u = rw;
       }
       setGuardApiUrl(u);
-      // Single Railway / one Node host: schedule & messages need the same origin. Legacy split stack uses :4000 for guard only.
       if (!/:4000(\/|$)/.test(u)) {
         setAdminApiUrl(u);
         setAdminApiUrlState(u);
@@ -74,16 +67,11 @@ export default function Login() {
     return getAdminApiUrl();
   };
 
-  // Sync displayed URLs with effective API URLs (e.g. after Android overrides)
   useEffect(() => {
-    const guardUrl = getGuardApiUrl();
-    const adminUrl = getAdminApiUrl();
-    setServerUrl(guardUrl);
-    setAdminApiUrlState(adminUrl);
-    if (isLanIpUrl(guardUrl)) setShowStaleUrlHint(true);
+    setServerUrl(getGuardApiUrl());
+    setAdminApiUrlState(getAdminApiUrl());
   }, []);
 
-  // Real phone cannot reach 10.0.2.2 — replace saved emulator URL with cloud backend once.
   useEffect(() => {
     try {
       if (!isAndroidApp() || isProbablyAndroidEmulator()) return;
@@ -94,19 +82,16 @@ export default function Login() {
         setAdminApiUrl(cloud);
         setServerUrl(cloud);
         setAdminApiUrlState(cloud);
-        setConnectionHint("Using cloud backend.");
       }
     } catch (_) {}
   }, []);
 
-  // ✅ When user just logged out, clear the flag only (don't auto-login)
   useEffect(() => {
     if (localStorage.getItem("guardJustLoggedOut") === "1") {
       localStorage.removeItem("guardJustLoggedOut");
     }
   }, []);
 
-  // ✅ Pre-fill dev token from storage so user can click "Use Dev Token" or type email/password
   useEffect(() => {
     const saved =
       localStorage.getItem("guardDevToken") ||
@@ -122,14 +107,14 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // ✅ Dev token mode (paste JWT)
       if (devToken.trim()) {
+        if (isProductionBuild) {
+          setErr("Dev token login is disabled.");
+          return;
+        }
         const t = devToken.trim();
-
-        // Save both: dev convenience + real runtime token
         localStorage.setItem("guardDevToken", t);
         localStorage.setItem("guardToken", t);
-
         loginWithToken(t);
         appHardNavigate("/");
         return;
@@ -137,7 +122,6 @@ export default function Login() {
 
       const em = email.trim();
       const pw = password;
-
       const baseUrl = persistGuardUrlFromField();
 
       let token;
@@ -146,10 +130,10 @@ export default function Login() {
       if (isNativeCapable()) {
         const res = await nativePost(`${baseUrl}/auth/login`, { email: em, password: pw });
         if (!res.ok) {
-          const err = new Error(res.data?.message || res.data?.error || "Login failed");
-          err.response = { status: res.status, data: res.data || {} };
-          err.code = res.status === 0 ? "ERR_NETWORK" : undefined;
-          throw err;
+          const errObj = new Error(res.data?.message || res.data?.error || "Login failed");
+          errObj.response = { status: res.status, data: res.data || {} };
+          errObj.code = res.status === 0 ? "ERR_NETWORK" : undefined;
+          throw errObj;
         }
         token = res.data?.token;
         guardUser = res.data?.guard || res.data?.user || null;
@@ -159,11 +143,9 @@ export default function Login() {
         guardUser = res?.data?.guard || res?.data?.user || null;
       }
 
-      if (!token) throw new Error("No token returned");
+      if (!token) throw new Error("Login failed");
 
-      // ✅ Always store the real guard token key
       localStorage.setItem("guardToken", token);
-
       loginWithToken(token, guardUser);
       appHardNavigate("/");
     } catch (e2) {
@@ -175,7 +157,6 @@ export default function Login() {
       const isTimeout =
         e2?.code === "ECONNABORTED" || (e2?.message && e2.message.includes("timeout"));
 
-      // On Android: if connection failed or timed out and current URL is a LAN IP (stale after move), try emulator URL once
       if (
         (isNetworkError || isTimeout) &&
         isAndroidApp() &&
@@ -203,31 +184,65 @@ export default function Login() {
             appHardNavigate("/");
             return;
           }
-        } catch (_) {
-          // Fall through to show error below
-        }
+        } catch (_) {}
       }
 
       const msg = e2?.response?.data?.message || e2?.response?.data?.error || e2?.message;
       const status = e2?.response?.status;
       if (isNetworkError) {
-        setErr("Cannot reach server. Check Server URL or tap Railway.");
+        setErr("Cannot reach server");
       } else if (isTimeout) {
-        setErr("Request timed out. Check Server URL.");
+        setErr("Request timed out");
       } else if (status === 401) {
         setErr(msg || "Invalid email or password");
       } else if (status === 423) {
-        setErr(msg || "Account locked. Contact an administrator to unlock.");
+        setErr(msg || "Account locked");
       } else if (status === 400) {
         setErr(msg || "Email and password required");
-      } else if (status === 500) {
-        setErr(msg || "Server error. Please try again.");
       } else {
-        setErr(msg || "Login failed. Try again.");
+        setErr(msg || "Login failed");
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetUrls = () => {
+    setGuardApiUrl("");
+    setAdminApiUrl("");
+    try {
+      localStorage.removeItem("guardToken");
+      localStorage.removeItem("guardUser");
+      localStorage.removeItem("guardDevToken");
+    } catch (_) {}
+    if (isAndroidApp()) {
+      const cloud = String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
+      setServerUrl(cloud);
+      setAdminApiUrlState(cloud);
+    } else {
+      setServerUrl("http://localhost:4000");
+      setAdminApiUrlState("http://localhost:5000");
+    }
+    setErr("");
+  };
+
+  const applyRailway = () => {
+    const railwayUrl =
+      (typeof process !== "undefined" && process.env?.REACT_APP_DEFAULT_BACKEND_URL) ||
+      "https://admin-dashboard-production-2596.up.railway.app";
+    const u = String(railwayUrl).replace(/\/+$/, "");
+    setServerUrl(u);
+    setAdminApiUrlState(u);
+    setGuardApiUrl(u);
+    setAdminApiUrl(u);
+    setErr("");
+  };
+
+  const applyEmulator = () => {
+    setServerUrl(EMULATOR_GUARD_URL);
+    setGuardApiUrl(EMULATOR_GUARD_URL);
+    setAdminApiUrlState(EMULATOR_GUARD_URL);
+    setAdminApiUrl(EMULATOR_GUARD_URL);
   };
 
   return (
@@ -235,7 +250,6 @@ export default function Login() {
       <div className="loginBg" />
 
       <div className="loginShell">
-        {/* AI AGENT 24 Animated Header */}
         <div className="aiAgentHeader">
           <h1 className="aiAgentText">
             <span className="aiAgentLetter" style={agentLetterStyle("0s")}>A</span>
@@ -253,215 +267,6 @@ export default function Login() {
         </div>
 
         <div className="loginCard">
-          <div className="loginHeader">
-            <div className="brandMark" aria-hidden="true">
-              <span />
-            </div>
-
-            <div>
-              <h2 className="loginTitle">Guard Login</h2>
-            </div>
-          </div>
-
-          {showStaleUrlHint && (
-            <div style={{ marginBottom: 10, padding: "8px 12px", background: "rgba(251,191,36,0.15)", borderRadius: 8, fontSize: 12, color: "#fcd34d" }}>
-              Saved server URL may be outdated. Tap Reset URLs if login fails.
-            </div>
-          )}
-
-          <div style={{ marginBottom: 8 }}>
-            <button
-              type="button"
-              className="linkBtn"
-              style={{ fontSize: 12, fontWeight: 600 }}
-              onClick={() => {
-                setGuardApiUrl("");
-                setAdminApiUrl("");
-                setConnectionStatus(null);
-                setAdminConnectionStatus(null);
-                try {
-                  localStorage.removeItem("guardToken");
-                  localStorage.removeItem("guardUser");
-                  localStorage.removeItem("guardDevToken");
-                } catch (_) {}
-                if (isAndroidApp()) {
-                  const cloud = String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
-                  setServerUrl(cloud);
-                  setAdminApiUrlState(cloud);
-                } else {
-                  setServerUrl("http://localhost:4000");
-                  setAdminApiUrlState("http://localhost:5000");
-                }
-                setErr("");
-                setShowStaleUrlHint(false);
-              }}
-            >
-              Reset URLs
-            </button>
-          </div>
-
-          <div className="field" style={{ marginBottom: 8 }}>
-            <label className="fieldLabel">Server URL</label>
-            <div className="fieldControl">
-              <input
-                className="fieldInput"
-                type="url"
-                value={serverUrl}
-                onChange={(e) => setServerUrl(e.target.value)}
-                onBlur={() => persistGuardUrlFromField()}
-                placeholder="http://localhost:4000"
-                style={{ fontSize: 12 }}
-              />
-            </div>
-            <div className="loginUrlActions" style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-              <button
-                type="button"
-                className="linkBtn"
-                style={{ fontSize: 11 }}
-                onClick={() => persistGuardUrlFromField()}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                className="linkBtn loginEmulatorBtn"
-                style={{ fontSize: 11 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const emulatorUrl = EMULATOR_GUARD_URL;
-                  setServerUrl(emulatorUrl);
-                  setGuardApiUrl(emulatorUrl);
-                  setAdminApiUrlState(emulatorUrl);
-                  setAdminApiUrl(emulatorUrl);
-                }}
-              >
-                Emulator
-              </button>
-              <button
-                type="button"
-                className="linkBtn"
-                style={{ fontSize: 11, fontWeight: 600 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const railwayUrl = (typeof process !== "undefined" && process.env?.REACT_APP_DEFAULT_BACKEND_URL) || "https://admin-dashboard-production-2596.up.railway.app";
-                  const u = String(railwayUrl).replace(/\/+$/, "");
-                  setServerUrl(u);
-                  setAdminApiUrlState(u);
-                  setGuardApiUrl(u);
-                  setAdminApiUrl(u);
-                  setErr("");
-                }}
-              >
-                Railway
-              </button>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="linkBtn"
-            style={{ marginBottom: 8, fontSize: 12 }}
-            onClick={async () => {
-              const url = persistGuardUrlFromField();
-              setConnectionStatus("checking");
-              setConnectionHint("");
-              try {
-                let r = await probeBackendBase(url);
-                if (!r.ok && isAndroidApp() && url !== EMULATOR_GUARD_URL && isLanIpUrl(url)) {
-                  const fallback = await probeBackendBase(EMULATOR_GUARD_URL);
-                  if (fallback.ok) {
-                    setGuardApiUrl(EMULATOR_GUARD_URL);
-                    setAdminApiUrl(EMULATOR_GUARD_URL);
-                    setServerUrl(EMULATOR_GUARD_URL);
-                    setAdminApiUrlState(EMULATOR_GUARD_URL);
-                    setConnectionStatus("ok");
-                    setConnectionHint("Using emulator URL.");
-                    return;
-                  }
-                }
-                setConnectionStatus(r.ok ? "ok" : "fail");
-                if (!r.ok) {
-                  setConnectionHint(r.error || (r.status ? `Failed (${r.status})` : "Cannot reach server."));
-                }
-              } catch (e) {
-                setConnectionStatus("fail");
-                setConnectionHint(e?.message || "Connection failed.");
-              }
-            }}
-          >
-            {connectionStatus === "checking" ? "Checking…" : connectionStatus === "ok" ? "Connected" : connectionStatus === "fail" ? "Failed" : "Test connection"}
-          </button>
-          {connectionHint ? (
-            <p style={{ fontSize: 11, color: "var(--muted, #aaa)", margin: "6px 0 12px", lineHeight: 1.4 }}>{connectionHint}</p>
-          ) : null}
-
-          <div className="field" style={{ marginBottom: 8 }}>
-            <label className="fieldLabel">Admin API URL</label>
-            <div className="fieldControl">
-              <input
-                className="fieldInput"
-                type="url"
-                value={adminApiUrl}
-                onChange={(e) => setAdminApiUrlState(e.target.value)}
-                onBlur={() => {
-                  const u = adminApiUrl.trim().replace(/\/+$/, "");
-                  if (u && (u.startsWith("http://") || u.startsWith("https://"))) {
-                    setAdminApiUrl(u);
-                  }
-                }}
-                placeholder="http://localhost:5000"
-                style={{ fontSize: 12 }}
-              />
-            </div>
-            <div className="loginUrlActions" style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-              <button
-                type="button"
-                className="linkBtn"
-                style={{ fontSize: 11 }}
-                onClick={() => {
-                  const u = adminApiUrl.trim().replace(/\/+$/, "");
-                  if (u && (u.startsWith("http://") || u.startsWith("https://"))) {
-                    setAdminApiUrl(u);
-                  }
-                }}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                className="linkBtn loginEmulatorBtn"
-                style={{ fontSize: 11 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const u = EMULATOR_GUARD_URL;
-                  setAdminApiUrlState(u);
-                  setAdminApiUrl(u);
-                }}
-              >
-                Emulator
-              </button>
-              <button
-                type="button"
-                className="linkBtn"
-                style={{ fontSize: 11 }}
-                onClick={async () => {
-                  const url = persistAdminUrlFromField();
-                  setAdminConnectionStatus("checking");
-                  try {
-                    const r = await probeBackendBase(url);
-                    setAdminConnectionStatus(r.ok ? "ok" : "fail");
-                  } catch (e) {
-                    setAdminConnectionStatus("fail");
-                  }
-                }}
-              >
-                {adminConnectionStatus === "checking" ? "Checking…" : adminConnectionStatus === "ok" ? "Connected" : adminConnectionStatus === "fail" ? "Failed" : "Test"}
-              </button>
-            </div>
-          </div>
-
           {err ? (
             <div className="loginAlert" role="alert">
               <div className="loginAlertDot" />
@@ -480,7 +285,6 @@ export default function Login() {
                   className="fieldInput"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="guard@email.com"
                   autoComplete="email"
                 />
               </div>
@@ -518,8 +322,56 @@ export default function Login() {
               )}
             </button>
 
+            {!isProductionBuild && (
             <details className="loginAdvanced" style={{ marginTop: 14 }}>
-              <summary style={{ cursor: "pointer", fontSize: 12, color: "var(--muted)" }}>Advanced</summary>
+              <summary style={{ cursor: "pointer", fontSize: 12, color: "var(--muted)" }}>
+                Settings
+              </summary>
+              <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <button type="button" className="linkBtn" style={{ fontSize: 11 }} onClick={resetUrls}>
+                  Reset
+                </button>
+                <button type="button" className="linkBtn" style={{ fontSize: 11 }} onClick={applyEmulator}>
+                  Emulator
+                </button>
+                <button type="button" className="linkBtn" style={{ fontSize: 11 }} onClick={applyRailway}>
+                  Railway
+                </button>
+                <button
+                  type="button"
+                  className="linkBtn"
+                  style={{ fontSize: 11 }}
+                  onClick={() => probeBackendBase(persistGuardUrlFromField())}
+                >
+                  Test
+                </button>
+              </div>
+              <div className="field" style={{ marginTop: 10 }}>
+                <label className="fieldLabel">Server URL</label>
+                <div className="fieldControl">
+                  <input
+                    className="fieldInput"
+                    type="url"
+                    value={serverUrl}
+                    onChange={(e) => setServerUrl(e.target.value)}
+                    onBlur={() => persistGuardUrlFromField()}
+                    style={{ fontSize: 12 }}
+                  />
+                </div>
+              </div>
+              <div className="field" style={{ marginTop: 8 }}>
+                <label className="fieldLabel">Admin API URL</label>
+                <div className="fieldControl">
+                  <input
+                    className="fieldInput"
+                    type="url"
+                    value={adminApiUrl}
+                    onChange={(e) => setAdminApiUrlState(e.target.value)}
+                    onBlur={() => persistAdminUrlFromField()}
+                    style={{ fontSize: 12 }}
+                  />
+                </div>
+              </div>
               <div className="field" style={{ marginTop: 10 }}>
                 <label className="fieldLabel">Dev token</label>
                 <div className="fieldControl" style={{ alignItems: "stretch" }}>
@@ -528,7 +380,6 @@ export default function Login() {
                     rows={2}
                     value={devToken}
                     onChange={(e) => setDevToken(e.target.value)}
-                    placeholder="JWT"
                     style={{ resize: "vertical" }}
                   />
                 </div>
@@ -542,10 +393,11 @@ export default function Login() {
                     localStorage.removeItem("guardToken");
                   }}
                 >
-                  Clear token
+                  Clear
                 </button>
               </div>
             </details>
+            )}
           </form>
         </div>
       </div>

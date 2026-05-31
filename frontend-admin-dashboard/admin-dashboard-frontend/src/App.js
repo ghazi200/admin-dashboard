@@ -74,14 +74,7 @@ export default function App() {
         <Route
           path="/login"
           element={
-            <AuthLayout
-              leftKicker="ABE"
-              leftTitle="Admin Command Center Powered By AI Agent 24"
-              leftSubtitle="Manage guards, shifts, and coverage issues in one place. Secure JWT auth with Admin API."
-              badges={["Auth: JWT", "Ops: Live Callouts", "CRUD: Guards/Shifts"]}
-              formTitle="Sign in"
-              formSubtitle="Use your credentials"
-            >
+            <AuthLayout formTitle="Sign in">
               <Login />
             </AuthLayout>
           }
