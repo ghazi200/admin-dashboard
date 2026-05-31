@@ -558,6 +558,7 @@ const authGuard = require("./src/middleware/authGuard");
 const { getGuardDashboard } = require("./src/controllers/guardDashboard.controller");
 const guardShiftsController = guardShiftsControllerEarly;
 const guardTimePunchController = require("./src/controllers/guardTimePunch.controller");
+const guardOvertimeController = require("./src/controllers/guardOvertime.controller");
 const guardUiStubs = require("./src/controllers/guardUiStubs.controller");
 const adminScheduleController = require("./src/controllers/adminSchedule.controller");
 
@@ -578,6 +579,11 @@ app.post("/api/guard/shifts/:shiftId/break-start", authGuard, guardTimePunchCont
 app.post("/api/guard/shifts/:shiftId/break-end", authGuard, guardTimePunchController.breakEnd);
 app.post("/api/guard/shifts/:shiftId/running-late", authGuard, guardTimePunchController.runningLate);
 app.post("/api/guard/shifts/:shiftId/accept", authGuard, guardShiftsController.acceptGuardShift);
+app.get("/api/guard/overtime/status/:shiftId", authGuard, guardOvertimeController.getOvertimeStatus);
+app.get("/api/guard/overtime/offers", authGuard, guardOvertimeController.getOvertimeOffers);
+app.post("/api/guard/overtime/request", authGuard, guardOvertimeController.requestOvertime);
+app.post("/api/guard/overtime/offers/:offerId/accept", authGuard, guardOvertimeController.acceptOvertimeOffer);
+app.post("/api/guard/overtime/offers/:offerId/decline", authGuard, guardOvertimeController.declineOvertimeOffer);
 
 // Guard callouts: guard-ui posts to /callouts/* (historical abe-guard-ai API).
 // This backend is the unified Railway host, so proxy to abe-guard-ai when configured.

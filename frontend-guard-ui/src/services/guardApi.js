@@ -611,40 +611,70 @@ export async function getGuardDashboard() {
 
 /* ================= OVERTIME ================= */
 
+async function guardApiGet(path) {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  const headers = guardAuthHeaders();
+  if (isNativeCapable()) {
+    const base = getGuardApiUrl().replace(/\/+$/, "");
+    const res = await nativeGetJson(`${base}${p}`, headers);
+    if (!res.ok) {
+      const err = new Error(res.data?.message || res.data?.error || res.error || "Request failed");
+      err.response = { status: res.status, data: res.data || {} };
+      throw err;
+    }
+    return { data: res.data };
+  }
+  return guardClient.get(p, { headers });
+}
+
+async function guardApiPost(path, body = {}) {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  const headers = guardAuthHeaders();
+  if (isNativeCapable()) {
+    const base = getGuardApiUrl().replace(/\/+$/, "");
+    const res = await nativePostJson(`${base}${p}`, body, headers);
+    if (!res.ok) {
+      const err = new Error(res.data?.message || res.data?.error || res.error || "Request failed");
+      err.response = { status: res.status, data: res.data || {} };
+      throw err;
+    }
+    return { data: res.data };
+  }
+  return guardClient.post(p, body, { headers });
+}
+
 /**
  * Get overtime status for a shift
  * GET /api/guard/overtime/status/:shiftId
  */
 export const getOvertimeStatus = (shiftId) =>
-  guardClient.get(`/api/guard/overtime/status/${shiftId}`, { headers: guardAuthHeaders() });
+  guardApiGet(`/api/guard/overtime/status/${encodeURIComponent(shiftId)}`);
 
 /**
  * Get pending overtime offers
  * GET /api/guard/overtime/offers
  */
-export const getOvertimeOffers = () =>
-  guardClient.get("/api/guard/overtime/offers", { headers: guardAuthHeaders() });
+export const getOvertimeOffers = () => guardApiGet("/api/guard/overtime/offers");
 
 /**
  * Accept an overtime offer
  * POST /api/guard/overtime/offers/:offerId/accept
  */
 export const acceptOvertimeOffer = (offerId) =>
-  guardClient.post(`/api/guard/overtime/offers/${offerId}/accept`, {}, { headers: guardAuthHeaders() });
+  guardApiPost(`/api/guard/overtime/offers/${encodeURIComponent(offerId)}/accept`);
 
 /**
  * Decline an overtime offer
  * POST /api/guard/overtime/offers/:offerId/decline
  */
 export const declineOvertimeOffer = (offerId) =>
-  guardClient.post(`/api/guard/overtime/offers/${offerId}/decline`, {}, { headers: guardAuthHeaders() });
+  guardApiPost(`/api/guard/overtime/offers/${encodeURIComponent(offerId)}/decline`);
 
 /**
  * Request overtime (guard-initiated)
  * POST /api/guard/overtime/request
  */
-export const requestOvertime = (data) =>
-  guardClient.post("/api/guard/overtime/request", data, { headers: guardAuthHeaders() });
+export const requestOvertime = (data) => guardApiPost("/api/guard/overtime/request", data);
 
 /* ================= EARNINGS TRACKER ================= */
 

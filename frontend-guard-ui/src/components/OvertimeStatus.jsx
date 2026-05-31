@@ -19,34 +19,44 @@ const OvertimeStatus = ({ shiftId, isClockedIn }) => {
   useEffect(() => {
     if (!shiftId || !isClockedIn) {
       setStatus(null);
+      setError(null);
       return;
     }
+
+    let cancelled = false;
 
     const fetchStatus = async () => {
       try {
         setLoading(true);
         setError(null);
-        console.log(`🔍 Fetching overtime status for shift ${shiftId}...`);
         const response = await getOvertimeStatus(shiftId);
-        // Handle both response formats: { data: {...} } or direct object
+        if (cancelled) return;
         const statusData = response.data || response;
-        console.log("✅ Overtime status received:", statusData);
         setStatus(statusData);
       } catch (err) {
-        console.error("❌ Error fetching overtime status:", err);
-        console.error("   Response:", err.response?.data);
+        if (cancelled) return;
+        const status = err.response?.status;
+        // Overtime is supplementary — don't alarm the guard for missing routes or stale shifts.
+        if (status === 404 || status === 503) {
+          console.warn("Overtime status unavailable:", err.response?.data?.message || err.message);
+          setStatus(null);
+          setError(null);
+          return;
+        }
+        console.error("Error fetching overtime status:", err);
         setError(err.response?.data?.message || err.message || "Failed to load overtime status");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchStatus();
-
-    // Update every minute
     const interval = setInterval(fetchStatus, 60000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [shiftId, isClockedIn]);
 
   if (!shiftId || !isClockedIn) return null;
@@ -69,7 +79,7 @@ const OvertimeStatus = ({ shiftId, isClockedIn }) => {
       </div>
     );
   }
-  if (!status || status.status === "not_clocked_in") return null;
+  if (!status || status.status === "not_clocked_in" || status.status === "not_available") return null;
 
   const { currentHours, weeklyHours, projectedDaily, dailyOTThreshold, weeklyOTThreshold, status: otStatus, alerts } = status;
 
