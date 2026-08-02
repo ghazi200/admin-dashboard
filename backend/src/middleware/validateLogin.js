@@ -11,7 +11,8 @@ const loginValidators = [
     .withMessage("Email is required")
     .isEmail()
     .withMessage("Must be a valid email")
-    .normalizeEmail()
+    // Keep dots in Gmail local-part (seth.cousins ≠ sethcousins). Default normalizeEmail strips them.
+    .normalizeEmail({ gmail_remove_dots: false, gmail_remove_subaddress: false })
     .isLength({ max: 255 })
     .withMessage("Email too long"),
   body("password")
