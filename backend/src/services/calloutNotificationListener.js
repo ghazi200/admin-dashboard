@@ -243,16 +243,18 @@ function initCalloutNotificationListener(app) {
         console.log(`   Location: ${location || "N/A"}`);
         console.log(`   Callout ID: ${calloutId ? calloutId.substring(0, 8) + "..." : "N/A"}`);
 
-        const { notifyCalloutAccepted } = require("./calloutAcceptNotification.service");
-        const created = await notifyCalloutAccepted(app, {
-          shiftId,
-          guardId,
-          calloutId,
-          response,
-          filled: payload?.filled !== false,
-        });
-        if (created?.id) {
-          console.log(`✅ Created CALLOUT_ACCEPTED notification: ${created.id}`);
+        if (payload?.filled === true) {
+          const { notifyCalloutAccepted } = require("./calloutAcceptNotification.service");
+          const created = await notifyCalloutAccepted(app, {
+            shiftId,
+            guardId,
+            calloutId,
+            response,
+            filled: true,
+          });
+          if (created?.id) {
+            console.log(`✅ Created CALLOUT_ACCEPTED notification: ${created.id}`);
+          }
         }
       } else if (response === "REJECTED" || response === "NO" || response === "DECLINED") {
         console.log(`❌ Guard rejected shift:`);

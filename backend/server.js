@@ -732,9 +732,62 @@ app.post("/callouts/trigger", authGuard, async (req, res) => {
   }
 });
 
+app.get("/callouts/mine", authGuard, async (req, res) => {
+  try {
+    const guardId = req.guard?.id;
+    if (!guardId) return res.status(401).json({ message: "Unauthorized" });
+    const { sequelize } = req.app.locals.models;
+    const [rows] = await sequelize.query(
+      `
+      SELECT
+        c.id AS "calloutId",
+        c.reason,
+        c.created_at AS "createdAt",
+        c.shift_id AS "shiftId",
+        s.location,
+        s.shift_date AS "shiftDate",
+        s.shift_start AS "shiftStart",
+        s.shift_end AS "shiftEnd",
+        s.status AS "shiftStatus"
+      FROM callouts c
+      INNER JOIN shifts s ON s.id = c.shift_id
+      WHERE c.guard_id = $1::uuid
+        AND UPPER(TRIM(COALESCE(s.status, ''))) = 'OPEN'
+      ORDER BY c.created_at DESC
+      LIMIT 50
+      `,
+      { bind: [String(guardId)] }
+    );
+    return res.json({ data: rows || [] });
+  } catch (e) {
+    logger.warn({ err: e?.message }, "GET /callouts/mine failed");
+    return res.status(500).json({ message: "Failed to load callout offers", error: e.message });
+  }
+});
+
 app.post("/callouts/:calloutId/respond", authGuard, async (req, res) => {
   const calloutId = String(req.params.calloutId || "").trim();
   const response = req.body?.response;
+  const actorId = req.guard?.id ? String(req.guard.id) : null;
+
+  // Block accepting/declining someone else's offer (prevents false "Ghazi accepted")
+  if (actorId && calloutId && req.app.locals.models?.sequelize) {
+    try {
+      const [rows] = await req.app.locals.models.sequelize.query(
+        `SELECT guard_id::text AS guard_id FROM callouts WHERE id = $1::uuid LIMIT 1`,
+        { bind: [calloutId] }
+      );
+      const offeredTo = rows?.[0]?.guard_id ? String(rows[0].guard_id) : null;
+      if (offeredTo && offeredTo !== actorId) {
+        return res.status(403).json({
+          message: "Only the ranked guard for this offer can accept or decline",
+        });
+      }
+    } catch (e) {
+      logger.warn({ err: e?.message }, "callout respond ownership check failed");
+    }
+  }
+
   const base = getAbeGuardAiBase();
   if (!base) {
     return res.status(501).json({
@@ -755,20 +808,17 @@ app.post("/callouts/:calloutId/respond", authGuard, async (req, res) => {
       validateStatus: () => true,
     });
 
-    // Admin bell: "Ghazi accepted MAIN BUILDING…" (does not rely on Guard AI socket)
-    if (
-      r.status >= 200 &&
-      r.status < 300 &&
-      (String(response).toUpperCase() === "ACCEPTED" || r.data?.filled)
-    ) {
+    // Admin bell only on a real successful accept that filled the shift
+    const accepted = String(response || "").toUpperCase() === "ACCEPTED";
+    if (r.status >= 200 && r.status < 300 && accepted && r.data?.filled === true) {
       try {
         const { notifyCalloutAccepted } = require("./src/services/calloutAcceptNotification.service");
         await notifyCalloutAccepted(req.app, {
           shiftId: r.data?.shiftId,
-          guardId: r.data?.assignedGuardId || req.guard?.id,
+          guardId: r.data?.assignedGuardId || actorId,
           calloutId,
-          response: response || "ACCEPTED",
-          filled: r.data?.filled !== false,
+          response: "ACCEPTED",
+          filled: true,
         });
       } catch (e) {
         logger.warn({ err: e?.message }, "CALLOUT_ACCEPTED notification failed");

@@ -1,5 +1,5 @@
 // src/pages/Callouts.jsx
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
 import RunningLateDropdown from "../components/RunningLateDropdown";
 import {
@@ -7,6 +7,7 @@ import {
   triggerCallout,
   runningLate,
   respondToCallout,
+  listMyCalloutOffers,
 } from "../services/guardApi";
 
 /* ================= HELPERS ================= */
@@ -57,8 +58,6 @@ function titleizeReason(v) {
   return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, " ");
 }
 
-/* ===== STATE → COLOR MAPPING ===== */
-
 function normalizeStatus(v) {
   return String(v || "").trim().toLowerCase();
 }
@@ -92,8 +91,28 @@ export default function Callouts() {
 
   const [calloutResult, setCalloutResult] = useState(null);
 
-  const [acceptLoadingId, setAcceptLoadingId] = useState("");
-  const [acceptMsg, setAcceptMsg] = useState("");
+  const [myOffers, setMyOffers] = useState([]);
+  const [offersLoading, setOffersLoading] = useState(false);
+  const [respondLoadingId, setRespondLoadingId] = useState("");
+  const [respondMsg, setRespondMsg] = useState("");
+
+  const loadMyOffers = useCallback(async () => {
+    setOffersLoading(true);
+    try {
+      const res = await listMyCalloutOffers();
+      const rows = Array.isArray(res?.data?.data)
+        ? res.data.data
+        : Array.isArray(res?.data)
+          ? res.data
+          : [];
+      setMyOffers(rows);
+    } catch (e) {
+      console.warn("listMyCalloutOffers failed", e?.message || e);
+      setMyOffers([]);
+    } finally {
+      setOffersLoading(false);
+    }
+  }, []);
 
   const loadCurrentShift = async () => {
     setErr("");
@@ -123,7 +142,8 @@ export default function Callouts() {
 
   useEffect(() => {
     loadCurrentShift();
-  }, []);
+    loadMyOffers();
+  }, [loadMyOffers]);
 
   const requireShiftId = () => {
     if (!shiftId.trim()) {
@@ -136,7 +156,7 @@ export default function Callouts() {
   const callout = async () => {
     setErr("");
     setMsg("");
-    setAcceptMsg("");
+    setRespondMsg("");
     setCalloutResult(null);
 
     if (!requireShiftId()) return;
@@ -158,7 +178,7 @@ export default function Callouts() {
   const late = async ({ minutesLate, reason }) => {
     setErr("");
     setMsg("");
-    setAcceptMsg("");
+    setRespondMsg("");
     setCalloutResult(null);
 
     if (!requireShiftId()) return;
@@ -181,37 +201,26 @@ export default function Callouts() {
 
   const onRespond = async (calloutId, response) => {
     setErr("");
-    setAcceptMsg("");
+    setRespondMsg("");
 
     if (!calloutId) {
-      setErr("Missing calloutId for this guard offer.");
+      setErr("Missing callout offer id.");
       return;
     }
 
-    setAcceptLoadingId(String(calloutId));
+    setRespondLoadingId(String(calloutId));
     try {
-      const res = await respondToCallout(calloutId, response);
-      const data = res?.data || null;
+      await respondToCallout(calloutId, response);
 
-      if (response === "ACCEPTED") setAcceptMsg("✅ Accepted.");
-      if (response === "DECLINED") setAcceptMsg("✅ Declined.");
+      if (response === "ACCEPTED") setRespondMsg("✅ You accepted this shift.");
+      if (response === "DECLINED") setRespondMsg("✅ You declined this offer.");
 
-      if (data?.shiftId) {
-        setCalloutResult((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: data?.status ?? prev.status,
-                assignedGuardId: data?.assignedGuardId ?? prev.assignedGuardId,
-              }
-            : prev
-        );
-      }
+      await loadMyOffers();
     } catch (e) {
       setErr(e?.response?.data?.message || e?.message || "Failed to respond");
     } finally {
-      setAcceptLoadingId("");
-      setTimeout(() => setAcceptMsg(""), 2500);
+      setRespondLoadingId("");
+      setTimeout(() => setRespondMsg(""), 3000);
     }
   };
 
@@ -223,8 +232,65 @@ export default function Callouts() {
     <>
       <NavBar />
       <div className="page">
+        {/* Incoming offers — Accept / Decline for the logged-in guard */}
+        <div className="card state--warn" style={{ marginBottom: 14 }}>
+          <h2>Offers for you</h2>
+          <div className="muted" style={{ marginBottom: 10 }}>
+            Open shifts the AI ranked you for. Accept or decline here.
+          </div>
+
+          <div className="row" style={{ marginBottom: 10 }}>
+            <button className="btn" onClick={loadMyOffers} disabled={offersLoading}>
+              {offersLoading ? "Loading…" : "Refresh offers"}
+            </button>
+          </div>
+
+          {respondMsg && <div className="success">{respondMsg}</div>}
+
+          {!offersLoading && myOffers.length === 0 ? (
+            <div className="muted">No open callout offers right now.</div>
+          ) : (
+            myOffers.map((o) => (
+              <div
+                key={o.calloutId || o.id}
+                style={{
+                  marginTop: 12,
+                  paddingTop: 12,
+                  borderTop: "1px solid rgba(0,0,0,0.08)",
+                }}
+              >
+                <div>
+                  <b>{o.location || "Open shift"}</b>
+                </div>
+                <div className="muted">
+                  {o.shiftDate || "—"}{" "}
+                  {o.shiftStart && o.shiftEnd ? `• ${o.shiftStart} → ${o.shiftEnd}` : ""}
+                </div>
+                <div className="muted">Reason: {titleizeReason(o.reason)}</div>
+
+                <div className="row" style={{ marginTop: 10, gap: 8 }}>
+                  <button
+                    className="btn state--ok"
+                    disabled={!!respondLoadingId}
+                    onClick={() => onRespond(o.calloutId || o.id, "ACCEPTED")}
+                  >
+                    {respondLoadingId === String(o.calloutId || o.id) ? "…" : "Accept"}
+                  </button>
+                  <button
+                    className="btn state--bad"
+                    disabled={!!respondLoadingId}
+                    onClick={() => onRespond(o.calloutId || o.id, "DECLINED")}
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
         <div className="card state--bad">
-          <h2>Callouts</h2>
+          <h2>Call out of your shift</h2>
 
           <label className="label">
             Shift ID (auto)
@@ -237,12 +303,10 @@ export default function Callouts() {
           </label>
 
           <div className="row" style={{ marginTop: 12 }}>
-            {/* 🔴 Callout */}
             <button className="btn state--bad" onClick={callout} disabled={loading || !shiftId}>
               Call Out
             </button>
 
-            {/* 🟠 Running Late */}
             <div className="stateWrap state--warn">
               <RunningLateDropdown onSubmit={late} disabled={loading || !shiftId} />
             </div>
@@ -256,15 +320,18 @@ export default function Callouts() {
 
           {err && <div className="error">{err}</div>}
           {msg && <div className="success">{msg}</div>}
-          {acceptMsg && <div className="success">{acceptMsg}</div>}
 
           {calloutResult && (
             <div style={{ marginTop: 16 }}>
               <div className="muted">Callout details</div>
 
               <div className="muted">
-                <div><b>Shift:</b> {calloutResult.shiftId || shiftId}</div>
-                <div><b>Reason:</b> {titleizeReason(calloutResult.reason)}</div>
+                <div>
+                  <b>Shift:</b> {calloutResult.shiftId || shiftId}
+                </div>
+                <div>
+                  <b>Reason:</b> {titleizeReason(calloutResult.reason)}
+                </div>
 
                 {calloutResult.status && (
                   <div>
@@ -278,30 +345,17 @@ export default function Callouts() {
 
               {rankings.length > 0 && (
                 <div style={{ marginTop: 12 }}>
-                  <div className="muted">Ranked coverage candidates</div>
+                  <div className="muted">
+                    AI contacted these guards (they accept/decline on their own app — not here)
+                  </div>
 
                   {rankings.map((r) => (
                     <div key={r.calloutId || r.guardId} style={{ marginTop: 10 }}>
-                      <div><b>#{r.rank}</b> — {r.guardId}</div>
-                      <div className="muted">{r.reason}</div>
-
-                      <div className="row" style={{ marginTop: 8 }}>
-                        <button
-                          className="btn state--ok"
-                          disabled={acceptLoadingId}
-                          onClick={() => onRespond(r.calloutId, "ACCEPTED")}
-                        >
-                          Accept
-                        </button>
-
-                        <button
-                          className="btn state--bad"
-                          disabled={acceptLoadingId}
-                          onClick={() => onRespond(r.calloutId, "DECLINED")}
-                        >
-                          Decline
-                        </button>
+                      <div>
+                        <b>#{r.rank}</b>
+                        {r.guardName ? ` — ${r.guardName}` : ""}
                       </div>
+                      <div className="muted">{r.reason}</div>
                     </div>
                   ))}
                 </div>

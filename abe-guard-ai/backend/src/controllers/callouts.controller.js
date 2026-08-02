@@ -347,6 +347,20 @@ async function respondToCallout(req, res) {
     const callout = await Callout.findByPk(calloutId);
     if (!callout) return res.status(404).json({ message: "Callout not found" });
 
+    // Only the offered guard may accept/decline (JWT may be on req.guard or req.user)
+    const actorId =
+      req.guard?.id ||
+      req.guard?.guardId ||
+      req.user?.guardId ||
+      req.user?.id ||
+      null;
+    if (actorId && String(callout.guard_id) !== String(actorId)) {
+      return res.status(403).json({
+        message: "Only the ranked guard for this offer can respond",
+        calloutGuardId: callout.guard_id,
+      });
+    }
+
     const now = new Date();
 
     let filled = false;

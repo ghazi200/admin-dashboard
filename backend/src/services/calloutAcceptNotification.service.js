@@ -79,8 +79,8 @@ async function notifyCalloutAccepted(app, payload = {}) {
   const accepted =
     String(response).toUpperCase() === "ACCEPTED" ||
     String(response).toUpperCase() === "YES";
-  if (!accepted || !shiftId || !guardId) return null;
-  if (filled === false) return null;
+  // Strict: only after a confirmed fill — never on callout create / declines
+  if (!accepted || filled !== true || !shiftId || !guardId) return null;
 
   const { Notification, sequelize } = app.locals.models || {};
   if (!Notification) return null;

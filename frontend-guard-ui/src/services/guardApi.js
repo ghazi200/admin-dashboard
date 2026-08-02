@@ -277,6 +277,9 @@ export const triggerCallout = (payload) =>
 export const respondToCallout = (calloutId, response = "ACCEPTED") =>
   guardApiPost(`/callouts/${encodeURIComponent(calloutId)}/respond`, { response });
 
+/** Open callout offers for the logged-in guard (Accept / Decline). */
+export const listMyCalloutOffers = () => guardApiGet("/callouts/mine");
+
 /* ================= POLICY ================= */
 
 export const askPolicy = (payload) =>
