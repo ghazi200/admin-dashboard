@@ -700,6 +700,27 @@ app.post("/callouts/trigger", authGuard, async (req, res) => {
       }).catch((e) => logger.warn({ err: e?.message }, "callout_started realtime emit failed"));
     }
 
+    // Email / SMS ranked replacements (SMTP + Twilio on this admin service)
+    if (r.status >= 200 && r.status < 300 && Array.isArray(r.data?.rankings) && r.data.rankings.length) {
+      try {
+        const { notifyRankedGuardsOutbound } = require("./src/services/guardCalloutOutbound.service");
+        const outbound = await notifyRankedGuardsOutbound(req.app, {
+          shiftId: payload.shiftId,
+          reason: payload.reason,
+          rankings: r.data.rankings,
+          callouts: r.data.callouts,
+        });
+        if (r.data && typeof r.data === "object") {
+          r.data.outboundNotify = {
+            emailed: outbound.emailed,
+            smsed: outbound.smsed,
+          };
+        }
+      } catch (e) {
+        logger.warn({ err: e?.message }, "callout outbound email/SMS failed");
+      }
+    }
+
     return res.status(r.status).json(r.data);
   } catch (e) {
     const msg = e?.message || String(e);

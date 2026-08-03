@@ -59,13 +59,19 @@ curl -s https://YOUR-GUARD-AI-URL/health
 
 ---
 
-### Railway — Admin backend (add one variable)
+### Railway — Admin backend (callout + email/SMS)
 
 On the **admin** service (`backend/`):
 
 | Variable | Value |
 |----------|--------|
 | `ABE_GUARD_AI_URL` | `https://YOUR-GUARD-AI-URL.up.railway.app` (no trailing slash) |
+| `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | Email ranked replacements (e.g. Ghazi) |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | SMS ranked replacements |
+| `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_PHONE_NUMBER` | Twilio From / Messaging Service |
+| `CALLOUT_MAX_GUARDS_NOTIFY` | Optional cap (e.g. `10`) |
+
+In-app callout alerts come from Guard AI. **Email/SMS are sent by the admin backend** after ranking so they work when SMTP/Twilio are set on admin Railway.
 
 Redeploy admin backend.
 
