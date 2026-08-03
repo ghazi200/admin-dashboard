@@ -28,10 +28,19 @@ router.post("/login", authLimiter, loginValidators, handleLoginValidation, async
     const email = String(req.body?.email || "").trim().toLowerCase();
     const password = String(req.body?.password || "");
 
+    // Gmail ignores dots; DB may store dotted or undotted local-part
+    const candidates = [email];
+    const m = email.match(/^([^@]+)@(gmail\.com|googlemail\.com)$/i);
+    if (m) {
+      candidates.push(`${m[1].replace(/\./g, "")}@gmail.com`);
+    }
+    const unique = [...new Set(candidates)];
+
     // ✅ Query GUARDS (not admins)
-    const result = await pool.query("SELECT * FROM guards WHERE lower(email)=lower($1) LIMIT 1", [
-      email,
-    ]);
+    const result = await pool.query(
+      "SELECT * FROM guards WHERE lower(email) = ANY($1::text[]) LIMIT 1",
+      [unique]
+    );
 
     const guard = result.rows[0];
     if (!guard) {

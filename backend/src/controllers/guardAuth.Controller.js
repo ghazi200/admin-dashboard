@@ -1,5 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { Op } = require("sequelize");
+const { emailLookupCandidates } = require("../utils/emailLookup");
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
@@ -19,8 +21,9 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
+    const candidates = emailLookupCandidates(email);
     const guard = await Guard.findOne({
-      where: { email },
+      where: { email: { [Op.in]: candidates } },
       attributes: ["id", "email", "name", "password_hash", "tenant_id", "failed_login_attempts", "locked_until"],
     });
 
