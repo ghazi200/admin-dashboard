@@ -23,6 +23,9 @@ const crypto = require("crypto");
 const envPath = path.resolve(__dirname, ".env");
 require("dotenv").config({ path: envPath });
 
+const nodeEnv = String(process.env.NODE_ENV || "").trim().toLowerCase();
+const isProduction = nodeEnv === "production";
+
 const logger = require("./logger");
 
 // ---------- PATCH SEQUELIZE SO ContactPreference NEVER CREATES FK ----------
@@ -76,7 +79,7 @@ Sequelize.prototype.sync = async function (options) {
 // ---------- END PATCH ----------
 
 // Require JWT_SECRET in production so the app never runs with a weak/missing secret
-if (process.env.NODE_ENV === "production") {
+if (isProduction) {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
     logger.error("JWT_SECRET is required in production and must be at least 16 characters. In Railway: open this service → Variables → add JWT_SECRET with a long random string (e.g. 32+ chars). See backend/RAILWAY_VARIABLES.txt");
     process.exit(1);
@@ -93,8 +96,6 @@ if (process.env.NODE_ENV === "production") {
     logger.info("Production DATABASE_URL is set");
   }
 }
-
-const isProduction = process.env.NODE_ENV === "production";
 
 const express = require("express");
 const jwt = require("jsonwebtoken");
@@ -650,7 +651,64 @@ app.post("/callouts/trigger", authGuard, async (req, res) => {
     callerGuardId: req.guard?.id || null,
     tenantId: req.guard?.tenant_id || null,
   };
-  return proxyToAbeGuardAi(req, res, "POST", "/callouts/trigger", payload);
+
+  // Mark OPEN on this service's DB immediately so admin Open Shifts updates
+  // even if Guard AI is slow or momentarily out of sync.
+  if (shiftId && req.app.locals.models?.sequelize) {
+    try {
+      await req.app.locals.models.sequelize.query(
+        `UPDATE shifts SET status = 'OPEN', guard_id = NULL WHERE id = $1::uuid`,
+        { bind: [String(shiftId)] }
+      );
+    } catch (e) {
+      logger.warn({ err: e?.message, shiftId }, "callouts/trigger: local OPEN update failed");
+    }
+  }
+
+  const base = getAbeGuardAiBase();
+  if (!base) {
+    return res.status(501).json({
+      message: "Callouts service not configured. Set ABE_GUARD_AI_URL on the backend (Railway Variables).",
+      needed: "ABE_GUARD_AI_URL=https://<your-abe-guard-ai-backend>.up.railway.app",
+    });
+  }
+
+  try {
+    const axios = require("axios");
+    const url = `${base}/callouts/trigger`;
+    const auth = req.headers.authorization ? { Authorization: req.headers.authorization } : {};
+    const r = await axios.request({
+      url,
+      method: "POST",
+      data: payload,
+      headers: { "Content-Type": "application/json", Accept: "application/json", ...auth },
+      timeout: 60000,
+      validateStatus: () => true,
+    });
+
+    // Mirror to admin realtime so dashboard refreshes without relying only on Guard AI socket
+    const emitRealtime = req.app.locals.emitToRealtime;
+    if (r.status >= 200 && r.status < 300 && typeof emitRealtime === "function") {
+      const room = payload.tenantId ? `tenant:${payload.tenantId}` : "role:all";
+      emitRealtime(req.app, room, "callout_started", {
+        shiftId: payload.shiftId,
+        reason: payload.reason,
+        callerGuardId: payload.callerGuardId,
+        tenantId: payload.tenantId,
+        createdCalloutsCount: r.data?.callouts?.length ?? r.data?.createdCalloutsCount,
+        ts: new Date().toISOString(),
+      }).catch((e) => logger.warn({ err: e?.message }, "callout_started realtime emit failed"));
+    }
+
+    return res.status(r.status).json(r.data);
+  } catch (e) {
+    const msg = e?.message || String(e);
+    return res.status(502).json({
+      message: "Callouts proxy failed",
+      error: msg,
+      hint: "Verify ABE_GUARD_AI_URL is the public abe-guard-ai backend URL (include https://).",
+    });
+  }
 });
 
 app.post("/callouts/:calloutId/respond", authGuard, async (req, res) => {
@@ -805,7 +863,7 @@ app.get("/health/ready", async (req, res) => {
     return res.status(503).json({
       status: "not ready",
       database: "disconnected",
-      error: process.env.NODE_ENV === "production" ? undefined : e?.message,
+      error: isProduction ? undefined : e?.message,
     });
   }
 });

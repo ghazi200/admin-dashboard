@@ -94,24 +94,16 @@ function initCalloutNotificationListener(app) {
         return;
       }
 
-      // Get guard name from shift data or query database
+      // Caller name: always resolve by callerGuardId (shift.guard is cleared when marked OPEN)
       let guardName = "Guard";
-      let shiftDate = null;
-      let shiftStart = null;
-      let shiftEnd = null;
-      let location = null;
+      let shiftDate = shift?.shift_date || null;
+      let shiftStart = shift?.shift_start || null;
+      let shiftEnd = shift?.shift_end || null;
+      let location = shift?.location || null;
 
-      if (shift) {
-        guardName = shift.guard?.name || shift.guard?.email || `Guard ${String(callerGuardId || "").substring(0, 8)}`;
-        shiftDate = shift.shift_date;
-        shiftStart = shift.shift_start;
-        shiftEnd = shift.shift_end;
-        location = shift.location;
-      } else {
-        // Query database for shift and guard info
-        const { sequelize } = app.locals.models;
-        
-        // First, get shift info
+      const { sequelize } = app.locals.models;
+
+      if ((!shiftDate || !location) && sequelize) {
         const [shiftRows] = await sequelize.query(
           `SELECT shift_date, shift_start, shift_end, location
            FROM shifts
@@ -119,29 +111,30 @@ function initCalloutNotificationListener(app) {
            LIMIT 1`,
           { bind: [shiftId] }
         );
-        
         if (shiftRows.length > 0) {
           const row = shiftRows[0];
-          shiftDate = row.shift_date;
-          shiftStart = row.shift_start;
-          shiftEnd = row.shift_end;
-          location = row.location;
+          shiftDate = shiftDate || row.shift_date;
+          shiftStart = shiftStart || row.shift_start;
+          shiftEnd = shiftEnd || row.shift_end;
+          location = location || row.location;
         }
-        
-        // Try to get guard name (guards table might use INTEGER or UUID)
-        if (callerGuardId) {
-          // Try UUID first (abe-guard-ai uses UUID)
-          const [guardRows] = await sequelize.query(
-            `SELECT name, email FROM guards WHERE id::text = $1 OR id = $1 LIMIT 1`,
-            { bind: [callerGuardId] }
-          );
-          if (guardRows.length > 0) {
-            guardName = guardRows[0].name || guardRows[0].email || `Guard ${String(callerGuardId).substring(0, 8)}`;
-          } else {
-            // Fallback to shortened UUID
-            guardName = `Guard ${String(callerGuardId).substring(0, 8)}`;
-          }
+      }
+
+      if (callerGuardId && sequelize) {
+        const [guardRows] = await sequelize.query(
+          `SELECT name, email FROM guards WHERE id::text = $1 LIMIT 1`,
+          { bind: [String(callerGuardId)] }
+        );
+        if (guardRows.length > 0) {
+          guardName =
+            guardRows[0].name ||
+            guardRows[0].email ||
+            `Guard ${String(callerGuardId).substring(0, 8)}`;
+        } else {
+          guardName = `Guard ${String(callerGuardId).substring(0, 8)}`;
         }
+      } else if (shift?.guard?.name || shift?.guard?.email) {
+        guardName = shift.guard.name || shift.guard.email;
       }
 
       const reasonText = reason || "Unknown reason";

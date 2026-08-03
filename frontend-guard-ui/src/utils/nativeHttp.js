@@ -338,3 +338,58 @@ export async function nativePost(url, data) {
 
   return viaFetch();
 }
+
+/**
+ * DELETE with optional JSON body/headers (messaging leave / delete message on Capacitor).
+ */
+export async function nativeDeleteJson(url, headers = {}) {
+  const mergedHeaders = { Accept: "application/json", ...headers };
+
+  async function viaFetch() {
+    try {
+      const r = await fetch(url, { method: "DELETE", headers: mergedHeaders, cache: "no-store" });
+      const body = await r.json().catch(() => ({}));
+      return {
+        ok: r.ok,
+        status: r.status,
+        data: body,
+        error: r.ok ? undefined : String(body?.message || body?.error || r.status),
+      };
+    } catch (e) {
+      return { ok: false, status: 0, data: null, error: e?.message || "Network error" };
+    }
+  }
+
+  if (isNativeCapable()) {
+    let st = 0;
+    let parsed;
+    try {
+      const { CapacitorHttp } = await import("@capacitor/core");
+      const r = await CapacitorHttp.delete({
+        url,
+        headers: mergedHeaders,
+        ...CAP_HTTP_LONG,
+      });
+      st = r.status;
+      parsed = parseCapacitorBody(r.data);
+      const ok = r.status >= 200 && r.status < 300;
+      if (ok) return { ok: true, status: r.status, data: parsed };
+      if (!shouldUseFetchFallback(st)) {
+        return {
+          ok: false,
+          status: r.status,
+          data: parsed,
+          error: String(parsed?.message || parsed?.error || r.status),
+        };
+      }
+    } catch (e) {
+      st = e.status || 0;
+      if (!shouldUseFetchFallback(st)) {
+        return { ok: false, status: st, data: null, error: e?.message || String(e) };
+      }
+    }
+    return viaFetch();
+  }
+
+  return viaFetch();
+}

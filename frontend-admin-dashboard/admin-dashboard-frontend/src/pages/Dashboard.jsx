@@ -233,9 +233,10 @@ export default function Dashboard() {
       return data;
     },
     enabled: canReadDashboard,
-    // safety net if socket drops:
-    refetchInterval: canReadDashboard ? 15000 : false,
+    // Keep in sync with callouts (callout marks shift OPEN)
+    refetchInterval: canReadDashboard ? 5000 : false,
     refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const qCallouts = useQuery({
@@ -471,81 +472,35 @@ export default function Dashboard() {
 
     const refreshAll = async () => {
       console.log("🔄 Refreshing all dashboard queries...");
-      
+
       try {
-        // Fetch directly from API to get latest data
-        console.log("🔍 Fetching directly from API...");
-        const directResponse = await getLiveCallouts();
-        const directData = directResponse.data;
-        const directCount = directData?.data?.length || 0;
-        console.log("🔍 Direct API call - Count:", directCount);
-        console.log("🔍 Direct API call - Latest ID:", directData?.data?.[0]?.id);
-        console.log("🔍 Direct API call - Full response:", directData);
-        
-        // Get current query data for comparison
-        const currentData = qc.getQueryData(["liveCallouts"]);
-        const currentCount = currentData?.data?.length || 0;
-        console.log("🔍 Current query data - Count:", currentCount);
-        console.log("🔍 Current query data - Latest ID:", currentData?.data?.[0]?.id);
-        
-        // Check if data actually changed
-        const dataChanged = directCount !== currentCount || 
-          (directData?.data?.[0]?.id !== currentData?.data?.[0]?.id);
-        console.log("🔍 Data changed?", dataChanged);
-        
-        // Update both React Query cache AND local state
-        // This ensures immediate UI update
-        console.log("🔄 Updating query data and local state...");
+        const [calloutsRes, openRes] = await Promise.all([
+          getLiveCallouts(),
+          getOpenShifts(),
+        ]);
+        const directData = calloutsRes.data;
+        const openData = openRes.data;
+
         qc.setQueryData(["liveCallouts"], directData);
-        console.log("✅ Query cache updated with:", {
-          count: directData?.data?.length || 0,
-          latestId: directData?.data?.[0]?.id || "none"
-        });
-        
-        const newCalloutsArray = directData.data || [];
-        const currentCalloutsArray = qc.getQueryData(["liveCallouts"])?.data || [];
-        
-        console.log("🔄 [REFRESH] Comparing callouts:", {
-          currentCount: currentCalloutsArray.length,
-          newCount: newCalloutsArray.length,
-          currentFirstId: currentCalloutsArray[0]?.id || "none",
-          newFirstId: newCalloutsArray[0]?.id || "none",
-          willUpdate: newCalloutsArray.length !== currentCalloutsArray.length || 
-                     (newCalloutsArray.length > 0 && newCalloutsArray[0]?.id !== currentCalloutsArray[0]?.id),
-        });
-        
-        // Always update to ensure UI reflects latest data
-        setLocalCallouts(newCalloutsArray);
-        console.log("✅ [REFRESH] Local state updated with count:", newCalloutsArray.length);
-        console.log("✅ [REFRESH] Local state updated with latest ID:", newCalloutsArray[0]?.id || "none");
-        
-        // Force a refetch to ensure UI updates
-        await qc.refetchQueries({ queryKey: ["liveCallouts"], type: "active" });
-        console.log("✅ Query refetched to trigger UI update");
-        
-        // Also invalidate other queries
-        qc.invalidateQueries({ queryKey: ["openShifts"] });
+        setLocalCallouts(directData?.data || []);
+        qc.setQueryData(["openShifts"], openData);
+
+        await Promise.all([
+          qc.refetchQueries({ queryKey: ["liveCallouts"], type: "active" }),
+          qc.refetchQueries({ queryKey: ["openShifts"], type: "active" }),
+        ]);
+
         qc.invalidateQueries({ queryKey: ["runningLate"] });
         qc.invalidateQueries({ queryKey: ["clockStatus"] });
         qc.invalidateQueries({ queryKey: ["availability"] });
-        
-        // Verify the update worked
-        const verifyData = qc.getQueryData(["liveCallouts"]);
-        console.log("🔍 Verification - Query data after update:", {
-          count: verifyData?.data?.length || 0,
-          latestId: verifyData?.data?.[0]?.id || "none",
-          matches: verifyData?.data?.[0]?.id === directData?.data?.[0]?.id
-        });
-        
       } catch (err) {
         console.error("❌ Refetch error:", err);
-        console.error("❌ Error stack:", err.stack);
-        // Fallback: invalidate and refetch
         qc.invalidateQueries({ queryKey: ["liveCallouts"] });
+        qc.invalidateQueries({ queryKey: ["openShifts"] });
         qc.refetchQueries({ queryKey: ["liveCallouts"] });
+        qc.refetchQueries({ queryKey: ["openShifts"] });
       }
 
-      // refresh recent activity
       const fn = loadActivityRef.current;
       if (typeof fn === "function") fn();
     };
@@ -1071,11 +1026,22 @@ export default function Dashboard() {
   // Use local state if available, otherwise use query data
   // ✅ FIX: Use useMemo to ensure recalculation when dependencies change
   // Single source of truth: React Query cache (refreshAll/socket use setQueryData too).
+  // Dedupe multi-guard notify rows (same shift/reason/~30s) so KPI rises by 1 per callout.
   const callouts = useMemo(() => {
     const arr = qCallouts.data?.data;
-    const result = Array.isArray(arr) ? arr : [];
+    const raw = Array.isArray(arr) ? arr : [];
+    const seen = new Set();
+    const result = [];
+    for (const c of raw) {
+      const t = c.createdAt || c.timestamp;
+      const bucket = t ? Math.floor(new Date(t).getTime() / 30000) : 0;
+      const key = `${c.shiftId || c.id || ""}|${c.reason || ""}|${bucket}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(c);
+    }
     if (process.env.NODE_ENV === "development") {
-      console.log("🔢 [callouts] from query cache, length:", result.length);
+      console.log("🔢 [callouts] from query cache, raw:", raw.length, "deduped:", result.length);
     }
     return result;
   }, [qCallouts.data, qCallouts.dataUpdatedAt]);

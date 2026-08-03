@@ -5,7 +5,8 @@ const bcrypt = require("bcryptjs");
 const { DEFAULT_TEST_TENANT_ID } = require("../config/tenantConfig");
 
 router.use((req, res, next) => {
-  if (process.env.NODE_ENV === "production") {
+  const isProduction = String(process.env.NODE_ENV || "").trim().toLowerCase() === "production";
+  if (isProduction) {
     return res.status(404).json({ message: "Not found" });
   }
   next();

@@ -223,9 +223,10 @@ export default function Messages() {
       ? undefined
       : conversations.find((c) => String(c?.id) === String(selectedId));
 
-  const loadConversations = useCallback(function loadConversations() {
-    setLoading(true);
-    setError("");
+  const loadConversations = useCallback(function loadConversations(opts = {}) {
+    const showSpinner = opts.showSpinner !== false;
+    if (showSpinner) setLoading(true);
+    if (showSpinner) setError("");
     listConversations()
       .then((res) => {
         const raw = res.data?.conversations ?? res.data?.data?.conversations;
@@ -233,17 +234,25 @@ export default function Messages() {
         const normalized = list.map(normalizeConversationRow).filter(Boolean);
         setConversations(normalized);
         if (normalized.length) setSelectedId((prev) => prev || normalized[0].id);
+        setError("");
       })
       .catch((e) => {
         const msg = e?.response?.data?.message || e?.message || "Failed to load conversations";
-        setError(msg);
-        setConversations([]);
+        if (showSpinner) {
+          setError(msg);
+          setConversations([]);
+        }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (showSpinner) setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
-    loadConversations();
+    loadConversations({ showSpinner: true });
+    // New groups/messages from admin won't appear if we only load once
+    const interval = setInterval(() => loadConversations({ showSpinner: false }), 5000);
+    return () => clearInterval(interval);
   }, [loadConversations]);
 
   function normalizeMessage(m, index) {

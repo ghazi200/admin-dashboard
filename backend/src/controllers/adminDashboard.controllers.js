@@ -21,42 +21,91 @@ function fmtDay(d) {
   return `${y}-${m}-${day}`;
 }
 
+/** Cap for Live Callouts name list (UI shows newest; oldest drop off). */
+const LIVE_CALLOUTS_DISPLAY_LIMIT = 6;
+
 /**
  * ✅ GET /api/admin/dashboard/live-callouts
+ * One row per callout event showing the *caller* (who called out), not each
+ * notified replacement. Newest first; limited to LIVE_CALLOUTS_DISPLAY_LIMIT.
  */
 exports.getLiveCallouts = async (req, res) => {
   try {
     const { sequelize } = req.app.locals.models;
 
-    // Join shifts + guards: tenant admins often have NULL on callouts.tenant_id while the
-    // notified guard or shift still belongs to their tenant.
+    // callouts.guard_id = notified replacement; caller is in ai_decisions.decision_json
     const params = [];
     const tenantId = getTenantFilter(req.admin);
-    const tenantSql =
-      tenantId !== null
-        ? `WHERE (c.tenant_id = $1 OR s.tenant_id = $1 OR g.tenant_id = $1)`
-        : "";
+    // Live = callouts for shifts still OPEN (filled shifts drop off the list).
+    const whereParts = [`UPPER(TRIM(COALESCE(s.status, ''))) = 'OPEN'`];
     if (tenantId !== null) {
       params.push(tenantId);
+      whereParts.push(
+        `(c.tenant_id = $1 OR s.tenant_id = $1 OR ng.tenant_id = $1 OR cg.tenant_id = $1)`
+      );
     }
+    const tenantSql = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
     const [rows] = await sequelize.query(
       `
+      WITH events AS (
+        SELECT
+          c.id,
+          c.guard_id AS notified_guard_id,
+          c.reason,
+          c.created_at,
+          c.shift_id,
+          c.tenant_id,
+          ai.caller_guard_id,
+          ROW_NUMBER() OVER (
+            PARTITION BY
+              c.shift_id,
+              COALESCE(c.reason, ''),
+              -- Bucket ~30s so multi-guard notify rows land as one event
+              (FLOOR(EXTRACT(EPOCH FROM c.created_at) / 30))
+            ORDER BY c.created_at ASC, c.id ASC
+          ) AS rn
+        FROM callouts c
+        LEFT JOIN shifts s ON c.shift_id = s.id
+        LEFT JOIN guards ng ON c.guard_id = ng.id
+        LEFT JOIN LATERAL (
+          SELECT (d.decision_json->>'callerGuardId')::uuid AS caller_guard_id
+          FROM ai_decisions d
+          WHERE d.shift_id = c.shift_id
+            AND NULLIF(d.decision_json->>'callerGuardId', '') IS NOT NULL
+          ORDER BY ABS(EXTRACT(EPOCH FROM (d.created_at - c.created_at))) ASC
+          LIMIT 1
+        ) ai ON true
+        LEFT JOIN guards cg ON cg.id = ai.caller_guard_id
+        ${tenantSql}
+      )
       SELECT
-        c.id,
-        c.guard_id,
-        c.reason,
-        c.created_at,
-        c.shift_id,
-        c.tenant_id,
-        g.name AS guard_name,
-        g.email AS guard_email
-      FROM callouts c
-      LEFT JOIN shifts s ON c.shift_id = s.id
-      LEFT JOIN guards g ON c.guard_id = g.id
-      ${tenantSql}
-      ORDER BY c.created_at DESC
-      LIMIT 1000
+        x.id,
+        x.notified_guard_id,
+        x.reason,
+        x.created_at,
+        x.shift_id,
+        x.tenant_id,
+        x.caller_guard_id,
+        cg.name AS caller_name,
+        cg.email AS caller_email,
+        ng.name AS notified_name,
+        ng.email AS notified_email
+      FROM (
+        SELECT
+          e.*,
+          ROW_NUMBER() OVER (
+            PARTITION BY e.shift_id
+            ORDER BY e.created_at DESC, e.id DESC
+          ) AS shift_rn
+        FROM events e
+        WHERE e.rn = 1
+      ) x
+      LEFT JOIN guards cg ON cg.id = x.caller_guard_id
+      LEFT JOIN guards ng ON ng.id = x.notified_guard_id
+      WHERE x.shift_rn = 1
+      ORDER BY x.created_at DESC
+      LIMIT 200
     `,
       { bind: params }
     );
@@ -69,18 +118,28 @@ exports.getLiveCallouts = async (req, res) => {
       /* ignore */
     }
 
-    // Transform to match frontend expectations (include shiftId for dedupe)
+    const displayNameFor = (name, email, id) => {
+      const short = id ? String(id).substring(0, 8) : "Unknown";
+      return (
+        (name && String(name).trim()) ||
+        (email && String(email).trim()) ||
+        `Guard ${short}`
+      );
+    };
+
+    // Prefer caller (who called out); fall back to notified guard only if unknown
     const callouts = rows.map((c) => {
-      const guardIdShort = c.guard_id ? c.guard_id.substring(0, 8) : "Unknown";
-      const displayName =
-        (c.guard_name && String(c.guard_name).trim()) ||
-        (c.guard_email && String(c.guard_email).trim()) ||
-        `Guard ${guardIdShort}`;
+      const callerId = c.caller_guard_id || null;
+      const displayId = callerId || c.notified_guard_id;
+      const displayName = callerId
+        ? displayNameFor(c.caller_name, c.caller_email, callerId)
+        : displayNameFor(c.notified_name, c.notified_email, c.notified_guard_id);
 
       return {
         id: c.id,
-        guardId: c.guard_id,
+        guardId: displayId,
         guardName: displayName,
+        callerGuardId: callerId,
         reason: c.reason || "No reason",
         contactType: c.reason || "Unknown",
         active: true,
@@ -91,6 +150,15 @@ exports.getLiveCallouts = async (req, res) => {
       };
     });
 
+    // Keys already shown (shift + reason + second) so notification merge does not duplicate
+    const eventKeys = new Set(
+      callouts.map((c) => {
+        const bucket = c.createdAt
+          ? Math.floor(new Date(c.createdAt).getTime() / 30000)
+          : 0;
+        return `${c.shiftId || ""}|${c.reason || ""}|${bucket}`;
+      })
+    );
     const shiftsWithDbRows = new Set(
       callouts.map((c) => c.shiftId).filter(Boolean).map((id) => String(id))
     );
@@ -111,8 +179,14 @@ exports.getLiveCallouts = async (req, res) => {
         const raw = n.meta;
         const meta = raw && typeof raw === "object" ? raw : {};
         const sid = meta.shiftId ? String(meta.shiftId) : "";
-        if (!sid || shiftsWithDbRows.has(sid)) continue;
-        candidates.push({ n, sid, meta });
+        if (!sid) continue;
+        const bucket = n.createdAt
+          ? Math.floor(new Date(n.createdAt).getTime() / 30000)
+          : 0;
+        const key = `${sid}|${meta.reason || "CALLOUT"}|${bucket}`;
+        // Skip if this shift already has callout-table events (caller already represented)
+        if (shiftsWithDbRows.has(sid) || eventKeys.has(key)) continue;
+        candidates.push({ n, sid, meta, key });
       }
 
       const uniqueSids = [...new Set(candidates.map((c) => c.sid))];
@@ -128,13 +202,14 @@ exports.getLiveCallouts = async (req, res) => {
       }
 
       const tenantFilterStr = tenantId !== null ? String(tenantId) : null;
-      for (const { n, sid, meta } of candidates) {
-        if (shiftsWithDbRows.has(sid)) continue;
+      for (const { n, sid, meta, key } of candidates) {
+        if (shiftsWithDbRows.has(sid) || eventKeys.has(key)) continue;
         const shiftTenant = tenantByShift.get(sid);
         if (tenantFilterStr !== null) {
           if (shiftTenant == null || shiftTenant !== tenantFilterStr) continue;
         }
         shiftsWithDbRows.add(sid);
+        eventKeys.add(key);
         mergedFromNotifications += 1;
         const gid = meta.guardId ? String(meta.guardId) : null;
         const gshort = gid ? gid.substring(0, 8) : "Unknown";
@@ -142,6 +217,7 @@ exports.getLiveCallouts = async (req, res) => {
           id: `nf-${n.id}`,
           guardId: gid,
           guardName: meta.guardName || `Guard ${gshort}`,
+          callerGuardId: gid,
           reason: meta.reason || "CALLOUT",
           contactType: meta.reason || "Unknown",
           active: true,
@@ -161,11 +237,13 @@ exports.getLiveCallouts = async (req, res) => {
       console.warn("getLiveCallouts: notification merge skipped:", mergeErr?.message || mergeErr);
     }
 
+    // Newest first; UI shows first LIVE_CALLOUTS_DISPLAY_LIMIT names (oldest drop off the list).
     return res.json({
-      data: callouts.slice(0, 1000),
+      data: callouts,
       meta: {
         database: dbName,
         count: callouts.length,
+        displayLimit: LIVE_CALLOUTS_DISPLAY_LIMIT,
         fromCalloutsTable: rows.length,
         mergedFromNotifications,
         at: new Date().toISOString(),
@@ -255,35 +333,40 @@ exports.getOpenShifts = async (req, res) => {
   if (process.env.DEBUG_DASHBOARD) console.log("✅ getOpenShifts HIT — version: abe_guard-aligned");
 
   try {
-    const { Shift } = req.app.locals.models;
+    const { sequelize } = req.app.locals.models;
 
-    // ✅ Tenant isolation: Filter by tenant
-    const tenantWhere = getTenantWhere(req.admin);
-    const whereClause = { status: "OPEN" };
-    if (tenantWhere) {
-      Object.assign(whereClause, tenantWhere);
+    // Case-insensitive OPEN; tenant admins only see their tenant.
+    const params = [];
+    const tenantId = getTenantFilter(req.admin);
+    let tenantSql = "";
+    if (tenantId !== null) {
+      params.push(tenantId);
+      tenantSql = `AND tenant_id = $${params.length}`;
     }
 
-    const rows = await Shift.findAll({
-      where: whereClause,
-      attributes: [
-        "id",
-        "tenant_id",
-        "guard_id",
-        "shift_date",
-        "shift_start",
-        "shift_end",
-        "status",
-        "created_at",
-        "ai_decision",
-        "location",
-      ],
-      order: [["created_at", "DESC"]],
-      limit: 200,
-    });
+    const [rows] = await sequelize.query(
+      `
+      SELECT
+        id,
+        tenant_id,
+        guard_id,
+        shift_date,
+        shift_start,
+        shift_end,
+        status,
+        created_at,
+        ai_decision,
+        location
+      FROM shifts
+      WHERE UPPER(TRIM(status)) = 'OPEN'
+        ${tenantSql}
+      ORDER BY created_at DESC
+      LIMIT 200
+      `,
+      { bind: params }
+    );
 
-    // Return as data array to match frontend expectations
-    return res.json({ data: rows });
+    return res.json({ data: rows || [] });
   } catch (e) {
     console.error("❌ getOpenShifts error:", e);
     console.error("❌ Error stack:", e.stack);

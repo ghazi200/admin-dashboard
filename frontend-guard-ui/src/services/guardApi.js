@@ -272,14 +272,10 @@ export async function acceptShift(shiftId) {
 /* ================= CALLOUTS ================= */
 
 export const triggerCallout = (payload) =>
-  guardClient.post("/callouts/trigger", payload, { headers: guardAuthHeaders() });
+  guardApiPost("/callouts/trigger", payload || {});
 
 export const respondToCallout = (calloutId, response = "ACCEPTED") =>
-  guardClient.post(
-    `/callouts/${calloutId}/respond`,
-    { response },
-    { headers: guardAuthHeaders() }
-  );
+  guardApiPost(`/callouts/${encodeURIComponent(calloutId)}/respond`, { response });
 
 /* ================= POLICY ================= */
 

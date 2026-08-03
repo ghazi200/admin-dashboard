@@ -30,7 +30,7 @@ Set these variables on the **admin** service:
 
 | Variable | Value |
 |----------|--------|
-| `NODE_ENV` | `production` |
+| `NODE_ENV` | `production` (lowercase — `Production` also works after deploy) |
 | `DATABASE_URL` | `${{ Postgres.DATABASE_URL }}` |
 | `JWT_SECRET` | 32+ random characters (same as guard backend if split) |
 | `CORS_ORIGINS` | Your Vercel admin URL, guard web URL if any |
@@ -114,11 +114,11 @@ curl -s -o /dev/null -w "%{http_code}" -X POST https://YOUR-BACKEND/api/admin/re
 
 ## Phase 1 (next)
 
+See **`docs/BETA_PHASE_1.md`** for the internal tester checklist and APK packaging steps.
+
 After Phase 0 passes smoke tests:
 
 1. Invite 5–10 internal testers
 2. Distribute debug APK or Play Internal track
 3. Track crashes and fix top blockers
 4. Consider Sentry/error reporting
-
-See beta roadmap in prior review or `BUILD_MOBILE.md`.

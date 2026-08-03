@@ -1,8 +1,21 @@
-# Set these in Railway → this service → Variables (or Raw Editor).
-# Copy each line; replace Postgres with your PostgreSQL service name if different.
-# JWT_SECRET must be the same value as the Admin backend.
+# Set these in Railway → Guard AI service (root: abe-guard-ai/backend) → Variables.
+# JWT_SECRET and DATABASE_URL must match the Admin backend service.
 
 NODE_ENV=production
 DATABASE_URL=${{ Postgres.DATABASE_URL }}
 JWT_SECRET=your-secret-at-least-16-characters-long
 CORS_ORIGINS=https://admin-dashboard-frontend-flax.vercel.app,https://admin-dashboard-frontend-techworldstarzllcs-projects.vercel.app,https://frontend-guard-ui.vercel.app
+
+# AI ranking (optional — without this, callouts use rule-based ranking)
+# OPENAI_API_KEY=sk-...
+
+# SMS / voice notifications to replacement guards (optional)
+# TWILIO_ACCOUNT_SID=
+# TWILIO_AUTH_TOKEN=
+# TWILIO_FROM_NUMBER=
+
+# Realtime (optional — in-app callout alerts + admin live updates)
+# REDIS_URL=${{ Redis.REDIS_URL }}
+
+# Then on ADMIN backend service, set:
+# ABE_GUARD_AI_URL=https://THIS-SERVICE-PUBLIC-URL.up.railway.app

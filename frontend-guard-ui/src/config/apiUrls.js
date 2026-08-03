@@ -74,24 +74,46 @@ function isLocalhostUrl(url) {
   );
 }
 
+/** Emulator → host Mac URL — must not stick in beta/production APKs. */
+function isEmulatorHostUrl(url) {
+  if (!url || typeof url !== "string") return false;
+  const u = url.replace(/\/+$/, "").toLowerCase();
+  return u.includes("10.0.2.2") || isLocalhostUrl(u);
+}
+
+function cloudBackendUrl() {
+  if (typeof process !== "undefined" && process.env?.REACT_APP_GUARD_API_URL) {
+    return String(process.env.REACT_APP_GUARD_API_URL).replace(/\/+$/, "");
+  }
+  return String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
+}
+
 /**
  * Guard API base URL. Checked in order:
  * 1. In development (web): always use /guard-api proxy so browser never uses stale phone URL
- * 2. localStorage (runtime override) – on Android, localhost is ignored and we use 10.0.2.2
+ * 2. localStorage (runtime override) — production builds ignore 10.0.2.2 / localhost (force Railway)
  * 3. Build-time REACT_APP_GUARD_API_URL
- * 4. Android app (no saved URL): same default for emulator and phone — cloud Railway URL so clock-in works without a local Node on :5000
- * 5. Local backend on emulator: Login → "Use emulator URL" (10.0.2.2:5000)
- * 6. Default (web dev): http://localhost:4000
+ * 4. Android app (no saved URL): cloud Railway URL
+ * 5. Default (web): http://localhost:4000
  */
 function getGuardApiUrl() {
   if (typeof process !== "undefined" && process.env?.NODE_ENV === "development") {
     return "/guard-api";
   }
+  const isProdBuild = typeof process !== "undefined" && process.env?.NODE_ENV === "production";
   try {
     const saved = typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_GUARD_API);
     const url = (saved || "").trim();
     if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
       const normalized = url.replace(/\/+$/, "");
+      // Beta/production APK: never use leftover emulator Mac URL from earlier Studio runs
+      if (isProdBuild && isEmulatorHostUrl(normalized)) {
+        try {
+          localStorage.removeItem(STORAGE_GUARD_API);
+          localStorage.removeItem(STORAGE_ADMIN_API);
+        } catch (_) {}
+        return cloudBackendUrl();
+      }
       if (isAndroidApp() && isLocalhostUrl(normalized)) return EMULATOR_GUARD_URL;
       return normalized;
     }
@@ -100,17 +122,28 @@ function getGuardApiUrl() {
     return String(process.env.REACT_APP_GUARD_API_URL).replace(/\/+$/, "");
   }
   if (isAndroidApp()) {
-    return String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
+    return cloudBackendUrl();
   }
   return "http://localhost:4000";
 }
 
 function getAdminApiUrl() {
+  const isProdBuild = typeof process !== "undefined" && process.env?.NODE_ENV === "production";
   try {
     const saved = typeof localStorage !== "undefined" && localStorage.getItem(STORAGE_ADMIN_API);
     const url = (saved || "").trim();
     if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
       const normalized = url.replace(/\/+$/, "");
+      if (isProdBuild && isEmulatorHostUrl(normalized)) {
+        try {
+          localStorage.removeItem(STORAGE_GUARD_API);
+          localStorage.removeItem(STORAGE_ADMIN_API);
+        } catch (_) {}
+        if (typeof process !== "undefined" && process.env?.REACT_APP_ADMIN_API_URL) {
+          return String(process.env.REACT_APP_ADMIN_API_URL).replace(/\/+$/, "");
+        }
+        return cloudBackendUrl();
+      }
       if (isAndroidApp() && isLocalhostUrl(normalized)) return EMULATOR_ADMIN_URL;
       return normalized;
     }
@@ -119,7 +152,7 @@ function getAdminApiUrl() {
     return String(process.env.REACT_APP_ADMIN_API_URL).replace(/\/+$/, "");
   }
   if (isAndroidApp()) {
-    return String(DEFAULT_CLOUD_BACKEND).replace(/\/+$/, "");
+    return cloudBackendUrl();
   }
   return "http://localhost:5000";
 }
