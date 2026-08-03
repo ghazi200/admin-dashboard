@@ -242,7 +242,19 @@ function initCalloutNotificationListener(app) {
         console.log(`   Date: ${shiftDate || "N/A"}, Time: ${shiftTime || "N/A"}`);
         console.log(`   Location: ${location || "N/A"}`);
         console.log(`   Callout ID: ${calloutId ? calloutId.substring(0, 8) + "..." : "N/A"}`);
-      } else if (response === "REJECTED" || response === "NO") {
+
+        const { notifyCalloutAccepted } = require("./calloutAcceptNotification.service");
+        const created = await notifyCalloutAccepted(app, {
+          shiftId,
+          guardId,
+          calloutId,
+          response,
+          filled: payload?.filled !== false,
+        });
+        if (created?.id) {
+          console.log(`✅ Created CALLOUT_ACCEPTED notification: ${created.id}`);
+        }
+      } else if (response === "REJECTED" || response === "NO" || response === "DECLINED") {
         console.log(`❌ Guard rejected shift:`);
         console.log(`   Guard: ${guardNameToUse} (${guardId.substring(0, 8)}...)`);
         console.log(`   Shift ID: ${shiftId.substring(0, 8)}...`);
@@ -290,6 +302,25 @@ function initCalloutNotificationListener(app) {
       console.log(`   Shift ID: ${shiftId.substring(0, 8)}...`);
       console.log(`   Callout ID: ${calloutId ? calloutId.substring(0, 8) + "..." : "N/A"}`);
 
+      // Bell notification (deduped with callout_response path)
+      if (calloutId || payload?.source === "callout_accept") {
+        try {
+          const { notifyCalloutAccepted } = require("./calloutAcceptNotification.service");
+          const created = await notifyCalloutAccepted(app, {
+            shiftId,
+            guardId,
+            calloutId,
+            response: "ACCEPTED",
+            filled: true,
+          });
+          if (created?.id) {
+            console.log(`✅ Created CALLOUT_ACCEPTED notification: ${created.id}`);
+          }
+        } catch (notifErr) {
+          console.warn("⚠️ CALLOUT_ACCEPTED notify failed:", notifErr.message);
+        }
+      }
+
       // ✅ ENHANCED EVENT CAPTURE: Create OpEvent for shift filled
       try {
         const models = app.locals.models;
@@ -301,7 +332,7 @@ function initCalloutNotificationListener(app) {
               type: "SHIFT",
               severity: "LOW",
               title: "Shift Filled",
-              summary: `Shift ${shiftId} filled by guard ${guardNameToUse}${calloutId ? ` (callout: ${calloutId})` : ""}`,
+              summary: `${guardNameToUse} filled the shift${calloutId ? " after callout" : ""}`,
               entity_refs: {
                 shift_id: shiftId,
                 guard_id: guardId,
@@ -319,9 +350,6 @@ function initCalloutNotificationListener(app) {
       } catch (opEventError) {
         console.warn("⚠️ Failed to create OpEvent for shift_filled:", opEventError.message);
       }
-
-      // The shift closure notification with callout tracking is already handled
-      // in adminShifts.controller.js updateShift function
     } catch (error) {
       console.error("❌ Error processing shift_filled event:", error);
     }

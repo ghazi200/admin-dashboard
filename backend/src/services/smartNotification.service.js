@@ -193,6 +193,7 @@ function shouldGroupWithOthers(notification, context) {
     "SHIFT_CLOSED",
     "SHIFT_CREATED",
     "CALLOUT_CREATED",
+    "CALLOUT_ACCEPTED",
     "GUARD_AVAILABILITY_CHANGED",
   ];
   

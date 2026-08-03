@@ -713,9 +713,56 @@ app.post("/callouts/trigger", authGuard, async (req, res) => {
 
 app.post("/callouts/:calloutId/respond", authGuard, async (req, res) => {
   const calloutId = String(req.params.calloutId || "").trim();
-  return proxyToAbeGuardAi(req, res, "POST", `/callouts/${encodeURIComponent(calloutId)}/respond`, {
-    response: req.body?.response,
-  });
+  const response = req.body?.response;
+  const base = getAbeGuardAiBase();
+  if (!base) {
+    return res.status(501).json({
+      message: "Callouts service not configured. Set ABE_GUARD_AI_URL on the backend (Railway Variables).",
+      needed: "ABE_GUARD_AI_URL=https://<your-abe-guard-ai-backend>.up.railway.app",
+    });
+  }
+  try {
+    const axios = require("axios");
+    const url = `${base}/callouts/${encodeURIComponent(calloutId)}/respond`;
+    const auth = req.headers.authorization ? { Authorization: req.headers.authorization } : {};
+    const r = await axios.request({
+      url,
+      method: "POST",
+      data: { response },
+      headers: { "Content-Type": "application/json", Accept: "application/json", ...auth },
+      timeout: 60000,
+      validateStatus: () => true,
+    });
+
+    // Admin bell: "Ghazi accepted MAIN BUILDING…" (does not rely on Guard AI socket)
+    if (
+      r.status >= 200 &&
+      r.status < 300 &&
+      (String(response).toUpperCase() === "ACCEPTED" || r.data?.filled)
+    ) {
+      try {
+        const { notifyCalloutAccepted } = require("./src/services/calloutAcceptNotification.service");
+        await notifyCalloutAccepted(req.app, {
+          shiftId: r.data?.shiftId,
+          guardId: r.data?.assignedGuardId || req.guard?.id,
+          calloutId,
+          response: response || "ACCEPTED",
+          filled: r.data?.filled !== false,
+        });
+      } catch (e) {
+        logger.warn({ err: e?.message }, "CALLOUT_ACCEPTED notification failed");
+      }
+    }
+
+    return res.status(r.status).json(r.data);
+  } catch (e) {
+    const msg = e?.message || String(e);
+    return res.status(502).json({
+      message: "Callouts proxy failed",
+      error: msg,
+      hint: "Verify ABE_GUARD_AI_URL is the public abe-guard-ai backend URL (include https://).",
+    });
+  }
 });
 // Notifications / alerts stubs (guard JWT) — avoids hitting admin-only routes or 404
 app.get("/api/guard/notifications/unread-count", authGuard, guardUiStubs.guardNotificationsUnreadCount);
