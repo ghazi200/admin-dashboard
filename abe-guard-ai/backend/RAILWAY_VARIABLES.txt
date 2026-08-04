@@ -22,6 +22,11 @@ CORS_ORIGINS=https://admin-dashboard-frontend-flax.vercel.app,https://admin-dash
 # SMTP_PASS=
 # SMTP_FROM=
 
+# Voice callouts (optional — also set on ADMIN for unified outbound)
+# CALLOUT_ENABLE_VOICE_CALL=true
+# TWILIO_PHONE_NUMBER=+1xxxxxxxxxx
+# PUBLIC_BASE_URL=https://your-admin-or-guard-ai.up.railway.app
+
 # Realtime (optional — in-app callout alerts + admin live updates)
 # REDIS_URL=${{ Redis.REDIS_URL }}
 

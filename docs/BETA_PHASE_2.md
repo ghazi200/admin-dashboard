@@ -67,13 +67,17 @@ On the **admin** service (`backend/`):
 |----------|--------|
 | `ABE_GUARD_AI_URL` | `https://YOUR-GUARD-AI-URL.up.railway.app` (no trailing slash) |
 | `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | Email ranked replacements (e.g. Ghazi) |
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | SMS ranked replacements |
-| `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_PHONE_NUMBER` | Twilio From / Messaging Service |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | SMS + voice |
+| `TWILIO_MESSAGING_SERVICE_SID` or `TWILIO_PHONE_NUMBER` | SMS From / Messaging Service |
+| `TWILIO_PHONE_NUMBER` | **Required for voice** (From number on the call) |
+| `PUBLIC_BASE_URL` | Public `https://…` admin URL (Twilio fetches `/twilio/voice`) |
+| `CALLOUT_OUTBOUND_CALL=true` | Enable live voice offers (press 1 accept / 2 decline) |
+| `CALLOUT_OUTBOUND_EMAIL=false` / `CALLOUT_OUTBOUND_SMS=false` | Pause email/SMS while not testing |
 | `CALLOUT_MAX_GUARDS_NOTIFY` | Optional cap (e.g. `10`) |
 
-In-app callout alerts come from Guard AI. **Email/SMS are sent by the admin backend** after ranking so they work when SMTP/Twilio are set on admin Railway.
+In-app callout alerts come from Guard AI. **Email / SMS / voice** are sent by the admin backend after ranking.
 
-Redeploy admin backend.
+Voice flow: ranked guard is called → hears location/time → **press 1** to accept (fills shift) or **2** to decline.
 
 **Verify proxy is wired** (expect **401** without token — not **501**):
 

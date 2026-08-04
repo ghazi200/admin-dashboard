@@ -260,6 +260,9 @@ app.use("/api", generalLimiter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Twilio voice webhooks (public; no JWT — Twilio server fetches TwiML)
+app.use("/twilio", require("./src/routes/twilioVoice.routes"));
+
 // Request-scoped logger (req.id + req.log for structured logs)
 app.use((req, res, next) => {
   req.id = req.headers["x-request-id"] || crypto.randomBytes(8).toString("hex");
@@ -714,6 +717,7 @@ app.post("/callouts/trigger", authGuard, async (req, res) => {
           r.data.outboundNotify = {
             emailed: outbound.emailed,
             smsed: outbound.smsed,
+            called: outbound.called,
           };
         }
       } catch (e) {

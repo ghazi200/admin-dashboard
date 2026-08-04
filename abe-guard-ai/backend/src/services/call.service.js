@@ -27,6 +27,7 @@ async function callGuardForCallout(guard, shift, meta = {}) {
   const q = new URLSearchParams({
     shiftId: shift.id,
     ...(meta.calloutId ? { calloutId: meta.calloutId } : {}),
+    ...(guard?.id ? { guardId: String(guard.id) } : {}),
   });
 
   try {
