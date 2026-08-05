@@ -11,6 +11,21 @@
 const { Op } = require("sequelize");
 const riskScoringService = require("./riskScoring.service");
 
+/** Only these operational sites appear in Site Health */
+const ALLOWED_SITE_NAMES = ["OFFERMAN HOUSE", "MAIN BUILDING"];
+
+function normalizeSiteName(name) {
+  return String(name || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase();
+}
+
+function isAllowedSiteName(name) {
+  const n = normalizeSiteName(name);
+  return ALLOWED_SITE_NAMES.includes(n);
+}
+
 /**
  * Get site health overview for a tenant
  * @param {String} tenantId - Tenant ID
@@ -36,74 +51,22 @@ async function getSiteHealthOverview(tenantId, models, options = {}) {
     startDate.setDate(startDate.getDate() - days);
     const startDateStr = startDate.toISOString().split("T")[0];
 
-    // Prefer real sites for this tenant (show even with zero recent activity)
+    // Prefer real sites for this tenant (Offerman House + Main Building only)
     let sites = [];
     try {
       if (Site) {
-        sites = await Site.findAll({
+        const all = await Site.findAll({
           where: { tenant_id: tenantId },
           order: [["name", "ASC"]],
           raw: true,
         });
+        sites = (all || []).filter((s) => isAllowedSiteName(s.name));
       }
     } catch (err) {
       console.warn("⚠️ Site.findAll failed:", err.message);
     }
 
-    const discoveredIds = new Set();
-    if (Incident) {
-      try {
-        const incidentSites = await Incident.findAll({
-          where: {
-            tenantId: tenantId,
-            siteId: { [Op.ne]: null },
-            reportedAt: { [Op.gte]: startDate },
-          },
-          attributes: ["siteId"],
-          group: ["siteId"],
-          raw: true,
-        });
-        incidentSites.forEach((s) => {
-          const id = s.siteId || s.site_id;
-          if (id) discoveredIds.add(String(id));
-        });
-      } catch (err) {
-        console.warn("⚠️ Incident site discovery failed:", err.message);
-      }
-    }
-
-    if (OpEvent) {
-      try {
-        const eventSites = await OpEvent.findAll({
-          where: {
-            tenant_id: tenantId,
-            site_id: { [Op.ne]: null },
-            created_at: { [Op.gte]: startDate },
-          },
-          attributes: ["site_id"],
-          group: ["site_id"],
-          raw: true,
-        });
-        eventSites.forEach((s) => {
-          if (s.site_id) discoveredIds.add(String(s.site_id));
-        });
-      } catch (err) {
-        console.warn("⚠️ OpEvent site discovery failed:", err.message);
-      }
-    }
-
-    const knownIds = new Set(sites.map((s) => String(s.id)));
-    for (const id of discoveredIds) {
-      if (!knownIds.has(id)) {
-        sites.push({
-          id,
-          name: `Site ${id.substring(0, 8)}`,
-          address_1: null,
-        });
-      }
-    }
-
-    // Also include distinct shift locations (MAIN BUILDING, etc.) so coverage shows up
+    // Ensure MAIN BUILDING / OFFERMAN HOUSE appear even if only on shifts
     if (sequelize) {
       try {
         const [locRows] = await sequelize.query(
@@ -117,15 +80,16 @@ async function getSiteHealthOverview(tenantId, models, options = {}) {
           { bind: [String(tenantId)] }
         );
         const existingNames = new Set(
-          sites.map((s) => String(s.name || "").trim().toLowerCase()).filter(Boolean)
+          sites.map((s) => normalizeSiteName(s.name)).filter(Boolean)
         );
         (locRows || []).forEach((r, idx) => {
           const name = String(r.name || "").trim();
-          if (!name || existingNames.has(name.toLowerCase())) return;
-          existingNames.add(name.toLowerCase());
+          const key = normalizeSiteName(name);
+          if (!isAllowedSiteName(name) || existingNames.has(key)) return;
+          existingNames.add(key);
           sites.push({
             id: `loc-${idx}-${name.slice(0, 24)}`,
-            name,
+            name: key === "MAIN BUILDING" ? "MAIN BUILDING" : "OFFERMAN HOUSE",
             address_1: null,
             _isLocationOnly: true,
           });
@@ -146,14 +110,33 @@ async function getSiteHealthOverview(tenantId, models, options = {}) {
            LIMIT 50`,
           { bind: [String(tenantId)] }
         );
-        sites = siteRows || [];
+        sites = (siteRows || []).filter((s) => isAllowedSiteName(s.name));
       } catch (err) {
         console.warn("⚠️ Raw sites query failed:", err.message);
       }
     }
 
+    // Always ensure the two canonical sites exist in the list when possible
+    const have = new Set(sites.map((s) => normalizeSiteName(s.name)));
+    for (const canonical of ALLOWED_SITE_NAMES) {
+      if (have.has(canonical)) continue;
+      // Prefer seeding MAIN BUILDING as location-only; Offerman usually comes from sites table
+      if (canonical === "MAIN BUILDING") {
+        sites.push({
+          id: "loc-main-building",
+          name: "MAIN BUILDING",
+          address_1: null,
+          _isLocationOnly: true,
+        });
+        have.add(canonical);
+      }
+    }
+
+    // Final hard filter (no Duffield / discovered UUID stubs)
+    sites = sites.filter((s) => isAllowedSiteName(s.name));
+
     if (sites.length === 0) {
-      console.log(`ℹ️ No sites found for tenant ${tenantId}`);
+      console.log(`ℹ️ No allowed sites found for tenant ${tenantId}`);
       return [];
     }
 
