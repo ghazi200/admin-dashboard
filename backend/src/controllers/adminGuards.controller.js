@@ -605,7 +605,26 @@ exports.updateGuard = async (req, res) => {
       }
     }
 
-    Object.assign(guard, body);
+    // Only assign real Guard columns (ignore UI-only fields like availability)
+    const allowed = [
+      "name",
+      "email",
+      "phone",
+      "active",
+      "weekly_hours",
+      "acceptance_rate",
+      "reliability_score",
+      "profile_photo_url",
+      "tenant_id",
+      "communications_consent",
+      "consent_at",
+      "consent_source",
+    ];
+    for (const key of allowed) {
+      if (Object.prototype.hasOwnProperty.call(body, key)) {
+        guard.set(key, body[key]);
+      }
+    }
     await guard.save();
 
     // ✅ Create availability log if availability is in request
@@ -620,6 +639,7 @@ exports.updateGuard = async (req, res) => {
 
     // Calculate guardIdInt and availabilityValue outside try block so they're accessible in catch block
     let guardIdInt = null;
+    let from = null;
     const availabilityValue = newAvailability;
     if (shouldCreateLog) {
       try {
@@ -637,7 +657,6 @@ exports.updateGuard = async (req, res) => {
         console.log("🔍 updateGuard - guardIdInt (converted):", guardIdInt);
 
         // Get previous availability status from most recent log (only if guardIdInt is valid)
-        let from = null;
         if (guardIdInt !== null && !isNaN(guardIdInt)) {
           try {
             const previousLog = await AvailabilityLog.findOne({
@@ -661,7 +680,7 @@ exports.updateGuard = async (req, res) => {
         // Create availability log entry using raw SQL
         // Temporarily disable FK constraint check since guardId is integer but Guards.id is UUID
         await sequelize.query('SET session_replication_role = replica');
-        const insertResult = await sequelize.query(`
+        const [insertRows] = await sequelize.query(`
           INSERT INTO availability_logs ("guardId", "from", "to", "actorAdminId", "note", "createdAt", "updatedAt")
           VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
           RETURNING id, "guardId", "from", "to", "createdAt"
@@ -673,14 +692,12 @@ exports.updateGuard = async (req, res) => {
             req.admin?.id || null,
             `Availability updated via edit form by admin ${req.admin?.email || 'unknown'}`
           ],
-          type: sequelize.QueryTypes.SELECT
         });
         await sequelize.query('SET session_replication_role = DEFAULT');
         
-        // insertResult can be an array or an object directly, handle both cases
-        const logEntry = Array.isArray(insertResult) ? insertResult[0] : insertResult;
+        const logEntry = Array.isArray(insertRows) ? insertRows[0] : insertRows;
         if (!logEntry || !logEntry.id) {
-          throw new Error("Insert returned invalid result - insertResult: " + JSON.stringify(insertResult));
+          throw new Error("Insert returned invalid result - insertRows: " + JSON.stringify(insertRows));
         }
         console.log("✅ updateGuard - Availability log created (raw SQL):", {
           logId: logEntry.id,
@@ -706,7 +723,7 @@ exports.updateGuard = async (req, res) => {
           console.warn("⚠️ updateGuard - Failed to emit realtime for availability (non-fatal):", socketError.message);
         }
       } catch (logError) {
-        // Log error but don't fail the guard update
+        // Log error but don't fail the guard update (consent / profile already saved above)
         console.error("❌ updateGuard - Error creating availability log (non-fatal):", logError.message);
         console.error("❌ updateGuard - Error details:", {
           name: logError.name,
@@ -716,7 +733,7 @@ exports.updateGuard = async (req, res) => {
           guardName: guard.name,
           guardIdInt: guardIdInt,
           availabilityValue: availabilityValue,
-          from: from
+          from,
         });
         // Try to see what the actual SQL error is
         if (logError.original) {

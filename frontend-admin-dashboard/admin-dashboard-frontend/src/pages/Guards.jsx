@@ -591,6 +591,10 @@ export default function Guards() {
       await load();
     } catch (e2) {
       setErr(e2?.response?.data?.message || e2?.message || "Save failed");
+      // Consent may still have been saved before a non-fatal server error — refresh list
+      try {
+        await load();
+      } catch (_) {}
     }
   }
 
