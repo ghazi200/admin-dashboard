@@ -103,8 +103,8 @@ async function getSiteHealthOverview(tenantId, models, options = {}) {
       }
     }
 
-    // Fallback: distinct shift locations if sites table empty
-    if (sites.length === 0 && sequelize) {
+    // Also include distinct shift locations (MAIN BUILDING, etc.) so coverage shows up
+    if (sequelize) {
       try {
         const [locRows] = await sequelize.query(
           `SELECT DISTINCT location AS name
@@ -116,14 +116,39 @@ async function getSiteHealthOverview(tenantId, models, options = {}) {
            LIMIT 50`,
           { bind: [String(tenantId)] }
         );
-        sites = (locRows || []).map((r, idx) => ({
-          id: `loc-${idx}-${String(r.name).slice(0, 24)}`,
-          name: r.name,
-          address_1: null,
-          _isLocationOnly: true,
-        }));
+        const existingNames = new Set(
+          sites.map((s) => String(s.name || "").trim().toLowerCase()).filter(Boolean)
+        );
+        (locRows || []).forEach((r, idx) => {
+          const name = String(r.name || "").trim();
+          if (!name || existingNames.has(name.toLowerCase())) return;
+          existingNames.add(name.toLowerCase());
+          sites.push({
+            id: `loc-${idx}-${name.slice(0, 24)}`,
+            name,
+            address_1: null,
+            _isLocationOnly: true,
+          });
+        });
       } catch (err) {
-        console.warn("⚠️ Shift location fallback failed:", err.message);
+        console.warn("⚠️ Shift location merge failed:", err.message);
+      }
+    }
+
+    // Raw SQL fallback if Site model returned nothing
+    if (sites.length === 0 && sequelize) {
+      try {
+        const [siteRows] = await sequelize.query(
+          `SELECT id::text AS id, name, address_1, address_2
+           FROM sites
+           WHERE tenant_id::text = $1::text
+           ORDER BY name
+           LIMIT 50`,
+          { bind: [String(tenantId)] }
+        );
+        sites = siteRows || [];
+      } catch (err) {
+        console.warn("⚠️ Raw sites query failed:", err.message);
       }
     }
 

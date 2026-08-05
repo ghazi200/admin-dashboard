@@ -692,7 +692,7 @@ exports.getSiteHealth = async (req, res) => {
       data: siteHealth || [],
       count: (siteHealth || []).length,
       options,
-      message: (siteHealth || []).length === 0 ? "No site activity found. Data will appear as sites have incidents, events, or shifts." : undefined,
+      message: (siteHealth || []).length === 0 ? "No sites found for this organization. Add sites in Geographic Dashboard." : undefined,
     });
   } catch (e) {
     console.error("❌ Error in getSiteHealth:", e);

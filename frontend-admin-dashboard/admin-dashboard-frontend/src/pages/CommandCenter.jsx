@@ -65,6 +65,7 @@ export default function CommandCenter() {
   // Get admin info to check if super-admin
   const adminInfo = getAdminInfo();
   const isSuperAdmin = adminInfo?.role === "super_admin";
+  const adminTenantId = adminInfo?.tenant_id || adminInfo?.tenantId || "";
 
   // Query tenants (for super-admin tenant selection)
   const {
@@ -79,6 +80,14 @@ export default function CommandCenter() {
     enabled: isSuperAdmin && showSiteHealth, // Only fetch when super-admin and site health is visible
   });
 
+  // Auto-select first tenant for super-admin so Site Health loads without an extra click
+  useEffect(() => {
+    if (!isSuperAdmin || !showSiteHealth || selectedTenantId) return;
+    if (Array.isArray(tenantsData) && tenantsData.length > 0 && tenantsData[0]?.id) {
+      setSelectedTenantId(String(tenantsData[0].id));
+    }
+  }, [isSuperAdmin, showSiteHealth, selectedTenantId, tenantsData]);
+
   // Query site health
   const {
     data: siteHealthData,
@@ -86,25 +95,28 @@ export default function CommandCenter() {
     error: siteHealthError,
     refetch: refetchSiteHealth,
   } = useQuery({
-    queryKey: ["siteHealth", selectedTenantId],
+    queryKey: ["siteHealth", selectedTenantId || adminTenantId || "default"],
     queryFn: async () => {
+      const tenantId = isSuperAdmin ? selectedTenantId : adminTenantId;
       const response = await getSiteHealth({
         days: 30,
-        ...(isSuperAdmin && selectedTenantId ? { tenantId: selectedTenantId } : {}),
+        ...(tenantId ? { tenantId } : {}),
       });
-      // axios body: { data: [...], count, message }
-      return response?.data ?? { data: [], count: 0 };
+      const body = response?.data ?? {};
+      if (Array.isArray(body)) return { data: body, count: body.length };
+      if (Array.isArray(body?.data)) return body;
+      return {
+        data: [],
+        count: 0,
+        message: body?.message || "No sites returned from server",
+      };
     },
-    enabled: Boolean(showSiteHealth && (!isSuperAdmin || !!selectedTenantId)), // Only fetch if not super-admin OR if super-admin has selected a tenant
-    refetchInterval: showSiteHealth ? 60000 : false, // Only refresh when visible
-    retry: 1, // Retry once on error
+    enabled: Boolean(showSiteHealth && (isSuperAdmin ? !!selectedTenantId : true)),
+    refetchInterval: showSiteHealth ? 60000 : false,
+    retry: 1,
   });
 
-  const siteHealthList = Array.isArray(siteHealthData?.data)
-    ? siteHealthData.data
-    : Array.isArray(siteHealthData)
-      ? siteHealthData
-      : [];
+  const siteHealthList = Array.isArray(siteHealthData?.data) ? siteHealthData.data : [];
 
   // Query guard readiness
   const {
@@ -1108,17 +1120,6 @@ export default function CommandCenter() {
                   Retry
                 </button>
               </div>
-            ) : siteHealthData?.message && siteHealthList.length === 0 ? (
-              <div style={{ padding: 40, textAlign: "center" }}>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
-                  {siteHealthData.message}
-                </div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
-                  {siteHealthData.message.includes("tenant") 
-                    ? "Please contact an administrator to assign you to a tenant, or select a tenant if you are a super-admin."
-                    : "Add sites in Geographic Dashboard, or create shifts/incidents for existing sites."}
-                </div>
-              </div>
             ) : siteHealthList.length > 0 ? (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
                 {siteHealthList.map((siteHealth) => {
@@ -1128,11 +1129,12 @@ export default function CommandCenter() {
                     CAUTION: { bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.3)", text: "#f59e0b" },
                     CRITICAL: { bg: "rgba(239,68,68,0.1)", border: "rgba(239,68,68,0.3)", text: "#ef4444" },
                   };
-                  const healthStyle = healthColors[siteHealth.metrics.healthStatus] || healthColors.WARNING;
+                  const healthStyle = healthColors[siteHealth.metrics?.healthStatus] || healthColors.WARNING;
+                  const riskScore = Number(siteHealth.risk?.riskScore ?? 0);
 
                   return (
                     <div
-                      key={siteHealth.site.id}
+                      key={siteHealth.site?.id || siteHealth.site?.name}
                       style={{
                         padding: 16,
                         background: healthStyle.bg,
@@ -1143,10 +1145,10 @@ export default function CommandCenter() {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 16, fontWeight: 700, color: "#ffffff", marginBottom: 4 }}>
-                            {siteHealth.site.name}
+                            {siteHealth.site?.name || "Unnamed site"}
                           </div>
                           <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>
-                            {siteHealth.site.address}
+                            {siteHealth.site?.address || "—"}
                           </div>
                         </div>
                         <span
@@ -1160,7 +1162,7 @@ export default function CommandCenter() {
                             textTransform: "uppercase",
                           }}
                         >
-                          {siteHealth.metrics.healthStatus}
+                          {siteHealth.metrics?.healthStatus || "UNKNOWN"}
                         </span>
                       </div>
 
@@ -1168,7 +1170,7 @@ export default function CommandCenter() {
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>Health Score</span>
                           <span style={{ fontSize: 18, fontWeight: 700, color: healthStyle.text }}>
-                            {siteHealth.metrics.healthScore}/100
+                            {siteHealth.metrics?.healthScore ?? 0}/100
                           </span>
                         </div>
                         <div
@@ -1181,7 +1183,7 @@ export default function CommandCenter() {
                         >
                           <div
                             style={{
-                              width: `${siteHealth.metrics.healthScore}%`,
+                              width: `${Math.min(100, Math.max(0, siteHealth.metrics?.healthScore ?? 0))}%`,
                               height: "100%",
                               background: healthStyle.text,
                               transition: "width 0.3s",
@@ -1192,19 +1194,19 @@ export default function CommandCenter() {
 
                       <div style={{ display: "flex", gap: 16, fontSize: 12, color: "rgba(255,255,255,0.6)", flexWrap: "wrap" }}>
                         <div>
-                          <span style={{ fontWeight: 600 }}>Incidents:</span> {siteHealth.metrics.incidents}
+                          <span style={{ fontWeight: 600 }}>Incidents:</span> {siteHealth.metrics?.incidents ?? 0}
                         </div>
                         <div>
-                          <span style={{ fontWeight: 600 }}>Open Shifts:</span> {siteHealth.metrics.openShifts}
+                          <span style={{ fontWeight: 600 }}>Open Shifts:</span> {siteHealth.metrics?.openShifts ?? 0}
                         </div>
                         <div>
-                          <span style={{ fontWeight: 600 }}>Events:</span> {siteHealth.metrics.recentEvents}
+                          <span style={{ fontWeight: 600 }}>Events:</span> {siteHealth.metrics?.recentEvents ?? 0}
                         </div>
                       </div>
 
                       {siteHealth.risk && (
                         <div style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
-                          Risk Level: {siteHealth.risk.riskLevel} ({siteHealth.risk.riskScore.toFixed(0)})
+                          Risk Level: {siteHealth.risk.riskLevel || "LOW"} ({riskScore.toFixed(0)})
                         </div>
                       )}
                     </div>
@@ -1214,14 +1216,29 @@ export default function CommandCenter() {
             ) : (
               <div style={{ padding: 40, textAlign: "center", color: "rgba(255,255,255,0.5)" }}>
                 <div style={{ marginBottom: 8, fontSize: 16 }}>
-                  ℹ️ No site activity found
+                  No sites found for this organization
                 </div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>
-                  {siteHealthData?.message || "Site health data will appear once sites have operational activity such as incidents, events, or shifts."}
+                  {siteHealthData?.message ||
+                    "Add a site in Geographic Dashboard, then click Refresh."}
                 </div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 12 }}>
-                  This is normal if no operational events have occurred yet.
-                </div>
+                <button
+                  type="button"
+                  onClick={() => refetchSiteHealth()}
+                  style={{
+                    marginTop: 16,
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(59,130,246,0.5)",
+                    background: "rgba(59,130,246,0.2)",
+                    color: "#60a5fa",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Refresh
+                </button>
               </div>
             )}
           </div>
