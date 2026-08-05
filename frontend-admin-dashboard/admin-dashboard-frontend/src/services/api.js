@@ -368,15 +368,15 @@ export const autoRebalance = (data) =>
   axiosClient.post("/fairness-rebalancing/auto-rebalance", data);
 
 // ===== GUARD REPUTATION =====
-// Note: Reputation routes are on abe-guard-ai backend (port 4000)
+// Guard reputation / trust scores (unified admin backend)
 export const getGuardReputation = (guardId) =>
-  abeGuardAiClient.get(`/api/admin/guards/${guardId}/reputation`);
+  axiosClient.get(`/guards/${guardId}/reputation`);
 
 export const addGuardReputation = (guardId, data) =>
-  abeGuardAiClient.post(`/api/admin/guards/${guardId}/reputation`, data);
+  axiosClient.post(`/guards/${guardId}/reputation`, data);
 
 export const listGuardsWithReputation = () =>
-  abeGuardAiClient.get("/api/admin/reputation/guards");
+  axiosClient.get("/reputation/guards");
 
 // ===== INCIDENTS =====
 // Note: Incident routes are on abe-guard-ai backend (port 4000)

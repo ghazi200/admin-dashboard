@@ -118,6 +118,7 @@ const MessageHidden = require("./MessageHidden")(sequelize, DataTypes);
 const Site = require("./Site")(sequelize, DataTypes);
 const SavedSearch = require("./SavedSearch")(sequelize, DataTypes);
 const Staff = require("./Staff")(sequelize, DataTypes);
+const GuardReputation = require("./GuardReputation")(sequelize, DataTypes);
 
 /**
  * Associations - UNCHANGED
@@ -258,4 +259,7 @@ module.exports = {
 
   // Staff directory (admin-managed, owner view)
   Staff,
+
+  // Guard reputation / trust scores
+  GuardReputation,
 };

@@ -527,6 +527,8 @@ app.use("/api/admin/ai-ranking", adminAIRankingRoutes);
 
 const adminGuardsRoutes = require("./src/routes/adminGuards.routes");
 app.use("/api/admin/guards", adminGuardsRoutes);
+const guardReputationRoutes = require("./src/routes/guardReputation.routes");
+app.use("/api/admin", guardReputationRoutes);
 
 const adminUsersRoutes = require("./src/routes/adminUsers.routes");
 app.use("/api/admin/users", adminUsersRoutes);
