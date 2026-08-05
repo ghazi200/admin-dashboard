@@ -273,6 +273,15 @@ app.use((req, res, next) => {
 // ✅ Static file serving for uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Public legal / Twilio compliance pages (no auth)
+app.use("/legal", express.static(path.join(__dirname, "public", "legal")));
+app.get("/legal/messaging-consent", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "legal", "messaging-consent.html"));
+});
+app.get("/consent/sms", (req, res) => {
+  res.redirect(302, "/legal/messaging-consent");
+});
+
 /* 🔎 debug route (optional)
 app.get("/debug-jwt", (req, res) => {
   const hdr = req.headers.authorization || "";

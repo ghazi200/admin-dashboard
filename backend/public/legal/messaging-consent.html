@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ABE Security — SMS &amp; Voice Consent</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a222c;
+      --text: #e8eef4;
+      --muted: #9aa8b5;
+      --accent: #3d8bfd;
+      --line: #2a3542;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #1c2a3a, var(--bg));
+      color: var(--text);
+      line-height: 1.55;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+    h1 {
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-bottom: 28px;
+    }
+    section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 22px 24px;
+      margin-bottom: 18px;
+    }
+    h2 {
+      font-size: 1.15rem;
+      margin: 0 0 12px;
+    }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); font-size: 0.95rem; }
+    ul { padding-left: 1.2rem; }
+    li { margin: 6px 0; }
+    .sample {
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 0.9rem;
+      background: #0d1218;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px 16px;
+      white-space: pre-wrap;
+    }
+    .check {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      border: 1px dashed var(--accent);
+      border-radius: 10px;
+      padding: 14px 16px;
+      background: rgba(61, 139, 253, 0.08);
+    }
+    .check input { margin-top: 4px; transform: scale(1.15); }
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>SMS &amp; Voice Call Consent</h1>
+    <p class="sub">ABE Security / ABE Guard — employee staffing notifications</p>
+
+    <section>
+      <h2>How we obtain consent</h2>
+      <p>
+        Before ABE Security sends <strong>SMS text messages</strong> or places
+        <strong>phone calls</strong> about shift coverage, callouts, or schedule offers,
+        the employee (guard) must provide an affirmative opt-in.
+      </p>
+      <p>Consent is collected when:</p>
+      <ul>
+        <li>A supervisor adds or updates the guard’s mobile number in the ABE Admin Dashboard, and the guard confirms opt-in; and/or</li>
+        <li>The guard enables SMS/voice notifications in the ABE Guard mobile app profile; and/or</li>
+        <li>The guard completes onboarding and checks the communications consent box (shown below).</li>
+      </ul>
+      <p class="muted">
+        We store the phone number, consent timestamp, and channel (SMS and/or voice).
+        Consent is optional and may be revoked at any time.
+      </p>
+    </section>
+
+    <section>
+      <h2>Consent language (shown at opt-in)</h2>
+      <div class="check">
+        <input type="checkbox" checked disabled aria-hidden="true" />
+        <div>
+          I agree that <strong>ABE Security</strong> may contact me by
+          <strong>SMS and/or phone call</strong> at the mobile number I provide
+          about <strong>shift coverage, callouts, schedule offers, and related staffing notices</strong>.
+          Message and data rates may apply. Message frequency varies.
+          Reply <strong>STOP</strong> to opt out of SMS; reply <strong>HELP</strong> for help.
+          I can revoke consent anytime by contacting my supervisor or support.
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Example SMS</h2>
+      <div class="sample">ABE callout MAIN BUILDING 2026-08-04 07:00-15:00. Open Guard app to accept. Reply STOP to opt out.</div>
+    </section>
+
+    <section>
+      <h2>Example voice call</h2>
+      <p>
+        Automated call from ABE Security describing an open shift and offering
+        keypad options (for example: press 1 to accept, press 2 to decline),
+        or directing the guard to the ABE Guard app.
+      </p>
+    </section>
+
+    <section>
+      <h2>Opt-out</h2>
+      <ul>
+        <li><strong>SMS:</strong> Reply <strong>STOP</strong> (START to resume where supported).</li>
+        <li><strong>Voice / all channels:</strong> Contact your supervisor or email support to remove consent.</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>
+        Program: ABE Guard staffing notifications · Sender: ABE Security Twilio number<br />
+        Questions: contact your ABE Security administrator.
+      </p>
+      <p class="muted">This page is provided as public documentation of our opt-in process for messaging compliance review.</p>
+    </footer>
+  </main>
+</body>
+</html>
