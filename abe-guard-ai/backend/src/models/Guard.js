@@ -33,6 +33,9 @@ reliability_score: {
   },
   is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
   weekly_hours: { type: DataTypes.INTEGER, defaultValue: 0 },
+  communications_consent: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+  consent_at: { type: DataTypes.DATE, allowNull: true },
+  consent_source: { type: DataTypes.STRING, allowNull: true },
   created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
 }, {
   tableName: 'guards',

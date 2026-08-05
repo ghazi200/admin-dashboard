@@ -428,6 +428,18 @@ exports.createGuard = async (req, res) => {
       phone: req.body.phone || null,
       active: req.body.active ?? true,
     };
+
+    const wantsConsent = Boolean(req.body.communications_consent);
+    if (wantsConsent) {
+      base.communications_consent = true;
+      base.consent_at = new Date();
+      base.consent_source =
+        req.body.consent_source || "admin_dashboard_guard_form";
+    } else {
+      base.communications_consent = false;
+      base.consent_at = null;
+      base.consent_source = null;
+    }
     if (role === "super_admin") {
       const tid = req.body.tenant_id ?? req.body.tenantId;
       if (tid != null && String(tid).trim() !== "" && isValidTenantUuid(tid)) {
@@ -579,8 +591,21 @@ exports.updateGuard = async (req, res) => {
 
     // Check active status BEFORE updating (we need the old value)
     const wasActiveBeforeUpdate = guard.active;
-    
-    Object.assign(guard, req.body);
+
+    const body = { ...req.body };
+    if (body.communications_consent !== undefined) {
+      const nextConsent = Boolean(body.communications_consent);
+      body.communications_consent = nextConsent;
+      if (nextConsent && !guard.communications_consent) {
+        body.consent_at = new Date();
+        body.consent_source = body.consent_source || "admin_dashboard_guard_form";
+      } else if (!nextConsent) {
+        body.consent_at = null;
+        body.consent_source = null;
+      }
+    }
+
+    Object.assign(guard, body);
     await guard.save();
 
     // ✅ Create availability log if availability is in request

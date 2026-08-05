@@ -53,6 +53,20 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true,
     },
+    // SMS / voice opt-in (Twilio / TCPA)
+    communications_consent: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    consent_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    consent_source: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   }, {
     tableName: 'guards',
     freezeTableName: true,

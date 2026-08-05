@@ -204,7 +204,8 @@ async function notifyRankedGuardsOutbound(app, payload = {}) {
   }
 
   const [guards] = await sequelize.query(
-    `SELECT id::text AS id, name, email, phone
+    `SELECT id::text AS id, name, email, phone,
+            COALESCE(communications_consent, false) AS communications_consent
      FROM guards
      WHERE id::text = ANY($1::text[]) AND COALESCE(is_active, true) = true`,
     { bind: [guardIds] }
@@ -229,6 +230,16 @@ async function notifyRankedGuardsOutbound(app, payload = {}) {
     const rank = r.rank != null ? r.rank : count;
     const aiReason = r.reason || r.aiReason || null;
     const entry = { guardId: gid, name: guard.name, email: null, sms: null, call: null };
+    const hasConsent = Boolean(guard.communications_consent);
+
+    if (!hasConsent) {
+      entry.email = { success: false, error: "no_communications_consent" };
+      entry.sms = { sent: false, reason: "no_communications_consent" };
+      entry.call = { placed: false, reason: "no_communications_consent" };
+      results.push(entry);
+      console.log(`📵 Skip outbound for ${guard.name}: no communications_consent`);
+      continue;
+    }
 
     if (emailEnabled && guard.email) {
       const text = buildEmailBody({

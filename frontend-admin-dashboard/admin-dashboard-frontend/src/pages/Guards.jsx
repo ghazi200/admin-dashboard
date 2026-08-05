@@ -159,6 +159,7 @@ export default function Guards() {
     phone: "",
     availability: true,
     active: true,
+    communications_consent: false,
   });
 
   // History modal state
@@ -530,12 +531,20 @@ export default function Guards() {
       phone: g.phone || "",
       availability: !!g.availability,
       active: !!g.active,
+      communications_consent: !!g.communications_consent,
     });
   }
 
   function reset() {
     setEditingId(null);
-    setForm({ name: "", email: "", phone: "", availability: true, active: true });
+    setForm({
+      name: "",
+      email: "",
+      phone: "",
+      availability: true,
+      active: true,
+      communications_consent: false,
+    });
   }
 
   async function submit(e) {
@@ -719,6 +728,32 @@ export default function Guards() {
             <input className="input" name="email" value={form.email} onChange={onChange} placeholder="Email" />
             <input className="input" name="phone" value={form.phone} onChange={onChange} placeholder="Phone" />
 
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", lineHeight: 1.35 }}>
+              <input
+                type="checkbox"
+                name="communications_consent"
+                checked={!!form.communications_consent}
+                onChange={onChange}
+                style={{ marginTop: 3 }}
+              />
+              <span>
+                Guard consents to <b>SMS and phone calls</b> for shift callouts / coverage offers.
+                {" "}
+                <a
+                  href="https://admin-dashboard-production-2596.up.railway.app/legal/messaging-consent"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Consent policy
+                </a>
+              </span>
+            </label>
+            {form.communications_consent && !String(form.phone || "").trim() && (
+              <div style={{ fontSize: 12, color: "#f59e0b", marginTop: -6 }}>
+                Add a phone number so SMS/voice can be delivered.
+              </div>
+            )}
+
             <label>
               <input type="checkbox" name="availability" checked={form.availability} onChange={onChange} /> Available
             </label>
@@ -825,6 +860,7 @@ export default function Guards() {
                     <th style={{ minWidth: 120 }}>Name</th>
                     <th style={{ minWidth: 200 }}>Email</th>
                     <th style={{ minWidth: 120 }}>Phone</th>
+                    <th style={{ minWidth: 90 }}>SMS/Call</th>
                     <th style={{ minWidth: 140 }}>Availability</th>
                     <th style={{ minWidth: 100 }}>Active</th>
                     <th style={{ minWidth: 120 }}>Account</th>
@@ -854,6 +890,7 @@ export default function Guards() {
                         <td>{g.name}</td>
                         <td>{g.email}</td>
                         <td>{g.phone || "—"}</td>
+                        <td>{g.communications_consent ? "Yes" : "No"}</td>
 
                         <td style={{ display: "flex", gap: 10, alignItems: "center" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
