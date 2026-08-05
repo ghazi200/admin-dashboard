@@ -87,14 +87,24 @@ export default function CommandCenter() {
     refetch: refetchSiteHealth,
   } = useQuery({
     queryKey: ["siteHealth", selectedTenantId],
-    queryFn: () => getSiteHealth({ 
-      days: 30,
-      ...(isSuperAdmin && selectedTenantId ? { tenantId: selectedTenantId } : {}),
-    }),
+    queryFn: async () => {
+      const response = await getSiteHealth({
+        days: 30,
+        ...(isSuperAdmin && selectedTenantId ? { tenantId: selectedTenantId } : {}),
+      });
+      // axios body: { data: [...], count, message }
+      return response?.data ?? { data: [], count: 0 };
+    },
     enabled: Boolean(showSiteHealth && (!isSuperAdmin || !!selectedTenantId)), // Only fetch if not super-admin OR if super-admin has selected a tenant
     refetchInterval: showSiteHealth ? 60000 : false, // Only refresh when visible
     retry: 1, // Retry once on error
   });
+
+  const siteHealthList = Array.isArray(siteHealthData?.data)
+    ? siteHealthData.data
+    : Array.isArray(siteHealthData)
+      ? siteHealthData
+      : [];
 
   // Query guard readiness
   const {
@@ -1098,7 +1108,7 @@ export default function CommandCenter() {
                   Retry
                 </button>
               </div>
-            ) : siteHealthData?.message && !siteHealthData?.data?.length ? (
+            ) : siteHealthData?.message && siteHealthList.length === 0 ? (
               <div style={{ padding: 40, textAlign: "center" }}>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
                   {siteHealthData.message}
@@ -1106,12 +1116,12 @@ export default function CommandCenter() {
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
                   {siteHealthData.message.includes("tenant") 
                     ? "Please contact an administrator to assign you to a tenant, or select a tenant if you are a super-admin."
-                    : "Site health data will appear once sites have operational activity such as incidents, events, or shifts."}
+                    : "Add sites in Geographic Dashboard, or create shifts/incidents for existing sites."}
                 </div>
               </div>
-            ) : siteHealthData?.data?.length > 0 ? (
+            ) : siteHealthList.length > 0 ? (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
-                {siteHealthData.data.map((siteHealth) => {
+                {siteHealthList.map((siteHealth) => {
                   const healthColors = {
                     HEALTHY: { bg: "rgba(16,185,129,0.1)", border: "rgba(16,185,129,0.3)", text: "#10b981" },
                     WARNING: { bg: "rgba(251,191,36,0.1)", border: "rgba(251,191,36,0.3)", text: "#fbbf24" },

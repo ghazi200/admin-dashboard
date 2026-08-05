@@ -20,215 +20,236 @@ const riskScoringService = require("./riskScoring.service");
  */
 async function getSiteHealthOverview(tenantId, models, options = {}) {
   try {
-    // Validate inputs
     if (!tenantId) {
       console.warn("⚠️ getSiteHealthOverview called without tenantId");
       return [];
     }
-    
-    if (!models || !models.Shift || !models.OpEvent) {
+
+    if (!models || !models.Shift) {
       console.error("❌ Models not available in getSiteHealthOverview");
       return [];
     }
-    
-    const { Shift, OpEvent } = models;
+
+    const { Shift, OpEvent, Site, Incident, sequelize } = models;
     const days = options.days || 30;
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split("T")[0];
 
-    // Get unique site IDs from OpEvents (Incident model may not be available)
-    let incidentSites = [];
-    if (models.Incident) {
+    // Prefer real sites for this tenant (show even with zero recent activity)
+    let sites = [];
+    try {
+      if (Site) {
+        sites = await Site.findAll({
+          where: { tenant_id: tenantId },
+          order: [["name", "ASC"]],
+          raw: true,
+        });
+      }
+    } catch (err) {
+      console.warn("⚠️ Site.findAll failed:", err.message);
+    }
+
+    const discoveredIds = new Set();
+    if (Incident) {
       try {
-        // Get unique site IDs from incidents (now using extended schema)
-        incidentSites = await models.Incident.findAll({
+        const incidentSites = await Incident.findAll({
           where: {
             tenantId: tenantId,
             siteId: { [Op.ne]: null },
-            reportedAt: {
-              [Op.gte]: startDate,
-            },
+            reportedAt: { [Op.gte]: startDate },
           },
           attributes: ["siteId"],
           group: ["siteId"],
           raw: true,
         });
+        incidentSites.forEach((s) => {
+          const id = s.siteId || s.site_id;
+          if (id) discoveredIds.add(String(id));
+        });
       } catch (err) {
-        console.warn("⚠️ Incident model not available or query failed:", err.message);
+        console.warn("⚠️ Incident site discovery failed:", err.message);
       }
     }
 
-    let eventSites = [];
-    try {
-      eventSites = await OpEvent.findAll({
-        where: {
-          tenant_id: tenantId,
-          site_id: { [Op.ne]: null },
-          created_at: {
-            [Op.gte]: startDate,
+    if (OpEvent) {
+      try {
+        const eventSites = await OpEvent.findAll({
+          where: {
+            tenant_id: tenantId,
+            site_id: { [Op.ne]: null },
+            created_at: { [Op.gte]: startDate },
           },
-        },
-        attributes: ["site_id"],
-        group: ["site_id"],
-        raw: true,
-      });
-    } catch (err) {
-      console.warn("⚠️ OpEvent query failed:", err.message);
-      eventSites = [];
+          attributes: ["site_id"],
+          group: ["site_id"],
+          raw: true,
+        });
+        eventSites.forEach((s) => {
+          if (s.site_id) discoveredIds.add(String(s.site_id));
+        });
+      } catch (err) {
+        console.warn("⚠️ OpEvent site discovery failed:", err.message);
+      }
     }
 
-    // Combine and get unique site IDs
-    const allSiteIds = new Set();
-    incidentSites.forEach((s) => s.site_id && allSiteIds.add(s.site_id));
-    eventSites.forEach((s) => s.site_id && allSiteIds.add(s.site_id));
+    const knownIds = new Set(sites.map((s) => String(s.id)));
+    for (const id of discoveredIds) {
+      if (!knownIds.has(id)) {
+        sites.push({
+          id,
+          name: `Site ${id.substring(0, 8)}`,
+          address_1: null,
+        });
+      }
+    }
 
-    // If no sites found, return empty array instead of error
-    if (allSiteIds.size === 0) {
-      console.log(`ℹ️ No sites found with activity for tenant ${tenantId} in last ${days} days`);
+    // Fallback: distinct shift locations if sites table empty
+    if (sites.length === 0 && sequelize) {
+      try {
+        const [locRows] = await sequelize.query(
+          `SELECT DISTINCT location AS name
+           FROM shifts
+           WHERE tenant_id::text = $1::text
+             AND location IS NOT NULL
+             AND TRIM(location) <> ''
+           ORDER BY name
+           LIMIT 50`,
+          { bind: [String(tenantId)] }
+        );
+        sites = (locRows || []).map((r, idx) => ({
+          id: `loc-${idx}-${String(r.name).slice(0, 24)}`,
+          name: r.name,
+          address_1: null,
+          _isLocationOnly: true,
+        }));
+      } catch (err) {
+        console.warn("⚠️ Shift location fallback failed:", err.message);
+      }
+    }
+
+    if (sites.length === 0) {
+      console.log(`ℹ️ No sites found for tenant ${tenantId}`);
       return [];
     }
 
-    const sites = Array.from(allSiteIds).map((siteId) => ({
-      id: siteId,
-      name: `Site ${siteId.substring(0, 8)}`, // Use ID prefix as name if Site model not available
-    }));
-
-    // Calculate health metrics for each site
     const siteHealthData = await Promise.all(
       sites.map(async (site) => {
         const siteId = site.id;
+        const siteName = site.name || "";
 
-        // Get incidents for this site (if Incident model available)
         let incidents = 0;
-        if (models.Incident) {
+        if (Incident && !site._isLocationOnly) {
           try {
-            // Count incidents for this site (using extended schema)
-            incidents = await models.Incident.count({
+            incidents = await Incident.count({
               where: {
                 tenantId: tenantId,
                 siteId: siteId,
-                reportedAt: {
-                  [Op.gte]: startDate,
-                },
+                reportedAt: { [Op.gte]: startDate },
               },
             });
-          } catch (err) {
-            // Incident model not available or query failed
-          }
+          } catch (_) {}
         }
 
-        // Get open shifts for this site
-        // Note: Shift model uses 'location' field (string), not site_id
-        // We'll try to match by checking if any OpEvents or Incidents reference both site and shift locations
         let openShifts = 0;
         try {
-          openShifts = await Shift.count({
-            where: {
-              tenant_id: tenantId,
-              status: "OPEN",
-              shift_date: { [Op.gte]: new Date().toISOString().split("T")[0] },
-            },
-          });
+          if (sequelize && siteName) {
+            const [rows] = await sequelize.query(
+              `SELECT COUNT(*)::int AS count
+               FROM shifts
+               WHERE tenant_id::text = $1::text
+                 AND status = 'OPEN'
+                 AND shift_date >= $2
+                 AND (location ILIKE $3 OR location ILIKE $4)`,
+              {
+                bind: [String(tenantId), startDateStr, siteName, `%${siteName}%`],
+              }
+            );
+            openShifts = rows[0]?.count || 0;
+          } else {
+            openShifts = await Shift.count({
+              where: {
+                tenant_id: tenantId,
+                status: "OPEN",
+                shift_date: { [Op.gte]: startDateStr },
+              },
+            });
+          }
         } catch (err) {
           console.warn(`⚠️ Error counting open shifts for site ${siteId}:`, err.message);
         }
 
-        // Filter by checking OpEvents that reference this site
-        // For now, we'll get a rough count - could be improved with better site_id mapping
-        const siteRelatedShifts = 0; // Placeholder - would need better site mapping
-
-        // Get recent OpEvents for this site
         let recentEvents = 0;
-        try {
-          recentEvents = await OpEvent.count({
-            where: {
-              tenant_id: tenantId,
-              site_id: siteId,
-              created_at: {
-                [Op.gte]: startDate,
+        if (OpEvent && !site._isLocationOnly) {
+          try {
+            recentEvents = await OpEvent.count({
+              where: {
+                tenant_id: tenantId,
+                site_id: siteId,
+                created_at: { [Op.gte]: startDate },
               },
-            },
-          });
-        } catch (err) {
-          console.warn(`⚠️ Error counting events for site ${siteId}:`, err.message);
+            });
+          } catch (err) {
+            console.warn(`⚠️ Error counting events for site ${siteId}:`, err.message);
+          }
         }
 
-        // Calculate risk score (with error handling)
-        let siteRisk = {
-          riskScore: 0,
-          riskLevel: "LOW",
-          factors: {},
-        };
-        try {
-          siteRisk = await riskScoringService.calculateSiteRisk(siteId, models, { days });
-        } catch (err) {
-          console.warn(`⚠️ Error calculating site risk for ${siteId}:`, err.message);
-          // Use default low risk if calculation fails
+        let siteRisk = { riskScore: 0, riskLevel: "LOW", factors: {} };
+        if (!site._isLocationOnly) {
+          try {
+            siteRisk = await riskScoringService.calculateSiteRisk(siteId, models, { days });
+          } catch (err) {
+            console.warn(`⚠️ Error calculating site risk for ${siteId}:`, err.message);
+          }
         }
 
-        // Determine health status
-        let healthStatus = "HEALTHY";
         let healthScore = 100;
-        
-        // Deduct points for incidents (5 points per incident, max 50)
         healthScore -= Math.min(incidents * 5, 50);
-        
-        // Deduct points for open shifts (10 points per shift, max 30)
         healthScore -= Math.min(openShifts * 10, 30);
-        
-        // Deduct based on risk score (up to 20 points)
-        healthScore -= Math.min(siteRisk.riskScore / 5, 20);
-        
-        healthScore = Math.max(healthScore, 0); // Don't go below 0
+        healthScore -= Math.min((siteRisk.riskScore || 0) / 5, 20);
+        healthScore = Math.max(healthScore, 0);
 
+        let healthStatus = "HEALTHY";
         if (healthScore >= 80) healthStatus = "HEALTHY";
         else if (healthScore >= 60) healthStatus = "WARNING";
         else if (healthScore >= 40) healthStatus = "CAUTION";
         else healthStatus = "CRITICAL";
 
+        const address =
+          [site.address_1, site.address_2].filter(Boolean).join(", ") ||
+          site.address ||
+          "Address not available";
+
         return {
           site: {
             id: site.id,
-            name: site.name || `Site ${site.id.substring(0, 8)}`,
-            address: site.address || "Address not available",
+            name: siteName || `Site ${String(site.id).substring(0, 8)}`,
+            address,
           },
           metrics: {
             healthScore: Math.round(healthScore),
             healthStatus,
-            incidents: incidents,
-            openShifts: openShifts,
-            recentEvents: recentEvents,
+            incidents,
+            openShifts,
+            recentEvents,
           },
           risk: siteRisk,
           trends: {
-            incidents7d: 0, // Will calculate separately if needed
+            incidents7d: 0,
             incidents30d: incidents,
           },
         };
       })
     );
 
-    // Sort by health score (worst first)
     siteHealthData.sort((a, b) => a.metrics.healthScore - b.metrics.healthScore);
-
-    // Return empty array if no data instead of error
-    return siteHealthData.length > 0 ? siteHealthData : [];
+    return siteHealthData;
   } catch (error) {
     console.error("❌ Error getting site health overview:", error);
-    // Return empty array instead of throwing to handle gracefully
     console.warn("⚠️ Returning empty array due to error:", error.message);
     return [];
   }
 }
 
-/**
- * Get detailed site health for a specific site
- * @param {String} siteId - Site ID
- * @param {String} tenantId - Tenant ID
- * @param {Object} models - Sequelize models
- * @param {Object} options - { days = 30 }
- * @returns {Promise<Object>} Detailed site health data
- */
 async function getSiteHealthDetails(siteId, tenantId, models, options = {}) {
   try {
     const { Shift, OpEvent } = models;
