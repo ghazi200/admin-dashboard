@@ -207,12 +207,26 @@ export default function CommandCenter() {
         startDate: reportDateRange.startDate,
         endDate: reportDateRange.endDate,
       });
-      setWeeklyReportData(response.data);
+      // API returns the report object (also tolerates older { data: report } shape)
+      const report = response?.data?.data ?? response?.data ?? null;
+      if (!report?.period || !report?.metrics) {
+        throw new Error("Report response was empty or incomplete");
+      }
+      setWeeklyReportData(report);
     } catch (error) {
       console.error("Error generating weekly report:", error);
       setWeeklyReportError(error?.response?.data?.message || error?.message || "Failed to generate weekly report");
     } finally {
       setWeeklyReportLoading(false);
+    }
+  };
+
+  const toggleWeeklyReportSection = () => {
+    const next = !showWeeklyReport;
+    setShowWeeklyReport(next);
+    // Opening the section should produce a report without a second click
+    if (next && !weeklyReportData && !weeklyReportLoading) {
+      handleGenerateWeeklyReport();
     }
   };
 
@@ -1497,7 +1511,7 @@ export default function CommandCenter() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 20, fontWeight: 900, color: "#ffffff" }}>📊 Weekly Reports & AI Summaries</h2>
           <button
-            onClick={() => setShowWeeklyReport(!showWeeklyReport)}
+            onClick={toggleWeeklyReportSection}
             style={{
               padding: "8px 16px",
               borderRadius: 8,
@@ -1620,10 +1634,21 @@ export default function CommandCenter() {
                     📊 Weekly Operational Report
                   </div>
                   <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>
-                    Period: {new Date(weeklyReportData.period.startDate).toLocaleDateString()} - {new Date(weeklyReportData.period.endDate).toLocaleDateString()} ({weeklyReportData.period.days} days)
+                    Period:{" "}
+                    {weeklyReportData.period?.startDate
+                      ? new Date(weeklyReportData.period.startDate).toLocaleDateString()
+                      : "—"}{" "}
+                    -{" "}
+                    {weeklyReportData.period?.endDate
+                      ? new Date(weeklyReportData.period.endDate).toLocaleDateString()
+                      : "—"}
+                    {weeklyReportData.period?.days != null ? ` (${weeklyReportData.period.days} days)` : ""}
                   </div>
                   <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 }}>
-                    Generated: {new Date(weeklyReportData.generatedAt).toLocaleString()}
+                    Generated:{" "}
+                    {weeklyReportData.generatedAt
+                      ? new Date(weeklyReportData.generatedAt).toLocaleString()
+                      : "—"}
                     {weeklyReportData.summary?.generatedByAI && (
                       <span style={{ marginLeft: 8, color: "#a78bfa" }}>🤖 AI-Generated</span>
                     )}
@@ -1658,27 +1683,27 @@ export default function CommandCenter() {
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
                     <div style={{ padding: 12, background: "rgba(0,0,0,0.3)", borderRadius: 8 }}>
                       <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Total Shifts</div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: "#ffffff" }}>{weeklyReportData.metrics.totalShifts}</div>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{weeklyReportData.metrics.completedShifts} completed</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#ffffff" }}>{weeklyReportData.metrics?.totalShifts ?? 0}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{weeklyReportData.metrics?.completedShifts ?? 0} completed</div>
                     </div>
                     <div style={{ padding: 12, background: "rgba(0,0,0,0.3)", borderRadius: 8 }}>
                       <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Completion Rate</div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: "#10b981" }}>{weeklyReportData.metrics.completionRate}%</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#10b981" }}>{weeklyReportData.metrics?.completionRate ?? 0}%</div>
                     </div>
                     <div style={{ padding: 12, background: "rgba(0,0,0,0.3)", borderRadius: 8 }}>
                       <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Callouts</div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: "#f59e0b" }}>{weeklyReportData.metrics.totalCallouts}</div>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{weeklyReportData.metrics.calloutRate}% rate</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#f59e0b" }}>{weeklyReportData.metrics?.totalCallouts ?? 0}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{weeklyReportData.metrics?.calloutRate ?? 0}% rate</div>
                     </div>
                     <div style={{ padding: 12, background: "rgba(0,0,0,0.3)", borderRadius: 8 }}>
                       <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Incidents</div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: "#ef4444" }}>{weeklyReportData.metrics.totalIncidents}</div>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{weeklyReportData.metrics.openIncidents} open</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#ef4444" }}>{weeklyReportData.metrics?.totalIncidents ?? 0}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{weeklyReportData.metrics?.openIncidents ?? 0} open</div>
                     </div>
                     <div style={{ padding: 12, background: "rgba(0,0,0,0.3)", borderRadius: 8 }}>
                       <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Operational Events</div>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: "#60a5fa" }}>{weeklyReportData.metrics.totalEvents}</div>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{weeklyReportData.metrics.highSeverityEvents} high-severity</div>
+                      <div style={{ fontSize: 20, fontWeight: 700, color: "#60a5fa" }}>{weeklyReportData.metrics?.totalEvents ?? 0}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{weeklyReportData.metrics?.highSeverityEvents ?? 0} high-severity</div>
                     </div>
                   </div>
                 </div>

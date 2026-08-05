@@ -884,9 +884,7 @@ exports.generateWeeklyReport = async (req, res) => {
       options
     );
 
-    return res.json({
-      data: report,
-    });
+    return res.json(report);
   } catch (e) {
     console.error("❌ Error generating weekly report:", e);
     return res.status(500).json({
