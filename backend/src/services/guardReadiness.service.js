@@ -134,18 +134,24 @@ async function calculateGuardReliability(guardId, models, options = {}) {
     // Calculate callout rate
     const calloutRate = totalShifts > 0 ? callouts / totalShifts : 0;
 
-    // Get recent late clock-ins from OpEvents
-    const lateClockIns = await OpEvent.count({
-      where: {
-        tenant_id: guard.tenant_id || null,
-        type: "CLOCKIN",
-        entity_refs: { guard_id: guardId },
-        severity: { [Op.in]: ["HIGH", "CRITICAL"] }, // Late clock-ins are marked as high severity
-        created_at: {
-          [Op.gte]: startDate,
+    // Get recent late clock-ins from OpEvents (best-effort; don't fail readiness)
+    let lateClockIns = 0;
+    try {
+      lateClockIns = await OpEvent.count({
+        where: {
+          tenant_id: guard.tenant_id || null,
+          type: "CLOCKIN",
+          entity_refs: { guard_id: guardId },
+          severity: { [Op.in]: ["HIGH", "CRITICAL"] }, // Late clock-ins are marked as high severity
+          created_at: {
+            [Op.gte]: startDate,
+          },
         },
-      },
-    });
+      });
+    } catch (err) {
+      console.warn("⚠️ Error counting late clock-ins for guard:", guardId, err.message);
+      lateClockIns = 0;
+    }
 
     return {
       guard: {
@@ -200,19 +206,30 @@ async function getGuardReadinessOverview(tenantId, models, options = {}) {
     const minReliability = options.minReliability || 0;
     const limit = options.limit || 50;
 
-    // Get all active guards
-    // Note: Guard model may not have tenant_id field
+    // Get active guards (optionally scoped to tenant)
+    const where = { active: true };
+    if (tenantId) {
+      where.tenant_id = tenantId;
+    }
     const guards = await Guard.findAll({
-      where: {
-        active: true,
-      },
+      where,
       limit,
       order: [["name", "ASC"]],
     });
 
+    // If tenant filter returned none (legacy rows without tenant_id), fall back to all active
+    const guardList =
+      guards.length > 0 || !tenantId
+        ? guards
+        : await Guard.findAll({
+            where: { active: true },
+            limit,
+            order: [["name", "ASC"]],
+          });
+
     // Calculate readiness for each guard
     const guardReadinessData = await Promise.all(
-      guards.map(async (guard) => {
+      guardList.map(async (guard) => {
         try {
           const reliability = await calculateGuardReliability(guard.id, models, { days });
           return reliability;

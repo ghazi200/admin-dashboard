@@ -104,11 +104,21 @@ export default function CommandCenter() {
     refetch: refetchGuardReadiness,
   } = useQuery({
     queryKey: ["guardReadiness"],
-    queryFn: () => getGuardReadiness({ days: 30, minReliability: 0, limit: 50 }),
+    queryFn: async () => {
+      const response = await getGuardReadiness({ days: 30, minReliability: 0, limit: 50 });
+      // axios body: { data: [...], count, message }
+      return response?.data ?? { data: [], count: 0 };
+    },
     enabled: showGuardReadiness,
     refetchInterval: showGuardReadiness ? 60000 : false, // Only refresh when visible
     retry: 1, // Retry once on error
   });
+
+  const guardReadinessList = Array.isArray(guardReadinessData?.data)
+    ? guardReadinessData.data
+    : Array.isArray(guardReadinessData)
+      ? guardReadinessData
+      : [];
 
   // Query feed
   const {
@@ -1316,12 +1326,12 @@ export default function CommandCenter() {
                   {guardReadinessData?.message || "No guard readiness data available. This is normal if no guards have shifts or activity yet."}
                 </div>
               </div>
-            ) : guardReadinessData?.data?.length > 0 ? (
+            ) : guardReadinessList.length > 0 ? (
               <>
                 {/* Guard Cards */}
                 {(() => {
                   // Filter guards based on search query and reliability level
-                  const filteredGuards = guardReadinessData.data.filter((guard) => {
+                  const filteredGuards = guardReadinessList.filter((guard) => {
                     // Search filter
                     const searchLower = guardSearchQuery.toLowerCase();
                     const matchesSearch = !guardSearchQuery || 
