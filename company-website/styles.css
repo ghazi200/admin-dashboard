@@ -130,35 +130,26 @@ a:hover { color: #f0c45a; }
   border-radius: 50%;
   overflow: hidden;
   position: relative;
-  background:
-    radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.22), transparent 28%),
-    radial-gradient(circle at 70% 70%, #1c2a18, #0b100a 70%);
-  border: 1px solid rgba(212, 160, 23, 0.35);
+  background: #0a1a2e;
+  border: 1px solid rgba(212, 160, 23, 0.4);
   box-shadow:
-    inset -18px -12px 36px rgba(0, 0, 0, 0.55),
-    inset 10px 8px 24px rgba(255, 255, 255, 0.08);
+    inset -22px -14px 40px rgba(0, 0, 0, 0.55),
+    inset 12px 10px 28px rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(212, 160, 23, 0.12);
 }
 
 .globe-map {
   position: absolute;
-  top: -8%;
+  top: 0;
   left: 0;
   width: 200%;
-  height: 116%;
-  background-image:
-    radial-gradient(ellipse 18% 14% at 12% 42%, #6f8a52 0 55%, transparent 56%),
-    radial-gradient(ellipse 12% 20% at 18% 58%, #5f7a45 0 50%, transparent 51%),
-    radial-gradient(ellipse 24% 16% at 34% 38%, #739156 0 52%, transparent 53%),
-    radial-gradient(ellipse 14% 18% at 46% 55%, #617d48 0 48%, transparent 49%),
-    radial-gradient(ellipse 20% 12% at 58% 40%, #6a864e 0 50%, transparent 51%),
-    radial-gradient(ellipse 10% 14% at 68% 62%, #587242 0 46%, transparent 47%),
-    radial-gradient(ellipse 18% 14% at 78% 42%, #6f8a52 0 55%, transparent 56%),
-    radial-gradient(ellipse 12% 20% at 84% 58%, #5f7a45 0 50%, transparent 51%),
-    radial-gradient(ellipse 24% 16% at 92% 38%, #739156 0 52%, transparent 53%),
-    linear-gradient(180deg, rgba(55, 110, 150, 0.22), transparent 45%, rgba(20, 40, 30, 0.25));
-  background-color: #163049;
-  animation: spin-globe 16s linear infinite;
-  opacity: 0.95;
+  height: 100%;
+  background-image: url("/assets/earth-map.jpg");
+  background-size: 50% 100%;
+  background-repeat: repeat-x;
+  background-position: 0 center;
+  animation: spin-globe 28s linear infinite;
+  filter: saturate(1.05) contrast(1.05) brightness(0.95);
 }
 
 .globe-grid {
@@ -168,16 +159,32 @@ a:hover { color: #f0c45a; }
   background:
     repeating-linear-gradient(
       90deg,
-      transparent 0 14%,
-      rgba(242, 239, 230, 0.08) 14% 15%
+      transparent 0 11.5%,
+      rgba(242, 239, 230, 0.06) 11.5% 12%
     ),
     repeating-linear-gradient(
       0deg,
-      transparent 0 16%,
-      rgba(242, 239, 230, 0.07) 16% 17%
+      transparent 0 14%,
+      rgba(242, 239, 230, 0.05) 14% 14.5%
     );
   mix-blend-mode: soft-light;
   pointer-events: none;
+  opacity: 0.55;
+}
+
+.globe-atmosphere {
+  position: absolute;
+  inset: -6%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    rgba(140, 190, 255, 0.18),
+    transparent 42%,
+    rgba(8, 16, 28, 0.35) 72%,
+    rgba(8, 16, 28, 0.55) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
 }
 
 .globe-shine {
@@ -186,12 +193,13 @@ a:hover { color: #f0c45a; }
   border-radius: 50%;
   background: linear-gradient(
     125deg,
-    rgba(255, 255, 255, 0.28) 0%,
-    transparent 34%,
-    transparent 62%,
-    rgba(0, 0, 0, 0.28) 100%
+    rgba(255, 255, 255, 0.32) 0%,
+    transparent 32%,
+    transparent 58%,
+    rgba(0, 0, 0, 0.35) 100%
   );
   pointer-events: none;
+  z-index: 3;
 }
 
 .globe-caption {
@@ -228,8 +236,8 @@ a:hover { color: #f0c45a; }
 }
 
 @keyframes spin-globe {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  from { background-position: 0 center; }
+  to { background-position: -100% center; }
 }
 
 @keyframes spin-ring {
