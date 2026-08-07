@@ -131,39 +131,30 @@ router.all("/voice/gather", async (req, res) => {
     if (!shift) return say("Shift not found. Goodbye.");
 
     const statusUpper = String(shift.status || "").toUpperCase();
-    if (shift.guard_id && statusUpper !== "OPEN") {
+    if (shift.guard_id || statusUpper !== "OPEN") {
       return say("Sorry, this shift was already filled. Goodbye.");
     }
 
-    await sequelize.query(
-      `UPDATE shifts SET status = 'CLOSED', guard_id = $1::uuid WHERE id = $2::uuid`,
-      { bind: [callout.guard_id, shift.id] }
-    );
-
     try {
-      const { notifyCalloutAccepted } = require("../services/calloutAcceptNotification.service");
-      await notifyCalloutAccepted(req.app, {
+      const { beginPendingAccept, overrideWindowMinutes } = require("../services/shiftAcceptPending.service");
+      const result = await beginPendingAccept(req.app, {
         shiftId: shift.id,
         guardId: callout.guard_id,
-        calloutId,
-        response: "ACCEPTED",
-        filled: true,
-      });
-    } catch (_) {
-      /* non-fatal */
-    }
-
-    const emitRealtime = req.app.locals.emitToRealtime;
-    if (typeof emitRealtime === "function") {
-      emitRealtime(req.app, "role:all", "shift_filled", {
-        shiftId: shift.id,
-        guardId: callout.guard_id,
-        calloutId,
         source: "voice_accept",
-      }).catch(() => {});
+        calloutId,
+      });
+      if (result.mode === "pending") {
+        return say(
+          `Thank you. Your accept is recorded. An administrator has about ${overrideWindowMinutes()} minutes to review before the shift is assigned to you. Goodbye.`
+        );
+      }
+      return say("Thank you. You have accepted the shift. It is now assigned to you. Goodbye.");
+    } catch (e) {
+      if (e.status === 409) {
+        return say("Sorry, this shift was already filled. Goodbye.");
+      }
+      throw e;
     }
-
-    return say("Thank you. You have accepted the shift. It is now assigned to you. Goodbye.");
   } catch (e) {
     console.error("twilio /voice/gather error:", e?.message || e);
     return say("Something went wrong. Please use the Guard app. Goodbye.");

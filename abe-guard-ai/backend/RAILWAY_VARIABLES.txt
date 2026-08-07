@@ -24,8 +24,8 @@ CORS_ORIGINS=https://admin-dashboard-frontend-flax.vercel.app,https://admin-dash
 
 # Voice callouts (optional — also set on ADMIN for unified outbound)
 # CALLOUT_ENABLE_VOICE_CALL=true
-# TWILIO_PHONE_NUMBER=+1xxxxxxxxxx
-# PUBLIC_BASE_URL=https://your-admin-or-guard-ai.up.railway.app
+# TWILIO_PHONE_NUMBER=+18557942422
+# PUBLIC_BASE_URL=https://admin-dashboard-production-2596.up.railway.app
 
 # Realtime (optional — in-app callout alerts + admin live updates)
 # REDIS_URL=${{ Redis.REDIS_URL }}
@@ -33,3 +33,14 @@ CORS_ORIGINS=https://admin-dashboard-frontend-flax.vercel.app,https://admin-dash
 # Then on ADMIN backend service, set:
 # ABE_GUARD_AI_URL=https://THIS-SERVICE-PUBLIC-URL.up.railway.app
 # Plus SMTP_* (email) and TWILIO_* (SMS) so ranked guards like Ghazi get notified outside the app.
+#
+# === ADMIN service (unified outbound after AI ranking) — required for live SMS/email/calls ===
+# TWILIO_ACCOUNT_SID=...
+# TWILIO_AUTH_TOKEN=...
+# TWILIO_MESSAGING_SERVICE_SID=MG...   # SMS
+# TWILIO_PHONE_NUMBER=+18557942422     # required for voice From
+# PUBLIC_BASE_URL=https://admin-dashboard-production-2596.up.railway.app
+# CALLOUT_OUTBOUND_EMAIL=true
+# CALLOUT_OUTBOUND_SMS=true
+# CALLOUT_OUTBOUND_CALL=true           # opt-in; Twilio voice charges apply
+# SMTP_HOST / SMTP_USER / SMTP_PASS / SMTP_FROM

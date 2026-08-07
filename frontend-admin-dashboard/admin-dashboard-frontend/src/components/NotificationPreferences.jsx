@@ -94,6 +94,8 @@ export default function NotificationPreferences({ onClose }) {
     "SHIFT_CREATED",
     "CALLOUT_CREATED",
     "CALLOUT_ACCEPTED",
+    "SHIFT_ACCEPT_PENDING",
+    "SHIFT_ACCEPT_OVERRIDDEN",
     "INCIDENT_CREATED",
     "GUARD_CREATED",
     "GUARD_DELETED",

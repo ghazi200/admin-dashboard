@@ -372,56 +372,83 @@ async function respondToCallout(req, res) {
 
       const statusUpper = String(shift.status || "").toUpperCase();
 
-      if (shift.guard_id && statusUpper !== "OPEN") {
+      if (shift.guard_id || (statusUpper !== "OPEN") || shift.pending_guard_id) {
         return res.status(409).json({
           message: "Shift already filled",
           shiftId: shift.id,
           currentGuardId: shift.guard_id,
+          pendingGuardId: shift.pending_guard_id || null,
           status: shift.status,
         });
       }
 
-      shift.guard_id = callout.guard_id;
-      shift.status = "CLOSED";
-      await shift.save();
-
-      filled = true;
-      filledShift = shift;
-
-      // ✅ realtime to admins + guards
-      if (typeof emitAdmin === "function") {
-        emitAdmin("shift_filled", {
+      const {
+        beginPendingAcceptSql,
+        overrideWindowMinutes,
+      } = require("../services/pendingAccept.service");
+      let pendingUntil = null;
+      try {
+        const sequelize = Shift.sequelize;
+        const pending = await beginPendingAcceptSql(sequelize, {
           shiftId: shift.id,
-          guardId: shift.guard_id,
-          calloutId: callout.id,
-          filledAt: now.toISOString(),
+          guardId: callout.guard_id,
           source: "callout_accept",
+        });
+        if (!pending.row) {
+          return res.status(409).json({
+            message: "Shift already filled",
+            shiftId: shift.id,
+          });
+        }
+        pendingUntil = pending.pendingUntil;
+        filled = false;
+        filledShift = pending.row;
+      } catch (colErr) {
+        if (!String(colErr.message || "").includes("pending_guard_id")) throw colErr;
+        // Pre-migration fallback
+        shift.guard_id = callout.guard_id;
+        shift.status = "CLOSED";
+        await shift.save();
+        filled = true;
+        filledShift = shift;
+      }
+
+      const pendingPayload = {
+        shiftId: shift.id,
+        guardId: callout.guard_id,
+        calloutId: callout.id,
+        pendingUntil,
+        windowMinutes: overrideWindowMinutes(),
+        source: "callout_accept",
+      };
+
+      if (filled) {
+        if (typeof emitAdmin === "function") {
+          emitAdmin("shift_filled", {
+            ...pendingPayload,
+            filledAt: now.toISOString(),
+          });
+        } else {
+          emitAdminsCompat(io, "shift_filled", {
+            ...pendingPayload,
+            filledAt: now.toISOString(),
+          });
+        }
+        publishToGatewayLazy(roomsForTenant(shift.tenant_id), "shift_filled", {
+          ...pendingPayload,
+          filledAt: now.toISOString(),
         });
       } else {
-        // ✅ fallback emits to BOTH rooms for compatibility
-        emitAdminsCompat(io, "shift_filled", {
-          shiftId: shift.id,
-          guardId: shift.guard_id,
-          calloutId: callout.id,
-          filledAt: now.toISOString(),
-          source: "callout_accept",
-        });
+        if (typeof emitAdmin === "function") {
+          emitAdmin("shift_accept_pending", pendingPayload);
+        } else {
+          emitAdminsCompat(io, "shift_accept_pending", pendingPayload);
+        }
+        if (io) {
+          io.to("guards").emit("shift_accept_pending", pendingPayload);
+        }
+        publishToGatewayLazy(roomsForTenant(shift.tenant_id), "shift_accept_pending", pendingPayload);
       }
-
-      if (io) {
-        io.to("guards").emit("shift_filled", {
-          shiftId: shift.id,
-          guardId: shift.guard_id,
-        });
-      }
-
-      publishToGatewayLazy(roomsForTenant(shift.tenant_id), "shift_filled", {
-        shiftId: shift.id,
-        guardId: shift.guard_id,
-        calloutId: callout.id,
-        filledAt: now.toISOString(),
-        source: "callout_accept",
-      });
     }
 
     // Learning stats (optional)
@@ -469,12 +496,16 @@ async function respondToCallout(req, res) {
       filled,
     });
 
+    const pendingAccept =
+      response === "ACCEPTED" && !filled && Boolean(filledShift?.pending_guard_id || filledShift);
     return res.json({
       success: true,
       filled,
+      pendingAccept: response === "ACCEPTED" ? !filled : false,
+      pendingGuardId: response === "ACCEPTED" && !filled ? callout.guard_id : null,
       shiftId: filledShift?.id || callout.shift_id,
-      assignedGuardId: filledShift?.guard_id || null,
-      status: filledShift?.status || null,
+      assignedGuardId: filled ? filledShift?.guard_id || callout.guard_id : null,
+      status: filled ? "CLOSED" : filledShift?.status || "OPEN",
     });
   } catch (e) {
     console.error(e);

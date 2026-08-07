@@ -132,6 +132,29 @@ app.get("/api/cron/shift-reminders", async (req, res) => {
   }
 });
 
+// Finalize pending shift accepts after admin override window expires
+app.get("/api/cron/finalize-pending-accepts", async (req, res) => {
+  const secret = req.query.secret || req.get("X-Cron-Secret") || "";
+  const want = process.env.CRON_SECRET;
+  if (isProduction && !want) {
+    return res.status(503).json({ ok: false, error: "CRON_SECRET is required in production" });
+  }
+  if (want && secret !== want) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+  if (!app.locals.models) {
+    return res.status(503).json({ ok: false, error: "Models not ready" });
+  }
+  try {
+    const { finalizePendingAccepts } = require("./src/services/shiftAcceptPending.service");
+    const result = await finalizePendingAccepts(app);
+    return res.json({ ok: true, ran: "finalize-pending-accepts", ...result });
+  } catch (err) {
+    logger.warn({ err: err?.message }, "Cron finalize-pending-accepts error");
+    return res.status(500).json({ ok: false, error: err?.message || "Run failed" });
+  }
+});
+
 // Correct database for all features (admin, guards, messaging)
 // Railway Postgres often uses database name "postgres" — excluding it caused deploy crash (process.exit).
 const REQUIRED_DB_NAMES = ["abe_guard", "abe-guard", "railway", "postgres"];
@@ -823,20 +846,58 @@ app.post("/callouts/:calloutId/respond", authGuard, async (req, res) => {
       validateStatus: () => true,
     });
 
-    // Admin bell only on a real successful accept that filled the shift
+    // Pending accept window: notify admins to override; final fill notify happens on finalize
     const accepted = String(response || "").toUpperCase() === "ACCEPTED";
-    if (r.status >= 200 && r.status < 300 && accepted && r.data?.filled === true) {
-      try {
-        const { notifyCalloutAccepted } = require("./src/services/calloutAcceptNotification.service");
-        await notifyCalloutAccepted(req.app, {
-          shiftId: r.data?.shiftId,
-          guardId: r.data?.assignedGuardId || actorId,
-          calloutId,
-          response: "ACCEPTED",
-          filled: true,
-        });
-      } catch (e) {
-        logger.warn({ err: e?.message }, "CALLOUT_ACCEPTED notification failed");
+    if (r.status >= 200 && r.status < 300 && accepted) {
+      if (r.data?.pendingAccept || r.data?.pendingUntil) {
+        try {
+          const {
+            notifyAcceptPending,
+            overrideWindowMinutes,
+          } = require("./src/services/shiftAcceptPending.service");
+          const [shiftRows] = await req.app.locals.models.sequelize.query(
+            `SELECT id, location, shift_date, shift_start, shift_end, tenant_id,
+                    pending_guard_id, accept_pending_until
+             FROM shifts WHERE id = $1::uuid LIMIT 1`,
+            { bind: [r.data?.shiftId] }
+          );
+          const shift = shiftRows?.[0];
+          await notifyAcceptPending(req.app, {
+            shiftId: r.data?.shiftId,
+            guardId: r.data?.pendingGuardId || actorId,
+            calloutId,
+            pendingUntil:
+              r.data?.pendingUntil || shift?.accept_pending_until || null,
+            source: "callout_accept",
+            shift: shift || {},
+          });
+          const emitRealtime = req.app.locals.emitToRealtime;
+          if (typeof emitRealtime === "function") {
+            emitRealtime(req.app, "role:all", "shift_accept_pending", {
+              shiftId: r.data?.shiftId,
+              guardId: r.data?.pendingGuardId || actorId,
+              calloutId,
+              pendingUntil: r.data?.pendingUntil,
+              windowMinutes: overrideWindowMinutes(),
+              source: "callout_accept",
+            }).catch(() => {});
+          }
+        } catch (e) {
+          logger.warn({ err: e?.message }, "SHIFT_ACCEPT_PENDING notification failed");
+        }
+      } else if (r.data?.filled === true) {
+        try {
+          const { notifyCalloutAccepted } = require("./src/services/calloutAcceptNotification.service");
+          await notifyCalloutAccepted(req.app, {
+            shiftId: r.data?.shiftId,
+            guardId: r.data?.assignedGuardId || actorId,
+            calloutId,
+            response: "ACCEPTED",
+            filled: true,
+          });
+        } catch (e) {
+          logger.warn({ err: e?.message }, "CALLOUT_ACCEPTED notification failed");
+        }
       }
     }
 
@@ -1128,6 +1189,22 @@ function withTimeout(promise, ms, label) {
           logger.info("Unfilled shift notification checker initialized");
         } catch (e) {
           logger.warn({ err: e?.message }, "Unfilled shift checker init failed");
+        }
+
+        try {
+          const { finalizePendingAccepts } = require("./src/services/shiftAcceptPending.service");
+          const everyMs = Math.max(
+            30_000,
+            parseInt(process.env.ACCEPT_FINALIZE_INTERVAL_MS || "60000", 10) || 60_000
+          );
+          setInterval(() => {
+            finalizePendingAccepts(app).catch((err) =>
+              logger.warn({ err: err?.message }, "finalizePendingAccepts tick failed")
+            );
+          }, everyMs);
+          logger.info({ everyMs }, "Pending accept finalizer started");
+        } catch (e) {
+          logger.warn({ err: e?.message }, "Pending accept finalizer init failed");
         }
 
         try {

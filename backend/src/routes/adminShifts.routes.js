@@ -6,9 +6,24 @@ const authAdmin = require("../middleware/authAdmin");
 const {requireAccess} = require("../middleware/requireAccess");
 
 const shifts = require("../controllers/adminShifts.controller");
+const acceptPending = require("../controllers/adminShiftAcceptPending.controller");
 
 // Read
 router.get("/", authAdmin, requireAccess("shifts:read"), shifts.listShifts);
+
+// Pending accept override window — before /:id
+router.get(
+  "/pending-accepts",
+  authAdmin,
+  acceptPending.requireAdminOrSupervisor,
+  acceptPending.listPendingAccepts
+);
+router.post(
+  "/:shiftId/override-accept",
+  authAdmin,
+  acceptPending.requireAdminOrSupervisor,
+  acceptPending.overridePendingAccept
+);
 
 // Running late - MUST come before /:id route (more specific routes first)
 router.get("/:id/running-late", authAdmin, requireAccess("shifts:read"), shifts.getRunningLate);

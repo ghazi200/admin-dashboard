@@ -129,44 +129,93 @@ router.post("/accept/:shiftId", auth, async (req, res) => {
       });
     }
 
-    if (String(shift.status || "").toUpperCase() !== "OPEN") {
-      console.log("⚠️  Shift not OPEN:", { shiftId, status: shift.status, currentGuardId: shift.guard_id });
+    if (
+      String(shift.status || "").toUpperCase() !== "OPEN" ||
+      shift.guard_id ||
+      shift.pending_guard_id
+    ) {
+      console.log("⚠️  Shift not claimable:", {
+        shiftId,
+        status: shift.status,
+        currentGuardId: shift.guard_id,
+        pendingGuardId: shift.pending_guard_id,
+      });
       return res.status(409).json({
         error: "Shift already taken",
         shiftId: shift.id,
         status: shift.status,
         currentGuardId: shift.guard_id,
+        pendingGuardId: shift.pending_guard_id || null,
       });
     }
 
-    await pool.query("UPDATE shifts SET guard_id=$1, status=$2 WHERE id=$3", [
-      guardId,
-      "CLOSED",
-      shiftId,
-    ]);
-
-    console.log("✅ Shift updated:", { shiftId, guardId, status: "CLOSED" });
-
-    // ✅ ✅ ✅ FIX: Emit WebSocket event to admin dashboard for live updates
+    const {
+      beginPendingAcceptSql,
+      overrideWindowMinutes,
+    } = require("../services/pendingAccept.service");
+    let pendingResult;
     try {
-      emitAdmins(req, "shift_filled", {
+      pendingResult = await beginPendingAcceptSql(pool, {
         shiftId,
         guardId,
-        status: "CLOSED",
-        filledAt: new Date().toISOString(),
+        source: "accept_shift",
+      });
+    } catch (colErr) {
+      // Columns missing — fall back to immediate assign
+      if (String(colErr.message || "").includes("pending_guard_id")) {
+        await pool.query("UPDATE shifts SET guard_id=$1, status=$2 WHERE id=$3", [
+          guardId,
+          "CLOSED",
+          shiftId,
+        ]);
+        emitAdmins(req, "shift_filled", {
+          shiftId,
+          guardId,
+          status: "CLOSED",
+          filledAt: new Date().toISOString(),
+          source: "accept_shift",
+        });
+        return res.json({
+          success: true,
+          message: "Shift accepted",
+          shiftId,
+          assignedGuardId: guardId,
+          status: "CLOSED",
+        });
+      }
+      throw colErr;
+    }
+
+    if (!pendingResult.row) {
+      return res.status(409).json({ error: "Shift already taken", shiftId });
+    }
+
+    console.log("✅ Shift pending accept:", {
+      shiftId,
+      guardId,
+      until: pendingResult.pendingUntil,
+    });
+
+    try {
+      emitAdmins(req, "shift_accept_pending", {
+        shiftId,
+        guardId,
+        pendingUntil: pendingResult.pendingUntil,
+        windowMinutes: overrideWindowMinutes(),
         source: "accept_shift",
       });
     } catch (emitErr) {
-      // Don't fail the request if emit fails
-      console.error("⚠️  Failed to emit shift_filled event:", emitErr.message);
+      console.error("⚠️  Failed to emit shift_accept_pending:", emitErr.message);
     }
 
     return res.json({
       success: true,
-      message: "Shift accepted",
+      message: `Shift accepted — pending admin review (~${overrideWindowMinutes()} min)`,
       shiftId,
-      assignedGuardId: guardId,
-      status: "CLOSED",
+      pendingGuardId: guardId,
+      pendingUntil: pendingResult.pendingUntil,
+      pendingAccept: true,
+      status: "OPEN",
     });
   } catch (err) {
     console.error("❌ Accept shift (token) error:", err);
@@ -271,55 +320,102 @@ router.post("/callouts/:calloutId/respond", auth, async (req, res) => {
       return res.status(404).json({ error: "Shift not found", shiftId });
     }
 
-    if (String(shift.status || "").toUpperCase() !== "OPEN") {
+    if (
+      String(shift.status || "").toUpperCase() !== "OPEN" ||
+      shift.guard_id ||
+      shift.pending_guard_id
+    ) {
       await pool.query("ROLLBACK");
       return res.status(409).json({
         error: "Shift already taken",
         shiftId: shift.id,
         status: shift.status,
         currentGuardId: shift.guard_id,
+        pendingGuardId: shift.pending_guard_id || null,
       });
     }
 
-    // Assign + close shift
-    await pool.query("UPDATE shifts SET guard_id=$1, status=$2 WHERE id=$3", [
-      guardId,
-      "CLOSED",
-      shiftId,
-    ]);
+    const {
+      beginPendingAcceptSql,
+      overrideWindowMinutes,
+    } = require("../services/pendingAccept.service");
+    let pendingResult;
+    try {
+      pendingResult = await beginPendingAcceptSql(pool, {
+        shiftId,
+        guardId,
+        source: "callout_accept",
+      });
+    } catch (colErr) {
+      if (String(colErr.message || "").includes("pending_guard_id")) {
+        await pool.query("UPDATE shifts SET guard_id=$1, status=$2 WHERE id=$3", [
+          guardId,
+          "CLOSED",
+          shiftId,
+        ]);
+        await pool.query("DELETE FROM callouts WHERE shift_id=$1 AND id<>$2", [
+          shiftId,
+          calloutId,
+        ]);
+        await pool.query("COMMIT");
+        emitAdmins(req, "shift_filled", {
+          shiftId,
+          guardId,
+          status: "CLOSED",
+          source: "callout_accept",
+          calloutId,
+        });
+        return res.json({
+          success: true,
+          message: "Callout accepted — shift assigned",
+          calloutId,
+          shiftId,
+          assignedGuardId: guardId,
+          filled: true,
+          status: "CLOSED",
+        });
+      }
+      throw colErr;
+    }
 
-    // Optional cleanup: remove other offers for this shift (prevents dashboard confusion)
-    // If you prefer to keep history, comment this out.
-    await pool.query("DELETE FROM callouts WHERE shift_id=$1", [shiftId]);
+    if (!pendingResult.row) {
+      await pool.query("ROLLBACK");
+      return res.status(409).json({ error: "Shift already taken", shiftId });
+    }
 
+    // Keep other offers until finalize/override; remove only duplicates for same guard
     await pool.query("COMMIT");
 
-    // ✅ ✅ ✅ FIX: realtime events so admin dashboard updates immediately
     emitAdmins(req, "callout_response", {
       calloutId,
       shiftId,
       guardId,
       response: "ACCEPTED",
       updatedAt: new Date().toISOString(),
-      filled: true,
+      filled: false,
+      pendingAccept: true,
+      pendingUntil: pendingResult.pendingUntil,
     });
 
-    emitAdmins(req, "shift_filled", {
+    emitAdmins(req, "shift_accept_pending", {
       shiftId,
       guardId,
-      status: "CLOSED",
-      filledAt: new Date().toISOString(),
-      source: "callout_accept",
       calloutId,
+      pendingUntil: pendingResult.pendingUntil,
+      windowMinutes: overrideWindowMinutes(),
+      source: "callout_accept",
     });
 
     return res.json({
       success: true,
-      message: "Callout accepted — shift assigned",
+      message: `Callout accepted — pending admin review (~${overrideWindowMinutes()} min)`,
       calloutId,
       shiftId,
-      assignedGuardId: guardId,
-      status: "CLOSED",
+      pendingGuardId: guardId,
+      pendingUntil: pendingResult.pendingUntil,
+      pendingAccept: true,
+      filled: false,
+      status: "OPEN",
     });
   } catch (err) {
     try {

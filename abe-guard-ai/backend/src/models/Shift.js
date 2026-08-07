@@ -18,6 +18,22 @@ const Shift = sequelize.define('Shift', {
     references: { model: Guard, key: 'id' },
     allowNull: true
   },
+  pending_guard_id: {
+    type: DataTypes.UUID,
+    allowNull: true,
+  },
+  accept_pending_until: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  accepted_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  accept_source: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
   shift_date: { type: DataTypes.DATEONLY, allowNull: false },
   shift_start: { type: DataTypes.TIME, allowNull: false },
   shift_end: { type: DataTypes.TIME, allowNull: false },

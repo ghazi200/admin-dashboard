@@ -28,12 +28,20 @@ exports.listGuardShifts = async (req, res) => {
 
     const sql = `
       SELECT id, tenant_id, guard_id, shift_date, shift_start, shift_end, status, location,
-             created_at, notes, ai_decision
+             created_at, notes, ai_decision, pending_guard_id, accept_pending_until
       FROM public.shifts
       -- Only show shifts the guard can act on:
       -- - assigned to this guard (any status)
-      -- - open AND unassigned (guard can claim on clock-in)
-      WHERE ((guard_id = $1::uuid) OR (status = 'OPEN' AND guard_id IS NULL)) ${tenantSql}
+      -- - pending accept for this guard
+      -- - open AND unassigned with no pending accept
+      WHERE (
+        (guard_id = $1::uuid)
+        OR (pending_guard_id = $1::uuid)
+        OR (
+          status = 'OPEN' AND guard_id IS NULL
+          AND (pending_guard_id IS NULL)
+        )
+      ) ${tenantSql}
       ORDER BY shift_date NULLS LAST, shift_start NULLS LAST`;
 
     const [rows] = await sequelize.query(sql, { bind: params });
@@ -162,7 +170,8 @@ exports.acceptGuardShift = async (req, res) => {
     }
 
     const [foundRows] = await sequelize.query(
-      `SELECT id, guard_id, status, tenant_id, shift_date, shift_start, shift_end, location
+      `SELECT id, guard_id, status, tenant_id, shift_date, shift_start, shift_end, location,
+              pending_guard_id, accept_pending_until
        FROM public.shifts WHERE id = $1::uuid LIMIT 1`,
       { bind: [shiftId] }
     );
@@ -180,52 +189,39 @@ exports.acceptGuardShift = async (req, res) => {
     }
 
     const st = String(shift.status || "").toUpperCase();
-    if (st !== "OPEN") {
+    if (st !== "OPEN" || shift.guard_id || shift.pending_guard_id) {
       return res.status(409).json({
         error: "Shift already taken",
         shiftId: shift.id,
         status: shift.status,
         currentGuardId: shift.guard_id,
+        pendingGuardId: shift.pending_guard_id || null,
       });
     }
 
-    const [upd] = await sequelize.query(
-      `UPDATE public.shifts
-       SET guard_id = $1::uuid, status = 'CLOSED'
-       WHERE id = $2::uuid AND UPPER(TRIM(status::text)) = 'OPEN'
-       RETURNING id, guard_id, status, tenant_id, location, shift_date, shift_start, shift_end`,
-      { bind: [guardId, shiftId] }
-    );
-    const updated = Array.isArray(upd) ? upd[0] : null;
-    if (!updated) {
-      return res.status(409).json({
-        error: "Shift already taken",
-        shiftId,
-      });
-    }
-
-    const emitToRealtime = req.app.locals.emitToRealtime;
-    if (emitToRealtime) {
-      emitToRealtime(req.app, "role:all", "shift_filled", {
-        shift: updated,
-        shiftId: updated.id,
-        guardId,
-        tenant_id: updated.tenant_id,
-        location: updated.location,
-        filledAt: new Date().toISOString(),
-        source: "accept_shift",
-      }).catch(() => {});
-    }
+    const { beginPendingAccept, overrideWindowMinutes } = require("../services/shiftAcceptPending.service");
+    const result = await beginPendingAccept(req.app, {
+      shiftId,
+      guardId,
+      source: "accept_shift",
+    });
 
     return res.json({
       success: true,
-      message: "Shift accepted",
-      shiftId: updated.id,
-      assignedGuardId: guardId,
-      status: "CLOSED",
+      message:
+        result.mode === "pending"
+          ? `Shift accepted — pending admin review (~${overrideWindowMinutes()} min)`
+          : "Shift accepted",
+      shiftId,
+      assignedGuardId: result.mode === "immediate" ? guardId : null,
+      pendingGuardId: guardId,
+      pendingUntil: result.pendingUntil,
+      status: result.mode === "immediate" ? "CLOSED" : "OPEN",
+      pendingAccept: result.mode === "pending",
     });
   } catch (e) {
     console.error("acceptGuardShift:", e);
-    return res.status(500).json({ error: "Server error", message: e.message });
+    const status = e.status || 500;
+    return res.status(status).json({ error: e.message || "Server error", message: e.message });
   }
 };

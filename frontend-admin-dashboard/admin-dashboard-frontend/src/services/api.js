@@ -193,6 +193,11 @@ export const getGuardViewToken = (guardId) =>
 // ===== SHIFTS =====
 export const listShifts = () => axiosClient.get("/shifts");
 
+/** Pending accept override window (admin/supervisor) */
+export const getPendingAccepts = () => axiosClient.get("/shifts/pending-accepts");
+export const overridePendingAccept = (shiftId, body) =>
+  axiosClient.post(`/shifts/${encodeURIComponent(shiftId)}/override-accept`, body);
+
 export const createShift = (data) => axiosClient.post("/shifts", data);
 
 export const updateShift = (id, data) =>

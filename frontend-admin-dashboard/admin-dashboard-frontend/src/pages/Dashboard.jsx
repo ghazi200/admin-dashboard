@@ -5,6 +5,7 @@ import { connectSocket, connectAdminSocket } from "../realtime/socket";
 import Card from "../components/Card";
 import OvertimeRequests from "../components/OvertimeRequests";
 import OvertimeOfferModal from "../components/OvertimeOfferModal";
+import PendingAcceptOverrides from "../components/PendingAcceptOverrides";
 import {
   getOpenShifts,
   getLiveCallouts,
@@ -519,6 +520,12 @@ export default function Dashboard() {
       console.log("✅ refreshAll() completed after shift_filled");
     };
 
+    const onShiftAcceptPending = async (payload) => {
+      console.log("📡 shift_accept_pending EVENT RECEIVED", payload);
+      await qc.invalidateQueries({ queryKey: ["pendingAccepts"] });
+      await refreshAll();
+    };
+
     const onCalloutResponse = async (payload) => {
       console.log("📡 callout_response EVENT RECEIVED", payload);
       console.log("🔄 Calling refreshAll() to update callouts...");
@@ -823,6 +830,7 @@ export default function Dashboard() {
       // Remove existing listeners first to avoid duplicates
       s.off("callout_started", onCalloutStarted);
       s.off("shift_filled", onShiftFilled);
+      s.off("shift_accept_pending", onShiftAcceptPending);
       s.off("callout_response", onCalloutResponse);
       s.off("callout_update", onCalloutUpdate);
       s.off("guard_running_late", onGuardRunningLate);
@@ -838,6 +846,7 @@ export default function Dashboard() {
       // Attach listeners
       s.on("callout_started", onCalloutStarted);
       s.on("shift_filled", onShiftFilled);
+      s.on("shift_accept_pending", onShiftAcceptPending);
       s.on("callout_response", onCalloutResponse);
       s.on("callout_update", onCalloutUpdate);
       s.on("guard_running_late", onGuardRunningLate);
@@ -978,6 +987,7 @@ export default function Dashboard() {
       // Cleanup: remove all listeners
       s.off("callout_started", onCalloutStarted);
       s.off("shift_filled", onShiftFilled);
+      s.off("shift_accept_pending", onShiftAcceptPending);
       s.off("callout_response", onCalloutResponse);
       s.off("callout_update", onCalloutUpdate);
       s.off("guard_running_late", onGuardRunningLate);
@@ -1500,7 +1510,7 @@ export default function Dashboard() {
   )}
 </Card>
 
-
+        <PendingAcceptOverrides />
 
         <Card
           title="Live Callouts"
