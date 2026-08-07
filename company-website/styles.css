@@ -69,30 +69,179 @@ a:hover { color: #f0c45a; }
 .nav a:hover { color: var(--ink); }
 
 .hero {
-  padding: 4.5rem 0 3rem;
+  display: grid;
+  gap: 2.25rem;
+  align-items: center;
+  padding: 3.25rem 0 3rem;
 }
 
-.hero h1 {
+@media (min-width: 800px) {
+  .hero {
+    grid-template-columns: minmax(240px, 300px) 1fr;
+    gap: 2.75rem;
+    padding: 4rem 0 3.25rem;
+  }
+}
+
+.hero-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.globe-orbit {
+  position: relative;
+  width: min(280px, 72vw);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+
+.name-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: spin-ring 28s linear infinite;
+}
+
+.ring-text {
+  fill: var(--accent);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.globe {
+  width: 68%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  position: relative;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.45));
+}
+
+.globe-sphere {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255, 255, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 70% 70%, #1c2a18, #0b100a 70%);
+  border: 1px solid rgba(212, 160, 23, 0.35);
+  box-shadow:
+    inset -18px -12px 36px rgba(0, 0, 0, 0.55),
+    inset 10px 8px 24px rgba(255, 255, 255, 0.08);
+}
+
+.globe-map {
+  position: absolute;
+  top: -8%;
+  left: 0;
+  width: 200%;
+  height: 116%;
+  background-image:
+    radial-gradient(ellipse 18% 14% at 12% 42%, #6f8a52 0 55%, transparent 56%),
+    radial-gradient(ellipse 12% 20% at 18% 58%, #5f7a45 0 50%, transparent 51%),
+    radial-gradient(ellipse 24% 16% at 34% 38%, #739156 0 52%, transparent 53%),
+    radial-gradient(ellipse 14% 18% at 46% 55%, #617d48 0 48%, transparent 49%),
+    radial-gradient(ellipse 20% 12% at 58% 40%, #6a864e 0 50%, transparent 51%),
+    radial-gradient(ellipse 10% 14% at 68% 62%, #587242 0 46%, transparent 47%),
+    radial-gradient(ellipse 18% 14% at 78% 42%, #6f8a52 0 55%, transparent 56%),
+    radial-gradient(ellipse 12% 20% at 84% 58%, #5f7a45 0 50%, transparent 51%),
+    radial-gradient(ellipse 24% 16% at 92% 38%, #739156 0 52%, transparent 53%),
+    linear-gradient(180deg, rgba(55, 110, 150, 0.22), transparent 45%, rgba(20, 40, 30, 0.25));
+  background-color: #163049;
+  animation: spin-globe 16s linear infinite;
+  opacity: 0.95;
+}
+
+.globe-grid {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 14%,
+      rgba(242, 239, 230, 0.08) 14% 15%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 16%,
+      rgba(242, 239, 230, 0.07) 16% 17%
+    );
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.globe-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(
+    125deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    transparent 34%,
+    transparent 62%,
+    rgba(0, 0, 0, 0.28) 100%
+  );
+  pointer-events: none;
+}
+
+.globe-caption {
+  margin: 0.9rem 0 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  color: var(--accent);
+}
+
+.hero-copy h1 {
   margin: 0 0 0.75rem;
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-size: clamp(2.2rem, 5.2vw, 3.3rem);
   line-height: 1.05;
   letter-spacing: -0.03em;
   max-width: 12ch;
 }
 
-.hero .lede {
+.hero-copy .lede {
   margin: 0;
   max-width: 36rem;
   color: var(--muted);
   font-size: 1.08rem;
 }
 
-.hero .meta {
+.hero-copy .meta {
   margin-top: 1.5rem;
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
+}
+
+@keyframes spin-globe {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes spin-ring {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .name-ring,
+  .globe-map {
+    animation: none;
+  }
 }
 
 .pill {
