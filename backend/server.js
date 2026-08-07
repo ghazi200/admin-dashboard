@@ -912,10 +912,11 @@ app.post("/callouts/:calloutId/respond", authGuard, async (req, res) => {
   }
 });
 // Notifications / alerts stubs (guard JWT) — avoids hitting admin-only routes or 404
-app.get("/api/guard/notifications/unread-count", authGuard, guardUiStubs.guardNotificationsUnreadCount);
-app.get("/api/guard/notifications", authGuard, guardUiStubs.listGuardNotifications);
-app.post("/api/guard/notifications/mark-all-read", authGuard, guardUiStubs.markAllGuardNotificationsRead);
-app.post("/api/guard/notifications/:id/read", authGuard, guardUiStubs.markGuardNotificationRead);
+const guardNotificationsCtrl = require("./src/controllers/guardNotifications.controller");
+app.get("/api/guard/notifications/unread-count", authGuard, guardNotificationsCtrl.guardNotificationsUnreadCount);
+app.get("/api/guard/notifications", authGuard, guardNotificationsCtrl.listGuardNotifications);
+app.post("/api/guard/notifications/mark-all-read", authGuard, guardNotificationsCtrl.markAllGuardNotificationsRead);
+app.post("/api/guard/notifications/:id/read", authGuard, guardNotificationsCtrl.markGuardNotificationRead);
 app.get("/api/guard/alerts/combined/:shiftId", authGuard, guardUiStubs.getCombinedAlerts);
 
 // Incident report: list sites for guard tenant (guard-ui GET /sites or /api/guard/sites)

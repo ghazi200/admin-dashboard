@@ -112,15 +112,24 @@ export default function Shifts() {
       // Keep logs minimal but useful
       console.log("✅ ACCEPT CLICKED shiftId:", shiftId);
 
-      await acceptShift(shiftId);
+      const res = await acceptShift(shiftId);
+      const data = res?.data || {};
+      const pending =
+        data.pendingAccept === true ||
+        data.pendingUntil ||
+        String(data.status || "").toUpperCase() === "OPEN";
 
-      setMsg("✅ Shift accepted");
+      setMsg(
+        pending
+          ? "✅ Accept recorded. Wait for admin/supervisor confirmation before this shift is final."
+          : data.message || "✅ Shift accepted"
+      );
       await load();
     } catch (e) {
       setErr(e?.response?.data?.message || e?.message || "Failed to accept shift");
     } finally {
       setLoading(false);
-      window.setTimeout(() => setMsg(""), 2500);
+      window.setTimeout(() => setMsg(""), 8000);
     }
   };
 
@@ -141,6 +150,9 @@ export default function Shifts() {
       <div className="page">
         <div className="card">
           <h2>Available Shifts {countText}</h2>
+          <div className="muted" style={{ marginBottom: 10 }}>
+            After you accept, wait for admin/supervisor confirmation before the shift is final.
+          </div>
 
           <div className="row" style={{ gap: 8 }}>
             <button

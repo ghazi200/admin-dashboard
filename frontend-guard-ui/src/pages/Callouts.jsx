@@ -210,9 +210,20 @@ export default function Callouts() {
 
     setRespondLoadingId(String(calloutId));
     try {
-      await respondToCallout(calloutId, response);
+      const res = await respondToCallout(calloutId, response);
+      const data = res?.data || {};
 
-      if (response === "ACCEPTED") setRespondMsg("✅ You accepted this shift.");
+      if (response === "ACCEPTED") {
+        const pending =
+          data.pendingAccept === true ||
+          data.pendingUntil ||
+          data.filled === false;
+        setRespondMsg(
+          pending || !data.filled
+            ? "✅ Accept recorded. Wait for admin/supervisor confirmation before this shift is final."
+            : data.message || "✅ You accepted this shift."
+        );
+      }
       if (response === "DECLINED") setRespondMsg("✅ You declined this offer.");
 
       await loadMyOffers();
@@ -220,7 +231,7 @@ export default function Callouts() {
       setErr(e?.response?.data?.message || e?.message || "Failed to respond");
     } finally {
       setRespondLoadingId("");
-      setTimeout(() => setRespondMsg(""), 3000);
+      setTimeout(() => setRespondMsg(""), 8000);
     }
   };
 
@@ -237,6 +248,7 @@ export default function Callouts() {
           <h2>Offers for you</h2>
           <div className="muted" style={{ marginBottom: 10 }}>
             Open shifts the AI ranked you for. Accept or decline here.
+            If you accept, wait for admin/supervisor confirmation before it becomes final.
           </div>
 
           <div className="row" style={{ marginBottom: 10 }}>

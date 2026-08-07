@@ -44,6 +44,86 @@ async function resolveGuardName(sequelize, guardId) {
   return rows[0].name || rows[0].email || `Guard ${String(guardId).slice(0, 8)}`;
 }
 
+function shiftLabel(shift) {
+  const place = shift?.location || "the shift";
+  const when =
+    shift?.shift_date && shift?.shift_start && shift?.shift_end
+      ? ` on ${shift.shift_date} ${shift.shift_start}-${shift.shift_end}`
+      : shift?.shift_date
+        ? ` on ${shift.shift_date}`
+        : "";
+  return `${place}${when}`;
+}
+
+/**
+ * Notify the accepting guard (and optionally a reassigned guard) via guard_notifications.
+ */
+async function notifyGuardAcceptOutcome(app, {
+  guardId,
+  shift,
+  outcome, // confirmed | rejected | reassigned_away | assigned
+  reason = null,
+}) {
+  if (!app || !guardId || !shift) return null;
+  const sequelize = app.locals.models?.sequelize;
+  if (!sequelize) return null;
+
+  const label = shiftLabel(shift);
+  let type = "SHIFT_ACCEPT_CONFIRMED";
+  let title = "Shift confirmed";
+  let message = `Your accept for ${label} was confirmed. The shift is now assigned to you.`;
+
+  if (outcome === "rejected") {
+    type = "SHIFT_ACCEPT_REJECTED";
+    title = "Shift accept not approved";
+    message = `Your accept for ${label} was not approved. The shift remains open.`;
+    if (reason) message += ` Reason: ${reason}`;
+  } else if (outcome === "reassigned_away") {
+    type = "SHIFT_ACCEPT_REJECTED";
+    title = "Shift accept overridden";
+    message = `Your accept for ${label} was overridden and assigned to another guard.`;
+    if (reason) message += ` Reason: ${reason}`;
+  } else if (outcome === "assigned") {
+    type = "SHIFT_ASSIGNED";
+    title = "Shift assigned to you";
+    message = `You have been assigned ${label}.`;
+  }
+
+  try {
+    const { createGuardNotification } = require("../utils/guardNotification");
+    const n = await createGuardNotification({
+      sequelize,
+      guardId,
+      type,
+      title,
+      message,
+      shiftId: shift.id,
+      meta: {
+        shiftId: shift.id,
+        outcome,
+        reason: reason || null,
+        location: shift.location || null,
+        shiftDate: shift.shift_date || null,
+      },
+      app,
+    });
+    const emit = app.locals.emitToRealtime;
+    if (typeof emit === "function") {
+      emit(app, `guard:${guardId}`, "shift_accept_outcome", {
+        shiftId: shift.id,
+        outcome,
+        title,
+        message,
+        reason: reason || null,
+      }).catch(() => {});
+    }
+    return n;
+  } catch (e) {
+    console.warn("notifyGuardAcceptOutcome failed:", e?.message || e);
+    return null;
+  }
+}
+
 /**
  * Place a pending accept (status stays OPEN, guard_id stays null).
  */
@@ -219,6 +299,12 @@ async function finalizePendingAccepts(app, { shiftId = null, force = false } = {
       /* non-fatal */
     }
 
+    await notifyGuardAcceptOutcome(app, {
+      guardId: row.guard_id,
+      shift: row,
+      outcome: "confirmed",
+    });
+
     const emit = app.locals.emitToRealtime;
     if (typeof emit === "function") {
       emit(app, "role:all", "shift_filled", {
@@ -328,6 +414,12 @@ async function overridePendingAccept(app, {
       audience: "all",
       meta: { shiftId, action: "reject", originalPendingGuardId: originalPending, reason },
     });
+    await notifyGuardAcceptOutcome(app, {
+      guardId: originalPending,
+      shift: { ...shift, ...(row || {}) },
+      outcome: "rejected",
+      reason: reason || "Admin override",
+    });
     return { action: "reject", shift: row };
   }
 
@@ -365,6 +457,22 @@ async function overridePendingAccept(app, {
   } catch (_) {
     /* non-fatal */
   }
+
+  // Notify original pending guard they lost it; notify new assignee
+  if (String(originalPending) !== String(guardId)) {
+    await notifyGuardAcceptOutcome(app, {
+      guardId: originalPending,
+      shift: { ...shift, ...(row || {}) },
+      outcome: "reassigned_away",
+      reason: reason || "Admin override",
+    });
+  }
+  await notifyGuardAcceptOutcome(app, {
+    guardId,
+    shift: { ...shift, ...(row || {}) },
+    outcome: String(originalPending) === String(guardId) ? "confirmed" : "assigned",
+    reason: reason || null,
+  });
 
   const emit = app.locals.emitToRealtime;
   if (typeof emit === "function") {

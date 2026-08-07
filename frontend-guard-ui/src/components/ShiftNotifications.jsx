@@ -43,7 +43,8 @@ export default function ShiftNotifications() {
 
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 30000);
+    // Poll a bit faster so confirm/reject outcomes show up soon
+    const interval = setInterval(loadNotifications, 15000);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAll]);
@@ -93,7 +94,9 @@ export default function ShiftNotifications() {
   const getNotificationIcon = (type) => {
     switch (type) {
       case "SHIFT_ASSIGNED":
+      case "SHIFT_ACCEPT_CONFIRMED":
         return "✅";
+      case "SHIFT_ACCEPT_REJECTED":
       case "SHIFT_CANCELLED":
         return "❌";
       case "SHIFT_TIME_CHANGED":
