@@ -21,6 +21,23 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
       },
 
+      pending_guard_id: {
+        type: DataTypes.UUID,
+        allowNull: true,
+      },
+      accept_pending_until: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      accepted_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      accept_source: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+
       shift_date: {
         type: DataTypes.DATEONLY,
         allowNull: true,
