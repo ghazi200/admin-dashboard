@@ -24,11 +24,12 @@
     </header>
 
     <section class="hero">
-      <div class="hero-stage" aria-hidden="true">
-        <div class="globe-orbit">
+      <div class="hero-stage">
+        <div class="globe-stage">
+          <div id="globe-canvas" class="globe-canvas" aria-hidden="true"></div>
           <svg class="name-ring" viewBox="0 0 320 320" role="img" aria-label="TECH WORLD STARZ LLC">
             <defs>
-              <path id="ringPath" d="M160,160 m-118,0 a118,118 0 1,1 236,0 a118,118 0 1,1 -236,0" />
+              <path id="ringPath" d="M160,160 m-124,0 a124,124 0 1,1 248,0 a124,124 0 1,1 -248,0" />
             </defs>
             <text class="ring-text">
               <textPath href="#ringPath" startOffset="0%">
@@ -36,14 +37,6 @@
               </textPath>
             </text>
           </svg>
-          <div class="globe">
-            <div class="globe-sphere">
-              <div class="globe-map"></div>
-              <div class="globe-grid"></div>
-              <div class="globe-atmosphere"></div>
-              <div class="globe-shine"></div>
-            </div>
-          </div>
         </div>
         <p class="globe-caption">TECH WORLD STARZ LLC</p>
       </div>
@@ -117,5 +110,7 @@
     </footer>
   </div>
   <script>document.getElementById("y").textContent = new Date().getFullYear();</script>
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="/globe.js"></script>
 </body>
 </html>

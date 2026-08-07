@@ -90,12 +90,29 @@ a:hover { color: #f0c45a; }
   justify-content: center;
 }
 
-.globe-orbit {
+.globe-stage {
   position: relative;
-  width: min(280px, 72vw);
+  width: min(300px, 78vw);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, #05070c 42%, #000 72%, transparent 78%);
+  box-shadow: 0 0 60px rgba(60, 140, 255, 0.12);
+}
+
+.globe-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.globe-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .name-ring {
@@ -103,103 +120,18 @@ a:hover { color: #f0c45a; }
   inset: 0;
   width: 100%;
   height: 100%;
-  animation: spin-ring 28s linear infinite;
+  pointer-events: none;
+  animation: spin-ring 32s linear infinite;
+  z-index: 2;
 }
 
 .ring-text {
   fill: var(--accent);
   font-family: var(--font-body);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-}
-
-.globe {
-  width: 68%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  position: relative;
-  transform-style: preserve-3d;
-  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.45));
-}
-
-.globe-sphere {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  overflow: hidden;
-  position: relative;
-  background: #0a1a2e;
-  border: 1px solid rgba(212, 160, 23, 0.4);
-  box-shadow:
-    inset -22px -14px 40px rgba(0, 0, 0, 0.55),
-    inset 12px 10px 28px rgba(255, 255, 255, 0.1),
-    0 0 0 1px rgba(212, 160, 23, 0.12);
-}
-
-.globe-map {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 200%;
-  height: 100%;
-  background-image: url("/assets/earth-map.jpg");
-  background-size: 50% 100%;
-  background-repeat: repeat-x;
-  background-position: 0 center;
-  animation: spin-globe 28s linear infinite;
-  filter: saturate(1.05) contrast(1.05) brightness(0.95);
-}
-
-.globe-grid {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 11.5%,
-      rgba(242, 239, 230, 0.06) 11.5% 12%
-    ),
-    repeating-linear-gradient(
-      0deg,
-      transparent 0 14%,
-      rgba(242, 239, 230, 0.05) 14% 14.5%
-    );
-  mix-blend-mode: soft-light;
-  pointer-events: none;
-  opacity: 0.55;
-}
-
-.globe-atmosphere {
-  position: absolute;
-  inset: -6%;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 35% 30%,
-    rgba(140, 190, 255, 0.18),
-    transparent 42%,
-    rgba(8, 16, 28, 0.35) 72%,
-    rgba(8, 16, 28, 0.55) 100%
-  );
-  pointer-events: none;
-  z-index: 2;
-}
-
-.globe-shine {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: linear-gradient(
-    125deg,
-    rgba(255, 255, 255, 0.32) 0%,
-    transparent 32%,
-    transparent 58%,
-    rgba(0, 0, 0, 0.35) 100%
-  );
-  pointer-events: none;
-  z-index: 3;
 }
 
 .globe-caption {
@@ -235,19 +167,13 @@ a:hover { color: #f0c45a; }
   gap: 0.65rem;
 }
 
-@keyframes spin-globe {
-  from { background-position: 0 center; }
-  to { background-position: -100% center; }
-}
-
 @keyframes spin-ring {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .name-ring,
-  .globe-map {
+  .name-ring {
     animation: none;
   }
 }
