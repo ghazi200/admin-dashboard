@@ -73,7 +73,6 @@ export default function PendingAcceptOverrides() {
       }
       return { ...r, secondsRemaining: seconds };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q.data, tick]);
 
   if (!canOverride) return null;
