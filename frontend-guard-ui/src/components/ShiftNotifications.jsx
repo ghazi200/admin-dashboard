@@ -95,10 +95,16 @@ export default function ShiftNotifications() {
     switch (type) {
       case "SHIFT_ASSIGNED":
       case "SHIFT_ACCEPT_CONFIRMED":
+      case "SHIFT_SWAP_APPROVED":
         return "✅";
       case "SHIFT_ACCEPT_REJECTED":
       case "SHIFT_CANCELLED":
+      case "SHIFT_SWAP_REJECTED":
+      case "SHIFT_SWAP_CANCELLED":
         return "❌";
+      case "SHIFT_SWAP_CLAIMED":
+      case "SHIFT_SWAP_REQUESTED":
+        return "🔄";
       case "SHIFT_TIME_CHANGED":
         return "🕐";
       case "SHIFT_DATE_CHANGED":

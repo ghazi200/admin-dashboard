@@ -1,10 +1,17 @@
 /**
  * Admin Shift Swap Controller
- * 
+ *
  * Handles admin approval/rejection of shift swaps
  */
 
 const { getTenantWhere, canAccessTenant } = require("../utils/tenantFilter");
+const {
+  isUUID,
+  normId,
+  checkShiftEligibleForSwap,
+  shiftWhen,
+  notifyGuardSwap,
+} = require("../utils/shiftSwapHelpers");
 
 /**
  * GET /api/admin/shift-swaps
@@ -12,29 +19,25 @@ const { getTenantWhere, canAccessTenant } = require("../utils/tenantFilter");
  */
 exports.listShiftSwaps = async (req, res) => {
   try {
-    const { ShiftSwap, Shift, Guard, sequelize } = req.app.locals.models;
+    const { sequelize } = req.app.locals.models;
     const { status } = req.query;
 
     const tenantWhere = getTenantWhere(req.admin);
-    // Filter by swap's tenant_id OR shift's tenant_id (whichever exists)
-    // If super_admin, no filter (tenantWhere is null)
+    const bind = [];
     let tenantSql = "";
     if (tenantWhere && tenantWhere.tenant_id) {
-      // Match if swap.tenant_id matches OR shift.tenant_id matches
-      tenantSql = `AND (ss.tenant_id = '${tenantWhere.tenant_id}' OR s.tenant_id = '${tenantWhere.tenant_id}')`;
+      bind.push(tenantWhere.tenant_id);
+      tenantSql = `AND (ss.tenant_id = $${bind.length}::uuid OR s.tenant_id = $${bind.length}::uuid)`;
     }
 
     let statusFilter = "";
     if (status && ["pending", "approved", "rejected", "cancelled"].includes(status)) {
-      statusFilter = `AND ss.status = '${status}'`;
+      bind.push(status);
+      statusFilter = `AND ss.status = $${bind.length}`;
     }
 
-    // Debug logging
-    console.log("[listShiftSwaps] Admin:", req.admin?.email, "Role:", req.admin?.role, "Tenant:", req.admin?.tenant_id);
-    console.log("[listShiftSwaps] Tenant filter:", tenantSql || "NONE (super_admin)");
-    console.log("[listShiftSwaps] Status filter:", statusFilter || "NONE");
-
-    const [swaps] = await sequelize.query(`
+    const [swaps] = await sequelize.query(
+      `
       SELECT 
         ss.id,
         ss.shift_id,
@@ -50,6 +53,8 @@ exports.listShiftSwaps = async (req, res) => {
         s.shift_start,
         s.shift_end,
         s.location,
+        s.status AS shift_status,
+        s.pending_guard_id,
         rg.name as requester_name,
         rg.email as requester_email,
         tg.name as target_name,
@@ -65,9 +70,10 @@ exports.listShiftSwaps = async (req, res) => {
       WHERE 1=1 ${tenantSql} ${statusFilter}
       ORDER BY ss.created_at DESC
       LIMIT 100
-    `);
+      `,
+      { bind }
+    );
 
-    console.log("[listShiftSwaps] Found", swaps.length, "swaps");
     return res.json({ data: swaps });
   } catch (e) {
     console.error("listShiftSwaps error:", e);
@@ -77,7 +83,7 @@ exports.listShiftSwaps = async (req, res) => {
 
 /**
  * POST /api/admin/shift-swaps/:id/approve
- * Approve a shift swap request
+ * Approve a shift swap request (requires a claiming target guard)
  */
 exports.approveShiftSwap = async (req, res) => {
   try {
@@ -94,94 +100,131 @@ exports.approveShiftSwap = async (req, res) => {
       return res.status(400).json({ message: `Swap request is ${swap.status}, cannot approve` });
     }
 
-    // Get the original shift
+    if (!swap.target_guard_id) {
+      return res.status(400).json({
+        message: "Cannot approve until another guard has claimed this swap",
+      });
+    }
+
     const originalShift = await Shift.findByPk(swap.shift_id);
     if (!originalShift) {
       return res.status(404).json({ message: "Original shift not found" });
     }
 
-    // Verify tenant access
     if (originalShift.tenant_id && !canAccessTenant(req.admin, originalShift.tenant_id)) {
       return res.status(403).json({ message: "You don't have access to this shift" });
     }
 
-    // Use transaction to ensure atomicity
+    const eligible = checkShiftEligibleForSwap(originalShift);
+    if (!eligible.ok) {
+      return res.status(eligible.status).json({ message: eligible.message });
+    }
+
+    if (normId(originalShift.guard_id) !== normId(swap.requester_guard_id)) {
+      return res.status(409).json({
+        message: "Shift is no longer assigned to the requester — cannot approve swap",
+      });
+    }
+
+    const adminId = req.admin.id;
+    const adminIsUuid = isUUID(adminId);
+
     await sequelize.transaction(async (t) => {
-      // Update swap status
-      // Note: approved_by expects UUID, but Admin.id might be integer
-      // Set to null if admin.id is not a valid UUID format
-      const adminId = req.admin.id;
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(adminId));
-      
+      // Re-check claim inside transaction
+      const [locked] = await sequelize.query(
+        `SELECT id, status, target_guard_id FROM shift_swaps WHERE id = $1::uuid FOR UPDATE`,
+        { bind: [swapId], transaction: t }
+      );
+      const row = locked?.[0];
+      if (!row || row.status !== "pending" || !row.target_guard_id) {
+        const err = new Error("Swap is no longer pending with a claim");
+        err.status = 409;
+        throw err;
+      }
+
       await swap.update(
         {
           status: "approved",
-          approved_by: isUUID ? adminId : null, // Only set if it's a valid UUID
+          approved_by: adminIsUuid ? adminId : null,
           admin_notes: admin_notes || swap.admin_notes,
         },
         { transaction: t }
       );
 
-      // If target guard is specified, reassign the shift
-      if (swap.target_guard_id) {
-        await originalShift.update(
-          { guard_id: swap.target_guard_id },
-          { transaction: t }
-        );
+      await originalShift.update(
+        {
+          guard_id: swap.target_guard_id,
+          // Clear any stale pending-accept fields if present
+          ...(originalShift.pending_guard_id != null
+            ? {
+                pending_guard_id: null,
+                accept_pending_until: null,
+              }
+            : {}),
+        },
+        { transaction: t }
+      );
 
-        // If target shift exists, swap the guards
-        if (swap.target_shift_id) {
-          const targetShift = await Shift.findByPk(swap.target_shift_id, { transaction: t });
-          if (targetShift) {
-            await targetShift.update(
-              { guard_id: swap.requester_guard_id },
-              { transaction: t }
-            );
+      if (swap.target_shift_id) {
+        const targetShift = await Shift.findByPk(swap.target_shift_id, { transaction: t });
+        if (targetShift) {
+          const tgtOk = checkShiftEligibleForSwap(targetShift);
+          if (!tgtOk.ok) {
+            const err = new Error(tgtOk.message);
+            err.status = tgtOk.status;
+            throw err;
           }
+          if (normId(targetShift.guard_id) !== normId(swap.target_guard_id)) {
+            const err = new Error("Target shift is not assigned to the claiming guard");
+            err.status = 409;
+            throw err;
+          }
+          await targetShift.update(
+            { guard_id: swap.requester_guard_id },
+            { transaction: t }
+          );
         }
-      } else {
-        // Just remove guard from original shift (pick-up scenario)
-        await originalShift.update({ guard_id: null }, { transaction: t });
-      }
-
-      // Notify guards (wrap in try-catch to prevent notification errors from failing the request)
-      try {
-        const { notify } = require("../utils/notify");
-        await notify(req.app, {
-          type: "SHIFT_SWAP_APPROVED",
-          title: "Shift Swap Approved",
-          message: `Your shift swap request has been approved`,
-          entityType: "shift_swap",
-          entityId: swap.id,
-          meta: {
-            guard_id: swap.requester_guard_id,
-          },
-          tenant_id: originalShift.tenant_id,
-        });
-      } catch (notifyError) {
-        console.error("[approveShiftSwap] Notification error (non-fatal):", notifyError.message);
-        // Continue even if notification fails
       }
     });
 
-    // Get updated swap (without relations to avoid errors)
-    const updatedSwap = await ShiftSwap.findByPk(swap.id);
+    try {
+      const { notify } = require("../utils/notify");
+      await notify(req.app, {
+        type: "SHIFT_SWAP_APPROVED",
+        title: "Shift Swap Approved",
+        message: `Shift swap approved for ${shiftWhen(originalShift)}`,
+        entityType: "shift_swap",
+        entityId: swap.id,
+      });
+    } catch (_) {
+      /* non-fatal */
+    }
 
+    await notifyGuardSwap(req.app, {
+      guardId: swap.requester_guard_id,
+      type: "SHIFT_SWAP_APPROVED",
+      title: "Swap approved",
+      message: `Your swap for ${shiftWhen(originalShift)} was approved. The shift is now with the other guard.`,
+      shiftId: swap.shift_id,
+      swapId: swap.id,
+      meta: { role: "requester" },
+    });
+    await notifyGuardSwap(req.app, {
+      guardId: swap.target_guard_id,
+      type: "SHIFT_SWAP_APPROVED",
+      title: "Swap approved — shift is yours",
+      message: `Your claim on ${shiftWhen(originalShift)} was approved. The shift is now assigned to you.`,
+      shiftId: swap.shift_id,
+      swapId: swap.id,
+      meta: { role: "acceptor" },
+    });
+
+    const updatedSwap = await ShiftSwap.findByPk(swap.id);
     return res.json({ message: "Shift swap approved successfully", swap: updatedSwap || swap });
   } catch (e) {
     console.error("approveShiftSwap error:", e);
-    console.error("Error stack:", e.stack);
-    // Check if swap was actually updated (partial success)
-    try {
-      const checkSwap = await ShiftSwap.findByPk(req.params.id);
-      if (checkSwap && checkSwap.status === "approved") {
-        console.log("[approveShiftSwap] Swap was approved despite error, returning success");
-        return res.json({ message: "Shift swap approved successfully", swap: checkSwap });
-      }
-    } catch (checkError) {
-      // Ignore check errors
-    }
-    return res.status(500).json({ message: "Failed to approve swap", error: e.message });
+    const status = e.status || 500;
+    return res.status(status).json({ message: e.message || "Failed to approve swap" });
   }
 };
 
@@ -191,7 +234,7 @@ exports.approveShiftSwap = async (req, res) => {
  */
 exports.rejectShiftSwap = async (req, res) => {
   try {
-    const { ShiftSwap, Shift } = req.app.locals.models;
+    const { ShiftSwap, Shift, sequelize } = req.app.locals.models;
     const swapId = req.params.id;
     const { admin_notes } = req.body;
 
@@ -209,58 +252,77 @@ exports.rejectShiftSwap = async (req, res) => {
       return res.status(404).json({ message: "Shift not found" });
     }
 
-    // Verify tenant access
     if (originalShift.tenant_id && !canAccessTenant(req.admin, originalShift.tenant_id)) {
       return res.status(403).json({ message: "You don't have access to this shift" });
     }
 
-    // Note: approved_by expects UUID, but Admin.id might be integer
-    // Set to null if admin.id is not a valid UUID format
     const adminId = req.admin.id;
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(adminId));
-    
-    await swap.update({
-      status: "rejected",
-      approved_by: isUUID ? adminId : null, // Only set if it's a valid UUID
-      admin_notes: admin_notes || swap.admin_notes,
+    const adminIsUuid = isUUID(adminId);
+    const claimedBy = swap.target_guard_id;
+
+    await sequelize.transaction(async (t) => {
+      const [locked] = await sequelize.query(
+        `SELECT id, status FROM shift_swaps WHERE id = $1::uuid FOR UPDATE`,
+        { bind: [swapId], transaction: t }
+      );
+      if (!locked?.[0] || locked[0].status !== "pending") {
+        const err = new Error("Swap is no longer pending");
+        err.status = 409;
+        throw err;
+      }
+
+      await swap.update(
+        {
+          status: "rejected",
+          approved_by: adminIsUuid ? adminId : null,
+          admin_notes: admin_notes || swap.admin_notes,
+        },
+        { transaction: t }
+      );
     });
 
-    // Notify guard (wrap in try-catch to prevent notification errors from failing the request)
     try {
       const { notify } = require("../utils/notify");
       await notify(req.app, {
         type: "SHIFT_SWAP_REJECTED",
         title: "Shift Swap Rejected",
-        message: `Your shift swap request has been rejected${admin_notes ? `: ${admin_notes}` : ""}`,
+        message: `Shift swap rejected for ${shiftWhen(originalShift)}${
+          admin_notes ? `: ${admin_notes}` : ""
+        }`,
         entityType: "shift_swap",
         entityId: swap.id,
-        meta: {
-          guard_id: swap.requester_guard_id,
-        },
-        tenant_id: originalShift.tenant_id,
       });
-    } catch (notifyError) {
-      console.error("[rejectShiftSwap] Notification error (non-fatal):", notifyError.message);
-      // Continue even if notification fails
+    } catch (_) {
+      /* non-fatal */
     }
 
-    // Get updated swap (without relations to avoid errors)
-    const updatedSwap = await ShiftSwap.findByPk(swap.id);
+    const reasonPart = admin_notes ? ` Reason: ${admin_notes}` : "";
+    await notifyGuardSwap(req.app, {
+      guardId: swap.requester_guard_id,
+      type: "SHIFT_SWAP_REJECTED",
+      title: "Swap rejected",
+      message: `Your swap for ${shiftWhen(originalShift)} was rejected.${reasonPart}`,
+      shiftId: swap.shift_id,
+      swapId: swap.id,
+      meta: { role: "requester" },
+    });
+    if (claimedBy) {
+      await notifyGuardSwap(req.app, {
+        guardId: claimedBy,
+        type: "SHIFT_SWAP_REJECTED",
+        title: "Swap claim rejected",
+        message: `Your claim on ${shiftWhen(originalShift)} was rejected.${reasonPart}`,
+        shiftId: swap.shift_id,
+        swapId: swap.id,
+        meta: { role: "acceptor" },
+      });
+    }
 
+    const updatedSwap = await ShiftSwap.findByPk(swap.id);
     return res.json({ message: "Shift swap rejected", swap: updatedSwap || swap });
   } catch (e) {
     console.error("rejectShiftSwap error:", e);
-    console.error("Error stack:", e.stack);
-    // Check if swap was actually updated (partial success)
-    try {
-      const checkSwap = await ShiftSwap.findByPk(req.params.id);
-      if (checkSwap && checkSwap.status === "rejected") {
-        console.log("[rejectShiftSwap] Swap was rejected despite error, returning success");
-        return res.json({ message: "Shift swap rejected", swap: checkSwap });
-      }
-    } catch (checkError) {
-      // Ignore check errors
-    }
-    return res.status(500).json({ message: "Failed to reject swap", error: e.message });
+    const status = e.status || 500;
+    return res.status(status).json({ message: e.message || "Failed to reject swap" });
   }
 };

@@ -152,9 +152,21 @@ export default function ShiftSwaps() {
     },
   });
 
-  const handleApprove = (swapId) => {
+  const handleApprove = (swap) => {
+    if (!swap?.target_guard_id) {
+      alert("Cannot approve until another guard has claimed this swap.");
+      return;
+    }
+    if (String(swap.shift_status || "").toUpperCase() === "CLOSED") {
+      alert("Cannot approve — the shift is already closed.");
+      return;
+    }
+    if (swap.pending_guard_id) {
+      alert("Cannot approve — the shift has a pending accept awaiting confirmation.");
+      return;
+    }
     const notes = window.prompt("Add admin notes (optional):");
-    approveMutation.mutate({ swapId, adminNotes: notes || null });
+    approveMutation.mutate({ swapId: swap.id, adminNotes: notes || null });
   };
 
   const handleReject = (swapId) => {
@@ -309,9 +321,9 @@ export default function ShiftSwaps() {
                   {getStatusBadge(swap.status)}
                 </div>
 
-                {swap.target_name && (
+                {swap.target_name ? (
                   <div style={{ marginTop: 8, padding: 8, background: "rgba(255,255,255,0.03)", borderRadius: 8 }}>
-                    <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Swap with:</div>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 4 }}>Claimed by:</div>
                     <div style={{ fontWeight: 500 }}>
                       {swap.target_name}
                       {swap.target_shift_date && (
@@ -321,7 +333,11 @@ export default function ShiftSwaps() {
                       )}
                     </div>
                   </div>
-                )}
+                ) : swap.status === "pending" ? (
+                  <div style={{ marginTop: 8, padding: 8, background: "rgba(245, 158, 11, 0.08)", borderRadius: 8, fontSize: 13 }}>
+                    Waiting for another guard to claim before you can approve.
+                  </div>
+                ) : null}
 
                 {swap.reason && (
                   <div style={{ marginTop: 8, padding: 8, background: "rgba(255,255,255,0.03)", borderRadius: 8 }}>
@@ -345,12 +361,18 @@ export default function ShiftSwaps() {
                   <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
                     <button
                       className="btn"
-                      onClick={() => handleApprove(swap.id)}
-                      disabled={approveMutation.isPending}
+                      onClick={() => handleApprove(swap)}
+                      disabled={approveMutation.isPending || !swap.target_guard_id}
+                      title={
+                        !swap.target_guard_id
+                          ? "Waiting for a guard to claim this swap"
+                          : "Approve and reassign the shift"
+                      }
                       style={{
                         background: "rgba(34, 197, 94, 0.2)",
                         border: "1px solid rgba(34, 197, 94, 0.4)",
                         color: "#22c55e",
+                        opacity: !swap.target_guard_id ? 0.45 : 1,
                       }}
                     >
                       {approveMutation.isPending ? "Approving..." : "✅ Approve"}
