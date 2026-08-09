@@ -121,10 +121,12 @@ router.all("/voice", async (req, res) => {
         `Press 1 to accept this open shift. Press 2 to decline.`
     );
 
+    // Do NOT put rate= on <Say> — Twilio rejects it and the call can hang up after the
+    // trial "press any key" step. Use SSML <prosody> inside Polly voices only.
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather numDigits="1" timeout="12" action="${xmlEscape(actionUrl)}" method="POST">
-    <Say voice="Polly.Joanna" rate="90%">${intro}</Say>
+    <Say voice="Polly.Joanna"><prosody rate="90%">${intro}</prosody></Say>
   </Gather>
   <Say voice="Polly.Joanna">We did not receive a response. Please open the Abe Guard app to accept or decline this open shift. Goodbye.</Say>
 </Response>`;
