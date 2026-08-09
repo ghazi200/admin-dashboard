@@ -10,6 +10,11 @@ const {
   defaultPrefs,
 } = require("../utils/contactPreferences");
 const { createGuardNotification } = require("../utils/guardNotification");
+const {
+  speakableWhen,
+  buildCalloutOfferTwiml,
+  buildGatherActionUrl,
+} = require("../utils/calloutVoiceTwiml");
 
 function toE164(phone) {
   const raw = String(phone || "").trim();
@@ -100,6 +105,8 @@ async function sendSms(to, body) {
 
 /**
  * Place outbound Twilio voice call offering the shift (press 1/2 on connect).
+ * Uses inline TwiML so the shift message plays after Twilio trial "press any key"
+ * without depending on an immediate webhook fetch (which was hanging up ~13s).
  */
 async function placeCalloutVoiceCall(guard, shift, meta = {}) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -123,26 +130,31 @@ async function placeCalloutVoiceCall(guard, shift, meta = {}) {
   if (!base || !/^https:\/\//i.test(base)) {
     return {
       placed: false,
-      reason: "PUBLIC_BASE_URL must be your public https admin URL (Twilio fetches TwiML)",
+      reason: "PUBLIC_BASE_URL must be your public https admin URL (Twilio fetches gather callback)",
     };
   }
 
   try {
     const twilio = require("twilio");
     const client = twilio(accountSid, authToken);
-    const q = new URLSearchParams({
-      shiftId: String(shift.id),
-      ...(meta.calloutId ? { calloutId: String(meta.calloutId) } : {}),
-      ...(guard?.id ? { guardId: String(guard.id) } : {}),
+    const actionUrl = buildGatherActionUrl(base, {
+      shiftId: shift?.id,
+      calloutId: meta.calloutId,
+      guardId: guard?.id,
     });
+    const twiml = buildCalloutOfferTwiml({
+      location: shift?.location || "an open post",
+      when: speakableWhen(shift),
+      actionUrl,
+    });
+
     const call = await client.calls.create({
       to,
       from,
-      url: `${base}/twilio/voice?${q.toString()}`,
-      method: "POST",
+      twiml,
     });
-    console.log(`📞 Callout voice started sid=${call.sid} to=${to}`);
-    return { placed: true, to, sid: call.sid, status: call.status };
+    console.log(`📞 Callout voice started sid=${call.sid} to=${to} (inline twiml)`);
+    return { placed: true, to, sid: call.sid, status: call.status, mode: "inline_twiml" };
   } catch (e) {
     return { placed: false, error: e?.message || String(e), code: e?.code };
   }

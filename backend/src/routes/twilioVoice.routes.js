@@ -1,83 +1,17 @@
 /**
  * Twilio voice TwiML for callout offers.
- * Outbound call URL: PUBLIC_BASE_URL/twilio/voice?shiftId=&calloutId=&guardId=
- * Gather: press 1 accept, 2 decline.
+ * Outbound calls preferably send TwiML inline (see guardCalloutOutbound.service).
+ * This URL remains for Gather callbacks and fallback.
  */
 const express = require("express");
+const {
+  xmlEscape,
+  speakableWhen,
+  buildCalloutOfferTwiml,
+  buildGatherActionUrl,
+} = require("../utils/calloutVoiceTwiml");
 
 const router = express.Router();
-
-function xmlEscape(s) {
-  return String(s || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-function ordinal(n) {
-  const v = n % 100;
-  if (v >= 11 && v <= 13) return `${n}th`;
-  switch (n % 10) {
-    case 1:
-      return `${n}st`;
-    case 2:
-      return `${n}nd`;
-    case 3:
-      return `${n}rd`;
-    default:
-      return `${n}th`;
-  }
-}
-
-/** "07:00:00" / "15:00" → "7 A M" / "3 P M" (TTS-friendly) */
-function speakableTime(hhmm) {
-  const m = String(hhmm || "").match(/(\d{1,2}):(\d{2})/);
-  if (!m) return "";
-  let h = parseInt(m[1], 10);
-  const min = m[2];
-  if (Number.isNaN(h)) return "";
-  const ampm = h >= 12 ? "P M" : "A M";
-  h = h % 12;
-  if (h === 0) h = 12;
-  if (min === "00") return `${h} ${ampm}`;
-  return `${h} ${min} ${ampm}`;
-}
-
-/** "2026-08-02" → "August 2nd" */
-function speakableDate(iso) {
-  const raw = String(iso || "").slice(0, 10);
-  const parts = raw.split("-").map((x) => parseInt(x, 10));
-  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return raw || "soon";
-  const [, mo, d] = parts;
-  if (mo < 1 || mo > 12 || d < 1) return raw;
-  return `${MONTHS[mo - 1]} ${ordinal(d)}`;
-}
-
-function speakableWhen(shift) {
-  if (!shift) return "soon";
-  const date = speakableDate(shift.shift_date);
-  const start = speakableTime(shift.shift_start);
-  const end = speakableTime(shift.shift_end);
-  if (date && start && end) return `${date}, from ${start} to ${end}`;
-  if (date) return date;
-  return "soon";
-}
 
 router.all("/voice", async (req, res) => {
   try {
@@ -102,34 +36,8 @@ router.all("/voice", async (req, res) => {
     const base = String(process.env.PUBLIC_BASE_URL || process.env.BASE_URL || "")
       .trim()
       .replace(/\/+$/, "");
-    const gatherQs = new URLSearchParams({
-      ...(shiftId ? { shiftId } : {}),
-      ...(calloutId ? { calloutId } : {}),
-      ...(guardId ? { guardId } : {}),
-    }).toString();
-    const actionUrl = base
-      ? `${base}/twilio/voice/gather?${gatherQs}`
-      : `/twilio/voice/gather?${gatherQs}`;
-
-    // Speak "Abe Guard" (not letter-spaced A B E) and natural date/time so TTS is clear.
-    const intro = xmlEscape(
-      `Hello. This is Abe Guard. ` +
-        `An open shift needs coverage. ` +
-        `Location: ${location}. ` +
-        `When: ${when}. ` +
-        `Again — ${location}, ${when}. ` +
-        `Press 1 to accept this open shift. Press 2 to decline.`
-    );
-
-    // Do NOT put rate= on <Say> — Twilio rejects it and the call can hang up after the
-    // trial "press any key" step. Use SSML <prosody> inside Polly voices only.
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Gather numDigits="1" timeout="12" action="${xmlEscape(actionUrl)}" method="POST">
-    <Say voice="Polly.Joanna"><prosody rate="90%">${intro}</prosody></Say>
-  </Gather>
-  <Say voice="Polly.Joanna">We did not receive a response. Please open the Abe Guard app to accept or decline this open shift. Goodbye.</Say>
-</Response>`;
+    const actionUrl = buildGatherActionUrl(base, { shiftId, calloutId, guardId });
+    const twiml = buildCalloutOfferTwiml({ location, when, actionUrl });
 
     res.type("text/xml; charset=utf-8").send(twiml);
   } catch (e) {
@@ -182,7 +90,6 @@ router.all("/voice/gather", async (req, res) => {
       return say("You have declined this shift offer. Thank you. Goodbye.");
     }
 
-    // digit === "1" → accept / fill
     const [shiftRows] = await sequelize.query(
       `SELECT id, status, guard_id::text AS guard_id FROM shifts WHERE id = $1::uuid LIMIT 1`,
       { bind: [callout.shift_id || shiftId] }
