@@ -15,11 +15,65 @@ function xmlEscape(s) {
     .replace(/"/g, "&quot;");
 }
 
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+function ordinal(n) {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}
+
+/** "07:00:00" / "15:00" → "7 A M" / "3 P M" (TTS-friendly) */
+function speakableTime(hhmm) {
+  const m = String(hhmm || "").match(/(\d{1,2}):(\d{2})/);
+  if (!m) return "";
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  if (Number.isNaN(h)) return "";
+  const ampm = h >= 12 ? "P M" : "A M";
+  h = h % 12;
+  if (h === 0) h = 12;
+  if (min === "00") return `${h} ${ampm}`;
+  return `${h} ${min} ${ampm}`;
+}
+
+/** "2026-08-02" → "August 2nd" */
+function speakableDate(iso) {
+  const raw = String(iso || "").slice(0, 10);
+  const parts = raw.split("-").map((x) => parseInt(x, 10));
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return raw || "soon";
+  const [, mo, d] = parts;
+  if (mo < 1 || mo > 12 || d < 1) return raw;
+  return `${MONTHS[mo - 1]} ${ordinal(d)}`;
+}
+
 function speakableWhen(shift) {
   if (!shift) return "soon";
-  const date = String(shift.shift_date || "").slice(0, 10);
-  const start = String(shift.shift_start || "").slice(0, 5);
-  const end = String(shift.shift_end || "").slice(0, 5);
+  const date = speakableDate(shift.shift_date);
+  const start = speakableTime(shift.shift_start);
+  const end = speakableTime(shift.shift_end);
   if (date && start && end) return `${date}, from ${start} to ${end}`;
   if (date) return date;
   return "soon";
@@ -57,25 +111,29 @@ router.all("/voice", async (req, res) => {
       ? `${base}/twilio/voice/gather?${gatherQs}`
       : `/twilio/voice/gather?${gatherQs}`;
 
+    // Speak "Abe Guard" (not letter-spaced A B E) and natural date/time so TTS is clear.
     const intro = xmlEscape(
-      `This is A B E Security. A shift needs coverage at ${location}, ${when}. ` +
-        `You were selected by our ranking system. ` +
-        `Press 1 to accept this shift. Press 2 to decline.`
+      `Hello. This is Abe Guard. ` +
+        `An open shift needs coverage. ` +
+        `Location: ${location}. ` +
+        `When: ${when}. ` +
+        `Again — ${location}, ${when}. ` +
+        `Press 1 to accept this open shift. Press 2 to decline.`
     );
 
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather numDigits="1" timeout="8" action="${xmlEscape(actionUrl)}" method="POST">
-    <Say voice="Polly.Joanna">${intro}</Say>
+  <Gather numDigits="1" timeout="12" action="${xmlEscape(actionUrl)}" method="POST">
+    <Say voice="Polly.Joanna" rate="90%">${intro}</Say>
   </Gather>
-  <Say voice="Polly.Joanna">We did not receive a response. Please open the A B E Guard app to accept or decline. Goodbye.</Say>
+  <Say voice="Polly.Joanna">We did not receive a response. Please open the Abe Guard app to accept or decline this open shift. Goodbye.</Say>
 </Response>`;
 
     res.type("text/xml; charset=utf-8").send(twiml);
   } catch (e) {
     console.error("twilio /voice error:", e?.message || e);
     res.type("text/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?>
-<Response><Say voice="Polly.Joanna">A B E Security callout. Please open the Guard app. Goodbye.</Say></Response>`);
+<Response><Say voice="Polly.Joanna">This is Abe Guard. A shift callout is available. Please open the Guard app. Goodbye.</Say></Response>`);
   }
 });
 
