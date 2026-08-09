@@ -1,4 +1,8 @@
 const jwt = require("jsonwebtoken");
+const {
+  isMfaRequiredForAdmin,
+  isMfaEnrollmentPathAllowed,
+} = require("../services/mfaPolicy.service");
 
 module.exports = async function authAdmin(req, res, next) {
   const hdr = req.headers.authorization || "";
@@ -22,7 +26,13 @@ module.exports = async function authAdmin(req, res, next) {
     const { Admin } = req.app.locals.models || {};
     if (Admin) {
       const admin = await Admin.findByPk(adminId, {
-        attributes: ["session_token_version", "permissions", "tenant_id", "role"],
+        attributes: [
+          "session_token_version",
+          "permissions",
+          "tenant_id",
+          "role",
+          "mfa_enabled",
+        ],
       });
       const dbVersion = admin ? (Number(admin.session_token_version) || 0) : 0;
       if (tokenVersion < dbVersion) {
@@ -37,12 +47,29 @@ module.exports = async function authAdmin(req, res, next) {
           : Array.isArray(decoded.permissions)
             ? decoded.permissions
             : [];
+        const tenant_id = admin.tenant_id != null ? admin.tenant_id : decoded.tenant_id || null;
+        const mfa_enabled = !!admin.mfa_enabled;
+        const mfa_required = isMfaRequiredForAdmin({ role, tenant_id });
+        const mfaEnrollmentRequired = mfa_required && !mfa_enabled;
+
         req.admin = {
           id: adminId,
           role,
           permissions,
-          tenant_id: admin.tenant_id != null ? admin.tenant_id : decoded.tenant_id || null,
+          tenant_id,
+          mfa_enabled,
+          mfa_required,
+          mfaEnrollmentRequired,
         };
+
+        if (mfaEnrollmentRequired && !isMfaEnrollmentPathAllowed(req)) {
+          return res.status(403).json({
+            code: "MFA_SETUP_REQUIRED",
+            message:
+              "Multi-factor authentication is required for your account. Open Account & Security and enable MFA to continue.",
+          });
+        }
+
         return next();
       }
     }
@@ -55,6 +82,12 @@ module.exports = async function authAdmin(req, res, next) {
       role,
       permissions: Array.isArray(decoded.permissions) ? decoded.permissions : [],
       tenant_id: decoded.tenant_id || null, // ✅ Multi-tenant: Extract tenant_id from JWT
+      mfa_enabled: false,
+      mfa_required: isMfaRequiredForAdmin({
+        role,
+        tenant_id: decoded.tenant_id || null,
+      }),
+      mfaEnrollmentRequired: false,
     };
 
     return next();

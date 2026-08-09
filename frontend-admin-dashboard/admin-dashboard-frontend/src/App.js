@@ -28,6 +28,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import ProtectedRoute from "./components/ProtectedRoute";
+import MfaEnrollmentGate from "./components/MfaEnrollmentGate";
 import Layout from "./components/Layout";
 import AuthLayout from "./components/AuthLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -84,9 +85,11 @@ export default function App() {
         <Route
           element={
             <ProtectedRoute>
-              <NotificationsProvider>
-                <Layout />
-              </NotificationsProvider>
+              <MfaEnrollmentGate>
+                <NotificationsProvider>
+                  <Layout />
+                </NotificationsProvider>
+              </MfaEnrollmentGate>
             </ProtectedRoute>
           }
         >

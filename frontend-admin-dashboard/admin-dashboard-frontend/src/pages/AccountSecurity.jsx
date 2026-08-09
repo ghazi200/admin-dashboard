@@ -183,6 +183,24 @@ export default function AccountSecurity() {
         </p>
       ) : null}
 
+      {me?.mfa_required && !me?.mfa_enabled ? (
+        <div
+          style={{
+            marginBottom: 24,
+            padding: 14,
+            borderRadius: 8,
+            border: "1px solid rgba(251,191,36,0.45)",
+            background: "rgba(251,191,36,0.12)",
+            color: "#fde68a",
+            fontSize: 14,
+            lineHeight: 1.5,
+          }}
+        >
+          <strong>MFA is required</strong> for your organization. Enable two-factor authentication below
+          before you can use the rest of the dashboard.
+        </div>
+      ) : null}
+
       <Card
         title="Sessions"
         subtitle="Only one session is valid at a time. New login or this action signs out other devices."
@@ -255,33 +273,40 @@ export default function AccountSecurity() {
           <>
             <p style={{ marginBottom: 16 }}>
               MFA is <strong>on</strong> via <strong>{mfaChannelLabel}</strong>.
+              {me?.mfa_required ? (
+                <span style={{ display: "block", marginTop: 8, fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
+                  Required by your organization — cannot be disabled.
+                </span>
+              ) : null}
             </p>
-            <form onSubmit={handleMfaDisable}>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: "block", marginBottom: 4, fontSize: 13 }}>
-                  Current password (to disable MFA)
-                </label>
-                <input
-                  type="password"
-                  value={disablePassword}
-                  onChange={(e) => setDisablePassword(e.target.value)}
-                  className="input"
-                  style={{ width: "100%", maxWidth: 320 }}
-                  autoComplete="current-password"
-                />
-              </div>
-              {disableMessage && (
-                <p style={{ marginBottom: 12, fontSize: 13, color: "var(--muted)" }}>{disableMessage}</p>
-              )}
-              <button
-                type="submit"
-                className="btn"
-                style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}
-                disabled={mfaDisableMutation.isPending}
-              >
-                {mfaDisableMutation.isPending ? "Disabling…" : "Disable MFA"}
-              </button>
-            </form>
+            {!me?.mfa_required ? (
+              <form onSubmit={handleMfaDisable}>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: "block", marginBottom: 4, fontSize: 13 }}>
+                    Current password (to disable MFA)
+                  </label>
+                  <input
+                    type="password"
+                    value={disablePassword}
+                    onChange={(e) => setDisablePassword(e.target.value)}
+                    className="input"
+                    style={{ width: "100%", maxWidth: 320 }}
+                    autoComplete="current-password"
+                  />
+                </div>
+                {disableMessage && (
+                  <p style={{ marginBottom: 12, fontSize: 13, color: "var(--muted)" }}>{disableMessage}</p>
+                )}
+                <button
+                  type="submit"
+                  className="btn"
+                  style={{ background: "rgba(239,68,68,0.15)", color: "#f87171" }}
+                  disabled={mfaDisableMutation.isPending}
+                >
+                  {mfaDisableMutation.isPending ? "Disabling…" : "Disable MFA"}
+                </button>
+              </form>
+            ) : null}
           </>
         ) : (
           <>

@@ -122,8 +122,9 @@ Why: client disputes / “who filled that post?”
 
 B3. MFA policy for pilot admins
 Exists: backend/src/services/mfa.service.js, AccountSecurity.jsx, login MFA challenge
-[ ] Require MFA for all admins on pilot tenant
-[ ] Document setup in onboarding packet
+[x] Require MFA for all admins on pilot tenant — `MFA_REQUIRED` / `MFA_REQUIRED_TENANT_IDS` + API/UI gate
+[x] Document setup in onboarding packet — `docs/MFA_ONBOARDING.md`
+
 
 B4. Legal pack (security SMB)
 Exists: backend/public/legal/messaging-consent.html + consent on Guards form
@@ -258,7 +259,7 @@ P0 — blocks pilot ops
 P1 — blocks “company-safe” sale
 [x] 5. Tenant isolation tests in CI
 [x] 6. Unified audit_events + admin CSV export
-[ ] 7. MFA required for pilot tenant admins
+[x] 7. MFA required for pilot tenant admins
 [ ] 8. Privacy / ToS / MSA / DPA drafts under docs/legal/
 [ ] 9. Guard CSV import
 

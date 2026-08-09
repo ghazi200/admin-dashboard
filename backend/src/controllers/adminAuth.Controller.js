@@ -4,8 +4,28 @@ const crypto = require("crypto");
 const { validatePassword, getPolicyDescription } = require("../utils/passwordPolicy");
 const { addToHistory, isPasswordReused } = require("../utils/passwordHistory");
 const mfaService = require("../services/mfa.service");
+const { isMfaRequiredForAdmin } = require("../services/mfaPolicy.service");
 const { isValidTenantUuid } = require("../utils/tenantFilter");
 const { TENANT_ADMIN_DEFAULT_PERMISSIONS } = require("../constants/tenantAdminDefaults");
+
+function adminPublicPayload(admin, { permissions } = {}) {
+  const role = admin.role;
+  const tenant_id = admin.tenant_id || null;
+  const mfa_enabled = !!admin.mfa_enabled;
+  const mfa_required = isMfaRequiredForAdmin({ role, tenant_id });
+  return {
+    id: admin.id,
+    name: admin.name,
+    email: admin.email,
+    role,
+    permissions: permissions != null ? permissions : admin.permissions || [],
+    tenant_id,
+    mfa_enabled,
+    mfa_channel: admin.mfa_channel || null,
+    mfa_required,
+    requiresMfaSetup: mfa_required && !mfa_enabled,
+  };
+}
 
 async function assertTenantRowExists(models, tenantId) {
   if (!tenantId || !isValidTenantUuid(tenantId)) {
@@ -200,16 +220,24 @@ exports.login = async (req, res) => {
 
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    return res.json({
-      token,
-      admin: {
+    const adminPayload = adminPublicPayload(
+      {
         id: admin.id,
         name: admin.name,
         email: admin.email,
         role: adminWithTenant?.role || admin.role,
-        permissions: perms,
         tenant_id: tenantId,
+        mfa_enabled: adminWithTenant?.mfa_enabled ?? admin.mfa_enabled,
+        mfa_channel: adminWithTenant?.mfa_channel ?? admin.mfa_channel,
+        permissions: perms,
       },
+      { permissions: perms }
+    );
+
+    return res.json({
+      token,
+      requiresMfaSetup: adminPayload.requiresMfaSetup,
+      admin: adminPayload,
     });
   } catch (e) {
     return res.status(500).json({ message: "Login failed", error: e.message });
@@ -269,16 +297,11 @@ exports.verifyMfaLogin = async (req, res) => {
 
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "7d" });
 
+    const adminPayload = adminPublicPayload(admin);
     return res.json({
       token,
-      admin: {
-        id: admin.id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role,
-        permissions: admin.permissions || [],
-        tenant_id: tenantId,
-      },
+      requiresMfaSetup: adminPayload.requiresMfaSetup,
+      admin: adminPayload,
     });
   } catch (e) {
     return res.status(500).json({ message: "Verification failed", error: e.message });
@@ -368,8 +391,17 @@ exports.mfaDisable = async (req, res) => {
     const currentPassword = String(req.body.currentPassword || "");
     if (!currentPassword) return res.status(400).json({ message: "Current password is required" });
 
-    const admin = await Admin.findByPk(adminId, { attributes: ["id", "password"] });
+    const admin = await Admin.findByPk(adminId, {
+      attributes: ["id", "password", "role", "tenant_id", "mfa_enabled"],
+    });
     if (!admin) return res.status(401).json({ message: "Admin not found" });
+
+    if (isMfaRequiredForAdmin(admin)) {
+      return res.status(403).json({
+        code: "MFA_REQUIRED",
+        message: "MFA is required for your account and cannot be disabled.",
+      });
+    }
 
     const ok = await bcrypt.compare(currentPassword, admin.password);
     if (!ok) return res.status(401).json({ message: "Current password is incorrect" });
@@ -499,16 +531,7 @@ exports.me = async (req, res) => {
       return res.status(401).json({ message: "Admin not found" });
     }
 
-    return res.json({
-      id: admin.id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
-      permissions: admin.permissions || [],
-      tenant_id: admin.tenant_id || null,
-      mfa_enabled: !!admin.mfa_enabled,
-      mfa_channel: admin.mfa_channel || null,
-    });
+    return res.json(adminPublicPayload(admin));
   } catch (e) {
     return res.status(500).json({ message: "Failed to fetch admin", error: e.message });
   }

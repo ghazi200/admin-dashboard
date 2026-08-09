@@ -45,6 +45,14 @@ axiosClient.interceptors.response.use(
 
     const status = error?.response?.status;
 
+    if (status === 403 && error?.response?.data?.code === "MFA_SETUP_REQUIRED") {
+      const pathname = (typeof window !== "undefined" && window.location?.pathname) || "";
+      if (!pathname.includes("/account") && !pathname.includes("/login")) {
+        window.location.href = "/account";
+      }
+      return Promise.reject(error);
+    }
+
     if (status === 401) {
       const pathname = (typeof window !== "undefined" && window.location?.pathname)
         ? window.location.pathname.toLowerCase()

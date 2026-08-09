@@ -81,7 +81,9 @@ export default function Login() {
           localStorage.setItem("adminInfo", JSON.stringify(user));
         }
         connectSocket();
-        nav("/", { replace: true });
+        const needsMfaSetup =
+          data?.requiresMfaSetup || user?.requiresMfaSetup || (user?.mfa_required && !user?.mfa_enabled);
+        nav(needsMfaSetup ? "/account" : "/", { replace: true });
       } catch (err) {
         setError(err?.message || "Network error");
       } finally {
@@ -137,7 +139,9 @@ export default function Login() {
       }
 
       connectSocket();
-      nav("/", { replace: true });
+      const needsMfaSetup =
+        data?.requiresMfaSetup || user?.requiresMfaSetup || (user?.mfa_required && !user?.mfa_enabled);
+      nav(needsMfaSetup ? "/account" : "/", { replace: true });
     } catch (err) {
       setError(err?.message || "Network error");
     } finally {

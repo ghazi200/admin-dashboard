@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "test": "jest --runInBand",
     "test:tenant-isolation": "jest --runInBand src/test/tenantIsolation.test.js",
+    "test:mfa-policy": "jest --runInBand src/test/mfaPolicy.test.js",
     "test:mfa": "node scripts/run-test-with-server.js",
     "drop-contact-preferences": "node scripts/drop-contact-preferences-table.js",
     "test:create-shift": "node scripts/testCreateShiftGhazi.js",
