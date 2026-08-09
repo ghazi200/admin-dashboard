@@ -1,9 +1,15 @@
 /**
- * Email / SMS / voice to ranked replacement guards after AI callout.
+ * Email / SMS / voice / in-app to ranked replacement guards after AI callout.
  * Runs on the admin (unified) backend so SMTP/Twilio on Railway admin work
  * even when Guard AI only delivers in-app events.
+ * Respects per-guard ContactPreferences (email / sms / phone / in_app).
  */
 const { sendReportEmail } = require("./email.service");
+const {
+  getContactPreferencesMap,
+  defaultPrefs,
+} = require("../utils/contactPreferences");
+const { createGuardNotification } = require("../utils/guardNotification");
 
 function toE164(phone) {
   const raw = String(phone || "").trim();
@@ -154,6 +160,8 @@ async function notifyRankedGuardsOutbound(app, payload = {}) {
   const callEnabled =
     String(process.env.CALLOUT_OUTBOUND_CALL || "").toLowerCase() === "true" ||
     String(process.env.CALLOUT_ENABLE_VOICE_CALL || "").toLowerCase() === "true";
+  const inAppEnabled =
+    String(process.env.CALLOUT_OUTBOUND_IN_APP || "true").toLowerCase() !== "false";
 
   const { sequelize } = app.locals.models || {};
   const shiftId = payload.shiftId ? String(payload.shiftId) : "";
@@ -165,19 +173,26 @@ async function notifyRankedGuardsOutbound(app, payload = {}) {
       emailed: 0,
       smsed: 0,
       called: 0,
+      inApp: 0,
       results: [],
-      skipped: { email: !emailEnabled, sms: !smsEnabled, call: !callEnabled },
+      skipped: {
+        email: !emailEnabled,
+        sms: !smsEnabled,
+        call: !callEnabled,
+        in_app: !inAppEnabled,
+      },
     };
   }
 
-  if (!emailEnabled && !smsEnabled && !callEnabled) {
-    console.log("📤 Callout outbound paused (EMAIL/SMS/CALL all off)");
+  if (!emailEnabled && !smsEnabled && !callEnabled && !inAppEnabled) {
+    console.log("📤 Callout outbound paused (EMAIL/SMS/CALL/IN_APP all off)");
     return {
       emailed: 0,
       smsed: 0,
       called: 0,
+      inApp: 0,
       results: [],
-      skipped: { email: true, sms: true, call: true },
+      skipped: { email: true, sms: true, call: true, in_app: true },
     };
   }
 
@@ -188,7 +203,7 @@ async function notifyRankedGuardsOutbound(app, payload = {}) {
   );
   const shift = shiftRows[0];
   if (!shift) {
-    return { emailed: 0, smsed: 0, called: 0, results: [], error: "shift_not_found" };
+    return { emailed: 0, smsed: 0, called: 0, inApp: 0, results: [], error: "shift_not_found" };
   }
 
   const guardIds = [
@@ -200,7 +215,7 @@ async function notifyRankedGuardsOutbound(app, payload = {}) {
     ),
   ];
   if (guardIds.length === 0) {
-    return { emailed: 0, smsed: 0, called: 0, results: [] };
+    return { emailed: 0, smsed: 0, called: 0, inApp: 0, results: [] };
   }
 
   const [guards] = await sequelize.query(
@@ -211,11 +226,13 @@ async function notifyRankedGuardsOutbound(app, payload = {}) {
     { bind: [guardIds] }
   );
   const byId = new Map((guards || []).map((g) => [String(g.id), g]));
+  const prefsMap = await getContactPreferencesMap(sequelize, guardIds);
 
   const maxNotify = parseInt(process.env.CALLOUT_MAX_GUARDS_NOTIFY || "0", 10);
   let emailed = 0;
   let smsed = 0;
   let called = 0;
+  let inApp = 0;
   const results = [];
   let count = 0;
 
@@ -229,19 +246,26 @@ async function notifyRankedGuardsOutbound(app, payload = {}) {
     const calloutId = r.calloutId || r.callout_id || null;
     const rank = r.rank != null ? r.rank : count;
     const aiReason = r.reason || r.aiReason || null;
-    const entry = { guardId: gid, name: guard.name, email: null, sms: null, call: null };
+    const prefs = prefsMap.get(gid) || defaultPrefs();
     const hasConsent = Boolean(guard.communications_consent);
+    const entry = {
+      guardId: gid,
+      name: guard.name,
+      prefs,
+      email: null,
+      sms: null,
+      call: null,
+      in_app: null,
+    };
 
-    if (!hasConsent) {
-      entry.email = { success: false, error: "no_communications_consent" };
-      entry.sms = { sent: false, reason: "no_communications_consent" };
-      entry.call = { placed: false, reason: "no_communications_consent" };
-      results.push(entry);
-      console.log(`📵 Skip outbound for ${guard.name}: no communications_consent`);
-      continue;
-    }
-
-    if (emailEnabled && guard.email) {
+    // Email — preference only (consent checkbox is for SMS/voice)
+    if (!prefs.email) {
+      entry.email = { success: false, error: "pref_disabled" };
+    } else if (!emailEnabled) {
+      entry.email = { success: false, error: "paused_by_env" };
+    } else if (!guard.email) {
+      entry.email = { success: false, error: "no_email" };
+    } else {
       const text = buildEmailBody({
         guardName: guard.name,
         shift,
@@ -258,38 +282,71 @@ async function notifyRankedGuardsOutbound(app, payload = {}) {
       });
       entry.email = mail;
       if (mail.success) emailed += 1;
-    } else if (!emailEnabled) {
-      entry.email = { success: false, error: "paused_by_env" };
-    } else {
-      entry.email = { success: false, error: "no_email" };
     }
 
     const e164 = toE164(guard.phone);
-    if (smsEnabled && e164) {
+    if (!prefs.sms) {
+      entry.sms = { sent: false, reason: "pref_disabled" };
+    } else if (!hasConsent) {
+      entry.sms = { sent: false, reason: "no_communications_consent" };
+    } else if (!smsEnabled) {
+      entry.sms = { sent: false, reason: "paused_by_env" };
+    } else if (!e164) {
+      entry.sms = { sent: false, reason: "no_phone" };
+    } else {
       const sms = await sendSms(e164, buildSmsBody({ shift, rank, calloutId }));
       entry.sms = sms;
       if (sms.sent) smsed += 1;
-    } else if (!smsEnabled) {
-      entry.sms = { sent: false, reason: "paused_by_env" };
-    } else {
-      entry.sms = { sent: false, reason: "no_phone" };
     }
 
-    if (callEnabled) {
+    if (!prefs.phone) {
+      entry.call = { placed: false, reason: "pref_disabled" };
+    } else if (!hasConsent) {
+      entry.call = { placed: false, reason: "no_communications_consent" };
+    } else if (!callEnabled) {
+      entry.call = { placed: false, reason: "paused_by_env" };
+    } else {
       const voice = await placeCalloutVoiceCall(guard, shift, { calloutId, rank, aiReason });
       entry.call = voice;
       if (voice.placed) called += 1;
+    }
+
+    if (!prefs.in_app) {
+      entry.in_app = { sent: false, reason: "pref_disabled" };
+    } else if (!inAppEnabled) {
+      entry.in_app = { sent: false, reason: "paused_by_env" };
     } else {
-      entry.call = { placed: false, reason: "paused_by_env" };
+      const place = shift.location || "open shift";
+      const when =
+        shift.shift_date && shift.shift_start && shift.shift_end
+          ? `${shift.shift_date} ${shift.shift_start}-${shift.shift_end}`
+          : shift.shift_date || "see app";
+      const notification = await createGuardNotification({
+        sequelize,
+        guardId: gid,
+        type: "SHIFT_CALLOUT",
+        title: "Shift callout — coverage needed",
+        message: `You were ranked for ${place} (${when}). Open Callouts to Accept or Decline.`,
+        shiftId,
+        meta: { calloutId, rank, aiReason, reason },
+        app,
+      });
+      entry.in_app = notification
+        ? { sent: true, id: notification.id }
+        : { sent: false, reason: "create_failed" };
+      if (notification) inApp += 1;
     }
 
     results.push(entry);
+    console.log(
+      `📤 Callout channels for ${guard.name}: email=${entry.email?.success || entry.email?.error || "?"} sms=${entry.sms?.sent || entry.sms?.reason || "?"} call=${entry.call?.placed || entry.call?.reason || "?"} in_app=${entry.in_app?.sent || entry.in_app?.reason || "?"}`
+    );
   }
 
   console.log(
-    `📤 Callout outbound: emailed=${emailed} smsed=${smsed} called=${called} of ${results.length} ranked (shift=${shiftId.slice(0, 8)})`
+    `📤 Callout outbound: emailed=${emailed} smsed=${smsed} called=${called} inApp=${inApp} of ${results.length} ranked (shift=${shiftId.slice(0, 8)})`
   );
-  return { emailed, smsed, called, results };
+  return { emailed, smsed, called, inApp, results };
 }
 
 module.exports = {

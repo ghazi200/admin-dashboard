@@ -3,13 +3,10 @@
 const { sendCalloutSms } = require("./sms.services");
 const { sendCalloutEmail } = require("./email.services");
 const { callGuardForCallout } = require("./call.service");
-
-function getChannelsForGuard(guard) {
-  if (Array.isArray(guard.notifyBy) && guard.notifyBy.length > 0) {
-    return guard.notifyBy;
-  }
-  return ["SMS", "EMAIL", "CALL", "APP"];
-}
+const {
+  getGuardContactPreferences,
+  prefsToChannels,
+} = require("../utils/contactPreferences");
 
 function buildCalloutCopy(shift, meta = {}) {
   const lines = [
@@ -45,11 +42,33 @@ function buildCalloutSmsBody(shift, meta = {}) {
 /**
  * notifyGuards(io, guard, shift, meta)
  * meta: { aiReason, calloutId, rank }
+ * Channels come from ContactPreferences (+ communications_consent for SMS/CALL).
+ * Durable in-app rows are created by admin outbound (avoid duplicate notifications).
  */
 async function notifyGuards(io, guard, shift, meta = {}) {
   const bodyText = buildCalloutCopy(shift, meta);
   const smsText = buildCalloutSmsBody(shift, meta);
-  const channels = getChannelsForGuard(guard);
+
+  const hasConsent = Boolean(guard.communications_consent);
+  // When admin proxies callouts, email/SMS/voice + durable in-app are sent by admin outbound.
+  // Guard AI keeps realtime APP emit; set CALLOUT_SEND_DIRECT=true to also send from this service.
+  const sendDirect =
+    String(process.env.CALLOUT_SEND_DIRECT || "").toLowerCase() === "true";
+  let channels;
+
+  // Explicit override (tests / scripts) still wins
+  if (Array.isArray(guard.notifyBy) && guard.notifyBy.length > 0) {
+    channels = guard.notifyBy;
+  } else {
+    const prefs = await getGuardContactPreferences(guard.id);
+    channels = prefsToChannels(prefs, { hasConsent });
+    if (!sendDirect) {
+      channels = channels.filter((c) => c === "APP");
+    }
+    console.log(
+      `📣 Channels for ${guard.name}: ${channels.join(",") || "(none)"} prefs=${JSON.stringify(prefs)} consent=${hasConsent} direct=${sendDirect}`
+    );
+  }
 
   if (channels.includes("SMS")) {
     if (guard.phone) {
@@ -58,6 +77,8 @@ async function notifyGuards(io, guard, shift, meta = {}) {
     } else {
       console.log("📱 SMS skipped (no phone on guard record)");
     }
+  } else if (!hasConsent) {
+    console.log(`📱 SMS skipped (no consent or pref off) → ${guard.name}`);
   }
 
   if (channels.includes("EMAIL")) {

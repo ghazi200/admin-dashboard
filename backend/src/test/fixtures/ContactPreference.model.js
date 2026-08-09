@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
     contactType: {
       type: DataTypes.STRING(32),
       allowNull: false,
-      validate: { isIn: [['SMS', 'Email', 'Phone']] },
+      validate: { isIn: [['SMS', 'Email', 'Phone', 'InApp']] },
     },
     active: { type: DataTypes.BOOLEAN, defaultValue: true }
   }, {

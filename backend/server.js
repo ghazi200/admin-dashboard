@@ -37,10 +37,11 @@ const Model = Sequelize.Model;
 const CONTACT_PREFS_SKIP = ["ContactPreference", "ContactPreferences"];
 
 function createContactPreferencesTableRaw(seq) {
+  // Never DROP — preferences are real data now. Create-if-missing only.
   if (!seq || seq.getDialect?.() !== "postgres") return Promise.resolve();
-  return seq.query(`DROP TABLE IF EXISTS "ContactPreferences" CASCADE`).catch(() => {})
-    .then(() => seq.query(`
-      CREATE TABLE "ContactPreferences" (
+  return seq
+    .query(`
+      CREATE TABLE IF NOT EXISTS "ContactPreferences" (
         id SERIAL PRIMARY KEY,
         "guardId" UUID NOT NULL,
         "contactType" VARCHAR(32) NOT NULL,
@@ -48,8 +49,23 @@ function createContactPreferencesTableRaw(seq) {
         "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
-    `).catch(() => {}))
-    .then(() => seq.query(`CREATE INDEX IF NOT EXISTS "contact_preferences_guard_id" ON "ContactPreferences" ("guardId")`).catch(() => {}));
+    `)
+    .catch(() => {})
+    .then(() =>
+      seq
+        .query(
+          `CREATE INDEX IF NOT EXISTS "contact_preferences_guard_id" ON "ContactPreferences" ("guardId")`
+        )
+        .catch(() => {})
+    )
+    .then(() =>
+      seq
+        .query(
+          `CREATE UNIQUE INDEX IF NOT EXISTS "contact_preferences_guard_type_uq"
+           ON "ContactPreferences" ("guardId", "contactType")`
+        )
+        .catch(() => {})
+    );
 }
 
 const OrigModelSync = Model.sync;
@@ -752,6 +768,7 @@ app.post("/callouts/trigger", authGuard, async (req, res) => {
             emailed: outbound.emailed,
             smsed: outbound.smsed,
             called: outbound.called,
+            inApp: outbound.inApp,
           };
         }
       } catch (e) {

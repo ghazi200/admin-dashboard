@@ -152,6 +152,13 @@ export default function Guards() {
   const [updatingGuardId, setUpdatingGuardId] = useState(null); // Track which guard is being updated
   const [selectedGuards, setSelectedGuards] = useState(new Set()); // Multi-select state
 
+  const defaultContactPrefs = {
+    email: true,
+    sms: true,
+    phone: true,
+    in_app: true,
+  };
+
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState({
     name: "",
@@ -160,6 +167,7 @@ export default function Guards() {
     availability: true,
     active: true,
     communications_consent: false,
+    contact_preferences: { ...defaultContactPrefs },
   });
 
   // History modal state
@@ -523,8 +531,31 @@ export default function Guards() {
     setForm((p) => ({ ...p, [name]: type === "checkbox" ? checked : value }));
   }
 
+  function onContactPrefChange(key, checked) {
+    setForm((p) => ({
+      ...p,
+      contact_preferences: {
+        ...(p.contact_preferences || defaultContactPrefs),
+        [key]: checked,
+      },
+    }));
+  }
+
+  function onContactPrefAll(checked) {
+    setForm((p) => ({
+      ...p,
+      contact_preferences: {
+        email: checked,
+        sms: checked,
+        phone: checked,
+        in_app: checked,
+      },
+    }));
+  }
+
   function startEdit(g) {
     setEditingId(g.id);
+    const prefs = g.contact_preferences || defaultContactPrefs;
     setForm({
       name: g.name || "",
       email: g.email || "",
@@ -532,6 +563,12 @@ export default function Guards() {
       availability: !!g.availability,
       active: !!g.active,
       communications_consent: !!g.communications_consent,
+      contact_preferences: {
+        email: prefs.email !== false,
+        sms: prefs.sms !== false,
+        phone: prefs.phone !== false,
+        in_app: prefs.in_app !== false,
+      },
     });
   }
 
@@ -544,6 +581,7 @@ export default function Guards() {
       availability: true,
       active: true,
       communications_consent: false,
+      contact_preferences: { ...defaultContactPrefs },
     });
   }
 
@@ -757,6 +795,77 @@ export default function Guards() {
                 Add a phone number so SMS/voice can be delivered.
               </div>
             )}
+
+            <div
+              style={{
+                marginTop: 4,
+                padding: 12,
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 13 }}>
+                Shift / callout contact preferences
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 10 }}>
+                How this guard should be offered open shifts and callouts.
+              </div>
+              {(() => {
+                const cp = form.contact_preferences || defaultContactPrefs;
+                const allOn = !!(cp.email && cp.sms && cp.phone && cp.in_app);
+                return (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={allOn}
+                        onChange={(e) => onContactPrefAll(e.target.checked)}
+                      />
+                      All of the above
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!cp.email}
+                        onChange={(e) => onContactPrefChange("email", e.target.checked)}
+                      />
+                      Email
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!cp.sms}
+                        onChange={(e) => onContactPrefChange("sms", e.target.checked)}
+                      />
+                      SMS
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!cp.phone}
+                        onChange={(e) => onContactPrefChange("phone", e.target.checked)}
+                      />
+                      Phone call
+                    </label>
+                    <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!cp.in_app}
+                        onChange={(e) => onContactPrefChange("in_app", e.target.checked)}
+                      />
+                      In-app
+                    </label>
+                  </div>
+                );
+              })()}
+              {(form.contact_preferences?.sms || form.contact_preferences?.phone) &&
+                !form.communications_consent && (
+                  <div style={{ fontSize: 12, color: "#f59e0b", marginTop: 8 }}>
+                    SMS / phone also require communications consent above.
+                  </div>
+                )}
+            </div>
 
             <label>
               <input type="checkbox" name="availability" checked={form.availability} onChange={onChange} /> Available

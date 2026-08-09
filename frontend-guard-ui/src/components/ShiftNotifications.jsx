@@ -102,6 +102,8 @@ export default function ShiftNotifications() {
       case "SHIFT_SWAP_REJECTED":
       case "SHIFT_SWAP_CANCELLED":
         return "❌";
+      case "SHIFT_CALLOUT":
+        return "📣";
       case "SHIFT_SWAP_CLAIMED":
       case "SHIFT_SWAP_REQUESTED":
         return "🔄";

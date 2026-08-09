@@ -329,7 +329,10 @@ exports.getRecentAvailabilityLogs = async (req, res) => {
 
 exports.listGuards = async (req, res) => {
   try {
-    const { Guard, AvailabilityLog } = req.app.locals.models;
+    const { Guard, AvailabilityLog, sequelize } = req.app.locals.models;
+    const {
+      getContactPreferencesMap,
+    } = require("../utils/contactPreferences");
 
     if (!Guard) {
       console.error("❌ Guard model not found in req.app.locals.models");
@@ -371,26 +374,37 @@ exports.listGuards = async (req, res) => {
       }
     });
 
+    const prefsMap = await getContactPreferencesMap(
+      sequelize,
+      guards.map((g) => g.id)
+    );
+
     // Map guards to their availability by hashing their UUID (same method as updateGuardAvailability)
     const guardsWithAvailability = guards.map(guard => {
       const guardData = guard.toJSON();
-      
+
       // Convert guard UUID to integer (same method as in updateGuardAvailability)
       const hash = crypto.createHash('md5').update(guard.id).digest('hex');
       const guardIdInt = parseInt(hash.substring(0, 8), 16) % 2147483647;
-      
+
       // Get availability from the map
       const availability = availabilityByIntId.get(guardIdInt);
-      
+
       if (availability === undefined) {
         console.log(`⚠️ listGuards - No availability log found for guard ${guard.id} (hashed to ${guardIdInt})`);
       } else {
         console.log(`✅ listGuards - Guard ${guard.id} (${guard.name}) has availability: ${availability}`);
       }
-      
+
       return {
         ...guardData,
         availability: availability !== undefined ? availability : true, // Default to true (available) if no log found
+        contact_preferences: prefsMap.get(String(guard.id)) || {
+          email: true,
+          sms: true,
+          phone: true,
+          in_app: true,
+        },
       };
     });
 
@@ -462,6 +476,20 @@ exports.createGuard = async (req, res) => {
 
     const guard = await Guard.create(guardData);
     console.log("✅ createGuard - Guard created:", guard.id, guard.name);
+
+    let contact_preferences = null;
+    if (req.body.contact_preferences != null) {
+      try {
+        const { setGuardContactPreferences } = require("../utils/contactPreferences");
+        contact_preferences = await setGuardContactPreferences(
+          sequelize,
+          guard.id,
+          req.body.contact_preferences
+        );
+      } catch (prefErr) {
+        console.warn("⚠️ createGuard - contact preferences save failed (non-fatal):", prefErr.message);
+      }
+    }
 
     // ✅ Every active guard gets an availability log so dashboard KPI stays correct.
     // Default: available (true). Only false if client explicitly sends availability: false.
@@ -549,6 +577,9 @@ exports.createGuard = async (req, res) => {
     // Return guard with availability in response
     const guardResponse = guard.toJSON();
     guardResponse.availability = shouldCreateLog ? availabilityValue : undefined;
+    if (contact_preferences) {
+      guardResponse.contact_preferences = contact_preferences;
+    }
 
     return res.status(201).json(guardResponse);
   } catch (e) {
@@ -626,6 +657,20 @@ exports.updateGuard = async (req, res) => {
       }
     }
     await guard.save();
+
+    let contact_preferences = null;
+    if (req.body.contact_preferences != null) {
+      try {
+        const { setGuardContactPreferences } = require("../utils/contactPreferences");
+        contact_preferences = await setGuardContactPreferences(
+          sequelize,
+          guard.id,
+          req.body.contact_preferences
+        );
+      } catch (prefErr) {
+        console.warn("⚠️ updateGuard - contact preferences save failed (non-fatal):", prefErr.message);
+      }
+    }
 
     // ✅ Create availability log if availability is in request
     // Always create log when availability is provided - it's useful for history
@@ -761,7 +806,18 @@ exports.updateGuard = async (req, res) => {
       }
     }
 
-    return res.json(guard);
+    const payload = typeof guard.toJSON === "function" ? guard.toJSON() : guard;
+    if (contact_preferences) {
+      payload.contact_preferences = contact_preferences;
+    } else if (req.body.contact_preferences == null) {
+      try {
+        const { getGuardContactPreferences } = require("../utils/contactPreferences");
+        payload.contact_preferences = await getGuardContactPreferences(sequelize, guard.id);
+      } catch (_) {
+        /* optional */
+      }
+    }
+    return res.json(payload);
   } catch (e) {
     console.error("❌ updateGuard error:", e);
     return res.status(500).json({ message: "Failed to update guard", error: e.message });
