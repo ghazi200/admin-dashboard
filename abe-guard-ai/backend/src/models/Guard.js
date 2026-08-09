@@ -36,6 +36,7 @@ reliability_score: {
   communications_consent: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   consent_at: { type: DataTypes.DATE, allowNull: true },
   consent_source: { type: DataTypes.STRING, allowNull: true },
+  callout_eligible: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
 }, {
   tableName: 'guards',

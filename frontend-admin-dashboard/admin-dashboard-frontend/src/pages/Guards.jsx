@@ -167,6 +167,7 @@ export default function Guards() {
     phone: "",
     availability: true,
     active: true,
+    callout_eligible: true,
     communications_consent: false,
     contact_preferences: { ...defaultContactPrefs },
   });
@@ -611,6 +612,7 @@ export default function Guards() {
       phone: g.phone || "",
       availability: !!g.availability,
       active: !!g.active,
+      callout_eligible: g.callout_eligible !== false,
       communications_consent: !!g.communications_consent,
       contact_preferences: {
         email: prefs.email !== false,
@@ -629,6 +631,7 @@ export default function Guards() {
       phone: "",
       availability: true,
       active: true,
+      callout_eligible: true,
       communications_consent: false,
       contact_preferences: { ...defaultContactPrefs },
     });
@@ -929,6 +932,20 @@ export default function Guards() {
               <input type="checkbox" name="active" checked={form.active} onChange={onChange} /> Active
             </label>
 
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", lineHeight: 1.35 }}>
+              <input
+                type="checkbox"
+                name="callout_eligible"
+                checked={form.callout_eligible !== false}
+                onChange={onChange}
+                style={{ marginTop: 3 }}
+              />
+              <span>
+                <b>Eligible for callouts</b> — AI may rank and contact this guard for open-shift coverage.
+                Uncheck to keep them active but out of the callout pool.
+              </span>
+            </label>
+
             <button className="btn btnPrimary" type="submit" disabled={!canEdit}>
               {editingId ? "Update Guard" : "Create Guard"}
             </button>
@@ -1023,6 +1040,7 @@ export default function Guards() {
                     <th style={{ minWidth: 200 }}>Email</th>
                     <th style={{ minWidth: 120 }}>Phone</th>
                     <th style={{ minWidth: 90 }}>SMS/Call</th>
+                    <th style={{ minWidth: 100 }}>Callouts</th>
                     <th style={{ minWidth: 140 }}>Availability</th>
                     <th style={{ minWidth: 100 }}>Active</th>
                     <th style={{ minWidth: 120 }}>Account</th>
@@ -1053,6 +1071,7 @@ export default function Guards() {
                         <td>{g.email}</td>
                         <td>{g.phone || "—"}</td>
                         <td>{g.communications_consent ? "Yes" : "No"}</td>
+                        <td>{g.callout_eligible === false ? "No" : "Yes"}</td>
 
                         <td style={{ display: "flex", gap: 10, alignItems: "center" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

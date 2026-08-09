@@ -441,6 +441,10 @@ exports.createGuard = async (req, res) => {
       email: req.body.email || null,
       phone: req.body.phone || null,
       active: req.body.active ?? true,
+      callout_eligible:
+        req.body.callout_eligible !== undefined
+          ? Boolean(req.body.callout_eligible)
+          : true,
     };
 
     const wantsConsent = Boolean(req.body.communications_consent);
@@ -650,7 +654,11 @@ exports.updateGuard = async (req, res) => {
       "communications_consent",
       "consent_at",
       "consent_source",
+      "callout_eligible",
     ];
+    if (body.callout_eligible !== undefined) {
+      body.callout_eligible = Boolean(body.callout_eligible);
+    }
     for (const key of allowed) {
       if (Object.prototype.hasOwnProperty.call(body, key)) {
         guard.set(key, body[key]);

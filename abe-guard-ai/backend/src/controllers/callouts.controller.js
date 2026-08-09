@@ -91,8 +91,10 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
   shift.guard_id = null;
   await shift.save();
 
-  // 2) Eligible guards: all active, excluding caller
-  const allActive = await Guard.findAll({ where: { is_active: true } });
+  // 2) Eligible guards: active + callout allowlist, excluding caller
+  const allActive = await Guard.findAll({
+    where: { is_active: true, callout_eligible: true },
+  });
 
   const eligibleGuards = callerGuardId
     ? allActive.filter((g) => String(g.id) !== callerGuardId)
@@ -157,7 +159,10 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
       shiftId: shift.id,
       reason: cleanReason,
       callerGuardId: callerGuardId || null,
-      excluded: callerGuardId ? [{ guardId: callerGuardId, why: "Caller excluded" }] : [],
+      excluded: callerGuardId
+        ? [{ guardId: callerGuardId, why: "Caller excluded" }]
+        : [],
+      eligibilityNote: "Only is_active=true AND callout_eligible=true guards are ranked",
       rankings, // contains calloutId:null at this point; fine for audit
       createdAt: new Date().toISOString(),
       model: "simple-ranking-v1",

@@ -67,6 +67,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    // Admin allowlist: AI may rank/contact for open-shift callouts
+    callout_eligible: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
   }, {
     tableName: 'guards',
     freezeTableName: true,
