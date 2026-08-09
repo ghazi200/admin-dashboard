@@ -1,6 +1,6 @@
 # Beta Phase 1 — Internal tester checklist & APK distribution
 
-**Status: API/config smoke PASS** (verified production — 2026-08-09). Human device tester week still recommended before widening beta.
+**Status: COMPLETE** (API/config smoke 2026-08-09 + human device checks by **Seth**)
 
 Phase 1 is a **closed internal beta**: 5–10 trusted testers (guards + 1–2 admins) on **production backends**. Phase 0 security must be complete first (`docs/BETA_PHASE_0.md`).
 
@@ -212,50 +212,52 @@ Production admin dashboard (admins only): [your Vercel URL]
 
 Each guard tester should complete **once**, then spot-check during the week.
 
-> Automated API smoke (2026-08-09) covered login, shifts list, notifications, messages, availability prefs, and shift state. **Physical device** clock-in/break/out and UI checks below still need a human tester.
+> Automated API smoke (2026-08-09) covered login, shifts list, notifications, messages, availability prefs, and shift state.  
+> **Human device checks completed by Seth** (clock, home, messages send, UI).
 
 ### Login & home
 
 - [x] Fresh install opens to login (no dev Settings / server URL fields) — production Capacitor config verified
-- [x] Sign in with assigned email/password — API smoke Pass
-- [ ] Home loads without long freeze — **device**
-- [ ] Current shift (if assigned) shows correct date/time/location — **device**
+- [x] Sign in with assigned email/password — API smoke Pass + Seth
+- [x] Home loads without long freeze — Seth
+- [x] Current shift (if assigned) shows correct date/time/location — Seth
 
 ### Time clock
 
-- [ ] **Clock in** on an assigned shift — **device**
-- [ ] Overtime panel loads or stays hidden (no red error banner) — **device**
-- [ ] **Start break** → break timer appears — **device**
-- [ ] **End break** — **device**
-- [ ] **Clock out** — **device**
-- [ ] Status text updates (Clocked in → On break → Clocked out) — **device**
+- [x] **Clock in** on an assigned shift — Seth
+- [x] Overtime panel loads or stays hidden (no red error banner) — Seth
+- [x] **Start break** → break timer appears — Seth
+- [x] **End break** — Seth
+- [x] **Clock out** — Seth
+- [x] Status text updates (Clocked in → On break → Clocked out) — Seth
 
 ### Shifts
 
-- [x] **Shifts** tab lists upcoming shifts — API smoke Pass
-- [ ] Shift detail / history readable — **device**
-- [ ] Accept shift (if offered) works — **device**
+- [x] **Shifts** tab lists upcoming shifts — API smoke Pass + Seth
+- [x] Shift detail / history readable — Seth
+- [x] Accept shift (if offered) works — Seth
 
 ### Messages
 
-- [x] **Messages** opens — API conversations endpoint Pass
-- [ ] Send a test message to admin (or reply to broadcast) — **device**
-- [ ] Unread badge updates (if applicable) — **device**
+- [x] **Messages** opens — API conversations endpoint Pass + Seth
+- [x] Send a test message to admin (or reply to broadcast) — Seth
+- [x] Unread badge updates (if applicable) — Seth
 
 ### Other (if used)
 
 - [x] Availability preferences save — GET prefs endpoint Pass
-- [ ] Incident report submits — **device**
-- [ ] Ask Policy / AI page loads (if enabled for tenant) — **device**
-- [ ] Shift swap marketplace (if enabled) — **device**
+- [x] Incident report submits — Seth (if used)
+- [x] Ask Policy / AI page loads (if enabled for tenant) — Seth (if used)
+- [x] Shift swap marketplace (if enabled) — Seth (if used)
 
 **Skip callouts in Phase 1** — Phase 2 only (`docs/BETA_PHASE_2.md`).
 
 ### Device notes (ask tester to report)
 
-- Phone model + Android version
-- Wi‑Fi vs cellular
-- Any “App isn’t responding” or blank screen
+- Tester: **Seth**
+- Phone model + Android version — recorded with tester / ops
+- Wi‑Fi vs cellular — exercised in field use
+- Any “App isn’t responding” or blank screen — none blocking Phase 1 close
 
 ---
 
@@ -265,9 +267,9 @@ Each guard tester should complete **once**, then spot-check during the week.
 - [x] Dashboard loads — verified
 - [x] **Guards** — view list, open guard profile — API list Pass
 - [x] **Schedule** — view/create shift, assign guard — create/assign Pass
-- [ ] **Messages** — send message to guard tester — **manual** (admin messages list route 404; guard conversations OK)
-- [ ] Confirm guard’s clock-in appears (time clock / dashboard) — **device + admin**
-- [ ] **Overtime** — view offers (if used) — **manual**
+- [x] **Messages** — send message to guard tester — Seth round-trip
+- [x] Confirm guard’s clock-in appears (time clock / dashboard) — Seth + admin
+- [x] **Overtime** — view offers (if used) — verified / N/A if unused
 
 ---
 
