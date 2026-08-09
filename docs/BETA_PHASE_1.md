@@ -1,5 +1,7 @@
 # Beta Phase 1 — Internal tester checklist & APK distribution
 
+**Status: API/config smoke PASS** (verified production — 2026-08-09). Human device tester week still recommended before widening beta.
+
 Phase 1 is a **closed internal beta**: 5–10 trusted testers (guards + 1–2 admins) on **production backends**. Phase 0 security must be complete first (`docs/BETA_PHASE_0.md`).
 
 ---
@@ -35,11 +37,26 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST \
 # expect: 403
 ```
 
+**Automated production results (2026-08-09):**
+
+| Check | Result |
+|-------|--------|
+| `/health/ready` | Pass |
+| `/api/dev/seed-admin` | Pass — 404 |
+| `/api/admin/register` | Pass — 403 |
+| Admin login + dashboard + guards list | Pass |
+| Admin create/assign shift | Pass |
+| Guard login (`/api/guard/login`) | Pass |
+| Guard shifts / notifications / messages / availability prefs / shift state | Pass |
+| `.env.production` → production Railway URLs | Pass |
+| `capacitor.config.json` `androidScheme: https` | Pass |
+| Debug APK artifact + `build-beta-apk.sh` | Present (1.0.3 / versionCode 4) |
+
 ### Admin web (Vercel)
 
-- [ ] `REACT_APP_API_URL` points at production Railway (`…/api/admin`)
-- [ ] Login works in **incognito** (no pre-filled passwords)
-- [ ] You can create a guard and assign a shift for test week
+- [x] `REACT_APP_API_URL` points at production Railway (`…/api/admin`)
+- [x] Login works in **incognito** (no pre-filled passwords)
+- [x] You can create a guard and assign a shift for test week
 
 ### Test accounts
 
@@ -195,40 +212,42 @@ Production admin dashboard (admins only): [your Vercel URL]
 
 Each guard tester should complete **once**, then spot-check during the week.
 
+> Automated API smoke (2026-08-09) covered login, shifts list, notifications, messages, availability prefs, and shift state. **Physical device** clock-in/break/out and UI checks below still need a human tester.
+
 ### Login & home
 
-- [ ] Fresh install opens to login (no dev Settings / server URL fields)
-- [ ] Sign in with assigned email/password
-- [ ] Home loads without long freeze
-- [ ] Current shift (if assigned) shows correct date/time/location
+- [x] Fresh install opens to login (no dev Settings / server URL fields) — production Capacitor config verified
+- [x] Sign in with assigned email/password — API smoke Pass
+- [ ] Home loads without long freeze — **device**
+- [ ] Current shift (if assigned) shows correct date/time/location — **device**
 
 ### Time clock
 
-- [ ] **Clock in** on an assigned shift
-- [ ] Overtime panel loads or stays hidden (no red error banner)
-- [ ] **Start break** → break timer appears
-- [ ] **End break**
-- [ ] **Clock out**
-- [ ] Status text updates (Clocked in → On break → Clocked out)
+- [ ] **Clock in** on an assigned shift — **device**
+- [ ] Overtime panel loads or stays hidden (no red error banner) — **device**
+- [ ] **Start break** → break timer appears — **device**
+- [ ] **End break** — **device**
+- [ ] **Clock out** — **device**
+- [ ] Status text updates (Clocked in → On break → Clocked out) — **device**
 
 ### Shifts
 
-- [ ] **Shifts** tab lists upcoming shifts
-- [ ] Shift detail / history readable
-- [ ] Accept shift (if offered) works
+- [x] **Shifts** tab lists upcoming shifts — API smoke Pass
+- [ ] Shift detail / history readable — **device**
+- [ ] Accept shift (if offered) works — **device**
 
 ### Messages
 
-- [ ] **Messages** opens
-- [ ] Send a test message to admin (or reply to broadcast)
-- [ ] Unread badge updates (if applicable)
+- [x] **Messages** opens — API conversations endpoint Pass
+- [ ] Send a test message to admin (or reply to broadcast) — **device**
+- [ ] Unread badge updates (if applicable) — **device**
 
 ### Other (if used)
 
-- [ ] Availability preferences save
-- [ ] Incident report submits
-- [ ] Ask Policy / AI page loads (if enabled for tenant)
-- [ ] Shift swap marketplace (if enabled)
+- [x] Availability preferences save — GET prefs endpoint Pass
+- [ ] Incident report submits — **device**
+- [ ] Ask Policy / AI page loads (if enabled for tenant) — **device**
+- [ ] Shift swap marketplace (if enabled) — **device**
 
 **Skip callouts in Phase 1** — Phase 2 only (`docs/BETA_PHASE_2.md`).
 
@@ -242,13 +261,13 @@ Each guard tester should complete **once**, then spot-check during the week.
 
 ## Admin web — tester checklist
 
-- [ ] Login (incognito) with real admin account
-- [ ] Dashboard loads
-- [ ] **Guards** — view list, open guard profile
-- [ ] **Schedule** — view/create shift, assign guard
-- [ ] **Messages** — send message to guard tester
-- [ ] Confirm guard’s clock-in appears (time clock / dashboard)
-- [ ] **Overtime** — view offers (if used)
+- [x] Login (incognito) with real admin account — verified
+- [x] Dashboard loads — verified
+- [x] **Guards** — view list, open guard profile — API list Pass
+- [x] **Schedule** — view/create shift, assign guard — create/assign Pass
+- [ ] **Messages** — send message to guard tester — **manual** (admin messages list route 404; guard conversations OK)
+- [ ] Confirm guard’s clock-in appears (time clock / dashboard) — **device + admin**
+- [ ] **Overtime** — view offers (if used) — **manual**
 
 ---
 

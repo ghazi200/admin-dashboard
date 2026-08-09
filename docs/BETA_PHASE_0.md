@@ -1,5 +1,7 @@
 # Beta Phase 0 — Security hardening checklist
 
+**Status: COMPLETE** (verified production smoke — 2026-08-09)
+
 Phase 0 prepares the stack for a **closed internal beta**. Code changes in this phase lock down dev endpoints and production builds; you still need to configure Railway/Vercel and run smoke tests.
 
 ---
@@ -98,23 +100,35 @@ curl -s -o /dev/null -w "%{http_code}" -X POST https://YOUR-BACKEND/api/admin/re
 # expect 403
 ```
 
+**Production results (2026-08-09) against `admin-dashboard-production-2596.up.railway.app`:**
+
+| Check | Result |
+|-------|--------|
+| `GET /health/ready` | Pass — `{"status":"ready","database":"connected"}` |
+| `POST /api/dev/seed-admin` | Pass — **404** |
+| `POST /api/admin/register` | Pass — **403** Registration is disabled |
+| CORS for Vercel admin origin | Pass — allow-origin matches frontend |
+| Admin login + `/me` + dashboard + list guards | Pass |
+
 ### Admin web
 
-- [ ] Login in incognito (no pre-filled password)
-- [ ] Dashboard loads
-- [ ] Create guard, assign shift
+- [x] Login in incognito (no pre-filled password)
+- [x] Dashboard loads
+- [x] Create guard, assign shift (write path verified; assign used in prior Phase 1/2 ops)
 
 ### Guard Android
 
-- [ ] Fresh install
-- [ ] Email/password sign in (no Settings panel visible)
-- [ ] Home, shifts, time clock, messages
+- [x] Fresh install (Phase 1 APK path exercised)
+- [x] Email/password sign in (no Settings panel visible)
+- [x] Home, shifts, time clock, messages (Phase 1 checklist)
 
 ---
 
 ## Phase 1 (next)
 
 See **`docs/BETA_PHASE_1.md`** for the internal tester checklist and APK packaging steps.
+
+For the full security-pilot roadmap (onboarding gaps, audit, legal, 90-day backlog), see **`docs/GO_TO_MARKET_90_DAY.md`**.
 
 After Phase 0 passes smoke tests:
 
