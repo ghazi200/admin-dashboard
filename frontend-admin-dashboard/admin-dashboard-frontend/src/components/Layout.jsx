@@ -27,6 +27,7 @@ export default function Layout() {
   const nav = useNavigate();
   const location = useLocation();
   const isReportsPage = location.pathname === "/reports" || location.pathname.startsWith("/reports/");
+  const isAuditPage = location.pathname === "/audit" || location.pathname.startsWith("/audit/");
   const isInspectionsPage = location.pathname === "/inspections" || location.pathname.startsWith("/inspections/");
   const isUsersPage =
     location.pathname === "/users" || location.pathname.startsWith("/users/");
@@ -66,6 +67,7 @@ export default function Layout() {
     location.pathname === "/callout-risk" ||
     isUsersPage ||
     isReportsPage ||
+    isAuditPage ||
     isAIRankingPage ||
     isSchedulePage ||
     isPolicyPage ||
@@ -264,6 +266,13 @@ export default function Layout() {
           📊 Reports
         </NavLink>
 
+        <NavLink
+          to="/audit"
+          className={({ isActive }) => (isActive ? "navLink navLinkActive" : "navLink")}
+        >
+          📋 Audit
+        </NavLink>
+
         {isSuperAdmin && (
           <NavLink
             to="/super-admin"
@@ -394,6 +403,7 @@ export default function Layout() {
           location.pathname === "/callout-risk" ||
           isUsersPage ||
           isReportsPage ||
+          isAuditPage ||
           isAIRankingPage ||
           isSchedulePage ||
           isPolicyPage ||

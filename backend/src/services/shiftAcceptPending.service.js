@@ -201,6 +201,27 @@ async function beginPendingAccept(app, { shiftId, guardId, source = "accept_shif
     }).catch(() => {});
   }
 
+  try {
+    const { emitAuditEvent } = require("./auditEvent.service");
+    await emitAuditEvent(app, {
+      tenantId: row.tenant_id || null,
+      actorType: "guard",
+      actorId: String(guardId),
+      action: "shift.accept_pending",
+      entityType: "shift",
+      entityId: shiftId,
+      summary: `Guard pending-accept recorded (${source})`,
+      after: {
+        pendingGuardId: guardId,
+        pendingUntil: until.toISOString(),
+        source,
+        calloutId: calloutId || null,
+      },
+    });
+  } catch (_) {
+    /* non-fatal */
+  }
+
   return { mode: "pending", shift: row, pendingUntil: until.toISOString() };
 }
 
@@ -376,6 +397,23 @@ async function overridePendingAccept(app, {
 
   if (act === "confirm") {
     const result = await finalizePendingAccepts(app, { shiftId, force: true });
+    try {
+      const { emitAuditEvent } = require("./auditEvent.service");
+      await emitAuditEvent(app, {
+        tenantId: shift.tenant_id || null,
+        actorType: "admin",
+        actorId: adminId != null ? String(adminId) : null,
+        action: "shift.accept_confirm",
+        entityType: "shift",
+        entityId: shiftId,
+        summary: "Admin confirmed pending accept",
+        before: { pendingGuardId: originalPending },
+        after: { action: "confirm" },
+        meta: { reason: reason || null },
+      });
+    } catch (_) {
+      /* non-fatal */
+    }
     return { action: "confirm", ...result, shift: result.shifts?.[0] || null };
   }
 
@@ -420,6 +458,23 @@ async function overridePendingAccept(app, {
       outcome: "rejected",
       reason: reason || "Admin override",
     });
+    try {
+      const { emitAuditEvent } = require("./auditEvent.service");
+      await emitAuditEvent(app, {
+        tenantId: shift.tenant_id || null,
+        actorType: "admin",
+        actorId: adminId != null ? String(adminId) : null,
+        action: "shift.accept_reject",
+        entityType: "shift",
+        entityId: shiftId,
+        summary: "Admin rejected pending accept — shift left OPEN",
+        before: { pendingGuardId: originalPending },
+        after: { action: "reject", status: "OPEN" },
+        meta: { reason: reason || null },
+      });
+    } catch (_) {
+      /* non-fatal */
+    }
     return { action: "reject", shift: row };
   }
 
@@ -489,6 +544,24 @@ async function overridePendingAccept(app, {
       originalPendingGuardId: originalPending,
       reason: reason || "Admin override",
     }).catch(() => {});
+  }
+
+  try {
+    const { emitAuditEvent } = require("./auditEvent.service");
+    await emitAuditEvent(app, {
+      tenantId: shift.tenant_id || null,
+      actorType: "admin",
+      actorId: adminId != null ? String(adminId) : null,
+      action: "shift.accept_reassign",
+      entityType: "shift",
+      entityId: shiftId,
+      summary: "Admin reassigned shift during pending-accept window",
+      before: { pendingGuardId: originalPending },
+      after: { guardId, status: "CLOSED" },
+      meta: { reason: reason || null },
+    });
+  } catch (_) {
+    /* non-fatal */
   }
 
   return { action: "reassign", shift: row };

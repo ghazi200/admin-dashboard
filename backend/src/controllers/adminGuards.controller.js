@@ -578,6 +578,28 @@ exports.createGuard = async (req, res) => {
       entityId: guard.id,
     });
 
+    try {
+      const { emitAuditEvent, actorFromAdmin } = require("../services/auditEvent.service");
+      const actor = actorFromAdmin(req.admin);
+      await emitAuditEvent(req.app, {
+        tenantId: guard.tenant_id || req.admin?.tenant_id || null,
+        ...actor,
+        action: "guard.create",
+        entityType: "guard",
+        entityId: guard.id,
+        summary: `Created guard ${guard.name || guard.email}`,
+        after: {
+          email: guard.email,
+          phone: guard.phone,
+          active: guard.active,
+          communications_consent: guard.communications_consent,
+          callout_eligible: guard.callout_eligible,
+        },
+      });
+    } catch (_) {
+      /* non-fatal */
+    }
+
     // Return guard with availability in response
     const guardResponse = guard.toJSON();
     guardResponse.availability = shouldCreateLog ? availabilityValue : undefined;
@@ -610,6 +632,8 @@ exports.updateGuard = async (req, res) => {
 
     // Track if active status changed (important for dashboard updates)
     const wasActive = guard.active;
+    const prevConsent = Boolean(guard.communications_consent);
+    const prevCalloutEligible = guard.callout_eligible !== false;
     const activeChanged = req.body.active !== undefined && req.body.active !== wasActive;
 
     // Track if availability is being set (need to create log entry)
@@ -825,6 +849,40 @@ exports.updateGuard = async (req, res) => {
         /* optional */
       }
     }
+
+    try {
+      const { emitAuditEvent, actorFromAdmin } = require("../services/auditEvent.service");
+      const actor = actorFromAdmin(req.admin);
+      const nextConsent = Boolean(guard.communications_consent);
+      const nextCalloutEligible = guard.callout_eligible !== false;
+      if (prevConsent !== nextConsent) {
+        await emitAuditEvent(req.app, {
+          tenantId: guard.tenant_id || req.admin?.tenant_id || null,
+          ...actor,
+          action: nextConsent ? "guard.consent_granted" : "guard.consent_revoked",
+          entityType: "guard",
+          entityId: guard.id,
+          summary: `${guard.name || guard.email}: communications consent → ${nextConsent}`,
+          before: { communications_consent: prevConsent },
+          after: { communications_consent: nextConsent },
+        });
+      }
+      if (prevCalloutEligible !== nextCalloutEligible) {
+        await emitAuditEvent(req.app, {
+          tenantId: guard.tenant_id || req.admin?.tenant_id || null,
+          ...actor,
+          action: "guard.callout_eligible_changed",
+          entityType: "guard",
+          entityId: guard.id,
+          summary: `${guard.name || guard.email}: callout eligible → ${nextCalloutEligible}`,
+          before: { callout_eligible: prevCalloutEligible },
+          after: { callout_eligible: nextCalloutEligible },
+        });
+      }
+    } catch (_) {
+      /* non-fatal */
+    }
+
     return res.json(payload);
   } catch (e) {
     console.error("❌ updateGuard error:", e);
@@ -951,6 +1009,24 @@ exports.setGuardPassword = async (req, res) => {
     console.log(
       `🔑 setGuardPassword: admin=${req.admin?.email || req.admin?.id} set password for guard=${guard.email}`
     );
+
+    try {
+      const { emitAuditEvent, actorFromAdmin } = require("../services/auditEvent.service");
+      const actor = actorFromAdmin(req.admin);
+      await emitAuditEvent(req.app, {
+        tenantId: guard.tenant_id || req.admin?.tenant_id || null,
+        ...actor,
+        action: "guard.password_set",
+        entityType: "guard",
+        entityId: guard.id,
+        summary: generate
+          ? `Temporary password generated for ${guard.email}`
+          : `Password updated for ${guard.email}`,
+        meta: { generated: Boolean(generate) },
+      });
+    } catch (_) {
+      /* non-fatal */
+    }
 
     return res.json({
       message: generate

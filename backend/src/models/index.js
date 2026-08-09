@@ -87,6 +87,7 @@ const NotificationPreference = require("./NotificationPreference")(sequelize, Da
 // ✅ Command Center
 const OpEvent = require("./OpEvent")(sequelize, DataTypes);
 const CommandCenterAction = require("./CommandCenterAction")(sequelize, DataTypes);
+const AuditEvent = require("./AuditEvent")(sequelize, DataTypes);
 
 // ✅ Incidents
 const Incident = require("./Incident")(sequelize, DataTypes);
@@ -216,6 +217,7 @@ module.exports = {
   // ✅ Command Center
   OpEvent,
   CommandCenterAction,
+  AuditEvent,
 
   // ✅ Report Builder
   ReportTemplate,

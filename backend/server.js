@@ -804,6 +804,28 @@ app.post("/callouts/trigger", authGuard, async (req, res) => {
       }
     }
 
+    if (r.status >= 200 && r.status < 300) {
+      try {
+        const { emitAuditEvent } = require("./src/services/auditEvent.service");
+        await emitAuditEvent(req.app, {
+          tenantId: req.guard?.tenant_id || null,
+          actorType: "guard",
+          actorId: req.guard?.id != null ? String(req.guard.id) : null,
+          action: "callout.trigger",
+          entityType: "shift",
+          entityId: payload.shiftId || null,
+          summary: `Callout triggered (${payload.reason || "coverage"})`,
+          after: {
+            rankings: Array.isArray(r.data?.rankings) ? r.data.rankings.length : 0,
+            outboundNotify: r.data?.outboundNotify || null,
+          },
+          meta: { reason: payload.reason || null },
+        });
+      } catch (_) {
+        /* non-fatal */
+      }
+    }
+
     return res.status(r.status).json(r.data);
   } catch (e) {
     const msg = e?.message || String(e);
@@ -982,6 +1004,7 @@ app.use("/api/admin/owner-dashboard", ownerDashboardRoutes);
 
 const clockReportRoutes = require("./src/routes/clockReport.routes");
 app.use("/api/admin/clock-report", clockReportRoutes);
+app.use("/api/admin/audit", require("./src/routes/adminAudit.routes"));
 
 if (process.env.NODE_ENV !== "production") {
   logger.info("Geographic dashboard: GET/POST /api/admin/geographic/sites, POST /route-optimize, GET /analytics");

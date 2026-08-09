@@ -64,6 +64,7 @@ import Messages from "./pages/Messages";
 import GeographicDashboard from "./pages/GeographicDashboard";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import Staff from "./pages/Staff";
+import Audit from "./pages/Audit";
 
 export default function App() {
   return (
@@ -108,6 +109,7 @@ export default function App() {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/callout-risk" element={<CalloutRisk />} />
           <Route path="/reports" element={<ErrorBoundary><ReportBuilder /></ErrorBoundary>} />
+          <Route path="/audit" element={<ErrorBoundary><Audit /></ErrorBoundary>} />
           <Route path="/email-scheduler-settings" element={<EmailSchedulerSettings />} />
           <Route path="/account" element={<AccountSecurity />} />
           <Route path="/schedule-generation" element={<ScheduleGeneration />} />

@@ -421,6 +421,29 @@ exports.createShift = async (req, res) => {
       response.topRecommendation = optimizationResult.topRecommendation;
     }
 
+    try {
+      const { emitAuditEvent, actorFromAdmin } = require("../services/auditEvent.service");
+      const actor = actorFromAdmin(req.admin);
+      await emitAuditEvent(req.app, {
+        tenantId: created.tenant_id || tenantId || null,
+        ...actor,
+        action: "shift.create",
+        entityType: "shift",
+        entityId: created.id,
+        summary: `Created shift ${created.shift_date || ""} ${created.shift_start || ""}-${created.shift_end || ""}`.trim(),
+        after: {
+          status: created.status,
+          guard_id: created.guard_id || null,
+          location: created.location || null,
+          shift_date: created.shift_date,
+          shift_start: created.shift_start,
+          shift_end: created.shift_end,
+        },
+      });
+    } catch (_) {
+      /* non-fatal */
+    }
+
     return res.status(201).json(response);
   } catch (e) {
     const msg = e?.message || String(e);
@@ -703,6 +726,37 @@ exports.updateShift = async (req, res) => {
       } catch (opEventError) {
         console.warn("⚠️ Failed to create OpEvent for shift status change:", opEventError.message);
       }
+    }
+
+    try {
+      const { emitAuditEvent, actorFromAdmin } = require("../services/auditEvent.service");
+      const actor = actorFromAdmin(req.admin);
+      await emitAuditEvent(req.app, {
+        tenantId: updated.tenant_id || existingShift[0]?.tenant_id || null,
+        ...actor,
+        action: "shift.update",
+        entityType: "shift",
+        entityId: updated.id || shiftId,
+        summary: `Updated shift ${updated.shift_date || previousShiftDate || ""}`.trim(),
+        before: {
+          status: previousStatus,
+          guard_id: previousGuardId,
+          shift_date: previousShiftDate,
+          shift_start: previousShiftStart,
+          shift_end: previousShiftEnd,
+          location: previousLocation,
+        },
+        after: {
+          status: updated.status,
+          guard_id: updated.guard_id,
+          shift_date: updated.shift_date,
+          shift_start: updated.shift_start,
+          shift_end: updated.shift_end,
+          location: updated.location,
+        },
+      });
+    } catch (_) {
+      /* non-fatal */
     }
 
     return res.json(updated);
@@ -1054,6 +1108,28 @@ exports.deleteShift = async (req, res) => {
       } catch (notificationError) {
         console.warn("⚠️ Failed to create guard notification for deleted shift:", notificationError.message);
       }
+    }
+
+    try {
+      const { emitAuditEvent, actorFromAdmin } = require("../services/auditEvent.service");
+      const actor = actorFromAdmin(req.admin);
+      await emitAuditEvent(req.app, {
+        tenantId: shiftToDelete.tenant_id || null,
+        ...actor,
+        action: "shift.delete",
+        entityType: "shift",
+        entityId: shiftId,
+        summary: `Deleted shift ${shiftToDelete.shift_date || ""} ${shiftToDelete.shift_start || ""}-${shiftToDelete.shift_end || ""}`.trim(),
+        before: {
+          guard_id: shiftToDelete.guard_id,
+          shift_date: shiftToDelete.shift_date,
+          shift_start: shiftToDelete.shift_start,
+          shift_end: shiftToDelete.shift_end,
+          location: shiftToDelete.location,
+        },
+      });
+    } catch (_) {
+      /* non-fatal */
     }
 
     return res.json({ 

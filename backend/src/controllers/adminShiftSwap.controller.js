@@ -220,6 +220,27 @@ exports.approveShiftSwap = async (req, res) => {
     });
 
     const updatedSwap = await ShiftSwap.findByPk(swap.id);
+    try {
+      const { emitAuditEvent, actorFromAdmin } = require("../services/auditEvent.service");
+      const actor = actorFromAdmin(req.admin);
+      await emitAuditEvent(req.app, {
+        tenantId: originalShift.tenant_id || req.admin?.tenant_id || null,
+        ...actor,
+        action: "shift_swap.approve",
+        entityType: "shift_swap",
+        entityId: swap.id,
+        summary: `Approved shift swap for ${shiftWhen(originalShift)}`,
+        after: {
+          swapId: swap.id,
+          shiftId: swap.shift_id,
+          requesterGuardId: swap.requester_guard_id,
+          targetGuardId: swap.target_guard_id,
+        },
+        meta: { adminNotes: admin_notes || null },
+      });
+    } catch (_) {
+      /* non-fatal */
+    }
     return res.json({ message: "Shift swap approved successfully", swap: updatedSwap || swap });
   } catch (e) {
     console.error("approveShiftSwap error:", e);
@@ -319,6 +340,26 @@ exports.rejectShiftSwap = async (req, res) => {
     }
 
     const updatedSwap = await ShiftSwap.findByPk(swap.id);
+    try {
+      const { emitAuditEvent, actorFromAdmin } = require("../services/auditEvent.service");
+      const actor = actorFromAdmin(req.admin);
+      await emitAuditEvent(req.app, {
+        tenantId: originalShift?.tenant_id || req.admin?.tenant_id || null,
+        ...actor,
+        action: "shift_swap.reject",
+        entityType: "shift_swap",
+        entityId: swap.id,
+        summary: `Rejected shift swap for ${shiftWhen(originalShift)}`,
+        after: {
+          swapId: swap.id,
+          shiftId: swap.shift_id,
+          status: "rejected",
+        },
+        meta: { adminNotes: admin_notes || null },
+      });
+    } catch (_) {
+      /* non-fatal */
+    }
     return res.json({ message: "Shift swap rejected", swap: updatedSwap || swap });
   } catch (e) {
     console.error("rejectShiftSwap error:", e);

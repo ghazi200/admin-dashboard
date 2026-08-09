@@ -64,6 +64,12 @@ export const getClockReport = (params = {}) =>
 export const exportClockReport = (params = {}) =>
   axiosClient.get("/clock-report/export", { params, responseType: "blob" });
 
+// ===== AUDIT LOG (compliance CSV) =====
+export const listAuditEvents = (params = {}) =>
+  axiosClient.get("/audit", { params });
+export const exportAuditEvents = (params = {}) =>
+  axiosClient.get("/audit/export", { params, responseType: "blob" });
+
 // ===== GEOGRAPHIC DASHBOARD =====
 export const getGeographicSites = () => axiosClient.get("/geographic/sites");
 export const getGeographicSiteDetails = (siteId) =>
