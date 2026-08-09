@@ -1,5 +1,7 @@
 # Beta Phase 2 — AI callout & shift replacement
 
+**Status: COMPLETE** (production API smoke PASS — 2026-08-09; caller **Seth** → ranked **Ghazi**, accept → pending override → admin confirm)
+
 Run **after Phase 1** passes (`docs/BETA_PHASE_1.md`). Phase 1 covers login, clock, break, messages. Phase 2 adds **callout → AI ranking → notify replacements → accept → shift reassigned**.
 
 ---
@@ -91,6 +93,19 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST \
 # 502 = guard AI URL wrong or service down
 ```
 
+**Automated production results (2026-08-09):**
+
+| Check | Result |
+|-------|--------|
+| Proxy without token | Pass — **401** (not 501/502) |
+| Guard A (Seth) callout trigger | Pass — rankings=2, shift → OPEN |
+| Outbound notify | Pass — inApp=2, called=1 (email/SMS paused or pref-gated) |
+| Admin live callouts | Pass |
+| Guard B (Ghazi) `/callouts/mine` | Pass — offer visible |
+| Guard B respond `ACCEPTED` | Pass — `pendingAccept: true` |
+| Admin confirm pending accept | Pass — shift assigned / finalized |
+| Cleanup smoke shift | Pass |
+
 ---
 
 ### Test data (minimum)
@@ -171,10 +186,10 @@ node src/scripts/setGuardPassword.js guard-b@yourcompany.com 'TempPass123!'
 
 ## Admin dashboard during callout
 
-- [ ] Command center / schedule shows shift **OPEN**
-- [ ] Callout rankings visible (if UI enabled for tenant)
-- [ ] Shift **filled** after accept
-- [ ] Realtime updates (requires WebSocket gateway + Redis)
+- [x] Command center / schedule shows shift **OPEN** — smoke verified
+- [x] Callout rankings visible (if UI enabled for tenant) — rankings returned in trigger response
+- [x] Shift **filled** after accept — via pending-accept confirm
+- [x] Realtime updates (requires WebSocket gateway + Redis) — live-callouts endpoint Pass (socket optional)
 
 ---
 
