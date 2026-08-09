@@ -127,22 +127,34 @@ const PORT = process.env.PORT || 5000;
 // Cron endpoint: run shift reminders (for external cron when process may have been sleeping)
 // Call: GET /api/cron/shift-reminders?secret=YOUR_CRON_SECRET or Header: X-Cron-Secret: YOUR_CRON_SECRET
 app.get("/api/cron/shift-reminders", async (req, res) => {
+  const cronHealth = require("./src/services/cronHealth.service");
   const secret = req.query.secret || req.get("X-Cron-Secret") || "";
   const want = process.env.CRON_SECRET;
   if (isProduction && !want) {
+    cronHealth.touch("shift-reminders", {
+      ok: false,
+      error: "CRON_SECRET is required in production",
+    });
     return res.status(503).json({ ok: false, error: "CRON_SECRET is required in production" });
   }
   if (want && secret !== want) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
   if (!app.locals.models) {
+    cronHealth.touch("shift-reminders", { ok: false, error: "Models not ready" });
     return res.status(503).json({ ok: false, error: "Models not ready" });
   }
   try {
     const { runAllShiftReminders } = require("./src/services/shiftReminders.service");
     await runAllShiftReminders(app);
+    cronHealth.touch("shift-reminders", { ok: true, meta: { source: "http" } });
     return res.json({ ok: true, ran: "shift-reminders" });
   } catch (err) {
+    cronHealth.touch("shift-reminders", {
+      ok: false,
+      error: err?.message || "Run failed",
+      meta: { source: "http" },
+    });
     logger.warn({ err: err?.message }, "Cron shift-reminders error");
     return res.status(500).json({ ok: false, error: err?.message || "Run failed" });
   }
@@ -150,22 +162,37 @@ app.get("/api/cron/shift-reminders", async (req, res) => {
 
 // Finalize pending shift accepts after admin override window expires
 app.get("/api/cron/finalize-pending-accepts", async (req, res) => {
+  const cronHealth = require("./src/services/cronHealth.service");
   const secret = req.query.secret || req.get("X-Cron-Secret") || "";
   const want = process.env.CRON_SECRET;
   if (isProduction && !want) {
+    cronHealth.touch("finalize-pending-accepts", {
+      ok: false,
+      error: "CRON_SECRET is required in production",
+    });
     return res.status(503).json({ ok: false, error: "CRON_SECRET is required in production" });
   }
   if (want && secret !== want) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
   if (!app.locals.models) {
+    cronHealth.touch("finalize-pending-accepts", { ok: false, error: "Models not ready" });
     return res.status(503).json({ ok: false, error: "Models not ready" });
   }
   try {
     const { finalizePendingAccepts } = require("./src/services/shiftAcceptPending.service");
     const result = await finalizePendingAccepts(app);
+    cronHealth.touch("finalize-pending-accepts", {
+      ok: true,
+      meta: { source: "http", finalized: result?.finalized ?? null },
+    });
     return res.json({ ok: true, ran: "finalize-pending-accepts", ...result });
   } catch (err) {
+    cronHealth.touch("finalize-pending-accepts", {
+      ok: false,
+      error: err?.message || "Run failed",
+      meta: { source: "http" },
+    });
     logger.warn({ err: err?.message }, "Cron finalize-pending-accepts error");
     return res.status(500).json({ ok: false, error: err?.message || "Run failed" });
   }
@@ -262,6 +289,7 @@ app.get("/", (req, res) =>
     status: "OK",
     health: "/health",
     ready: "/health/ready",
+    cronHealth: "/health/cron",
     timeClockReady: "/time-clock-ready",
   })
 );
@@ -1080,6 +1108,18 @@ app.get("/health/ready", async (req, res) => {
   }
 });
 
+/**
+ * Cron / background job health for uptime monitors.
+ * 200 = jobs look fresh; 503 = recent failure or stale (no success within CRON_STALE_AFTER_MS).
+ * Before any job has run, returns 200 with status "ok" and empty jobs[].
+ */
+app.get("/health/cron", (req, res) => {
+  const cronHealth = require("./src/services/cronHealth.service");
+  const snap = cronHealth.snapshot();
+  const code = snap.status === "ok" ? 200 : 503;
+  return res.status(code).json(snap);
+});
+
 // ✅ HTTP server (realtime via WebSocket Gateway + Redis; no Socket.IO in this process)
 const server = http.createServer(app);
 
@@ -1211,14 +1251,27 @@ function withTimeout(promise, ms, label) {
 
         try {
           const { finalizePendingAccepts } = require("./src/services/shiftAcceptPending.service");
+          const cronHealth = require("./src/services/cronHealth.service");
           const everyMs = Math.max(
             30_000,
             parseInt(process.env.ACCEPT_FINALIZE_INTERVAL_MS || "60000", 10) || 60_000
           );
           setInterval(() => {
-            finalizePendingAccepts(app).catch((err) =>
-              logger.warn({ err: err?.message }, "finalizePendingAccepts tick failed")
-            );
+            finalizePendingAccepts(app)
+              .then((result) => {
+                cronHealth.touch("finalize-pending-accepts", {
+                  ok: true,
+                  meta: { source: "interval", finalized: result?.finalized ?? null },
+                });
+              })
+              .catch((err) => {
+                cronHealth.touch("finalize-pending-accepts", {
+                  ok: false,
+                  error: err?.message || "tick failed",
+                  meta: { source: "interval" },
+                });
+                logger.warn({ err: err?.message }, "finalizePendingAccepts tick failed");
+              });
           }, everyMs);
           logger.info({ everyMs }, "Pending accept finalizer started");
         } catch (e) {

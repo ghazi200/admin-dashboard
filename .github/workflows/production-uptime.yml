@@ -1,0 +1,51 @@
+name: Production uptime
+
+# A4 monitoring: ping admin /health/ready (and /health/cron) on a schedule.
+# Fails the job (and emails GitHub watchers if notifications are on) when prod is down.
+
+on:
+  schedule:
+    # Every 15 minutes
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check admin /health/ready
+        env:
+          ADMIN_BASE: https://admin-dashboard-production-2596.up.railway.app
+        run: |
+          set -euo pipefail
+          echo "GET $ADMIN_BASE/health/ready"
+          code=$(curl -sS -o /tmp/ready.json -w "%{http_code}" --max-time 20 "$ADMIN_BASE/health/ready" || echo "000")
+          echo "HTTP $code"
+          cat /tmp/ready.json || true
+          echo ""
+          if [ "$code" != "200" ]; then
+            echo "::error::Admin /health/ready returned HTTP $code (expected 200)"
+            exit 1
+          fi
+          grep -q '"status":"ready"' /tmp/ready.json || grep -q '"status": "ready"' /tmp/ready.json
+
+      - name: Check admin /health/cron (informational)
+        env:
+          ADMIN_BASE: https://admin-dashboard-production-2596.up.railway.app
+        run: |
+          set -euo pipefail
+          echo "GET $ADMIN_BASE/health/cron"
+          code=$(curl -sS -o /tmp/cron.json -w "%{http_code}" --max-time 20 "$ADMIN_BASE/health/cron" || echo "000")
+          echo "HTTP $code"
+          cat /tmp/cron.json || true
+          echo ""
+          # Soft check: after deploy with no jobs yet, 200 is OK.
+          # 503 means jobs are stale/failing — fail the workflow so you get notified.
+          if [ "$code" = "503" ]; then
+            echo "::error::Admin /health/cron is degraded (HTTP 503)"
+            exit 1
+          fi
+          if [ "$code" != "200" ]; then
+            echo "::warning::Admin /health/cron returned HTTP $code (endpoint may not be deployed yet)"
+          fi
