@@ -128,10 +128,10 @@ Exists: backend/src/services/mfa.service.js, AccountSecurity.jsx, login MFA chal
 
 B4. Legal pack (security SMB)
 Exists: backend/public/legal/messaging-consent.html + consent on Guards form
-[ ] Privacy policy + Terms of Service (company site or /legal/*)
-[ ] MSA + DPA drafts under docs/legal/ (lawyer review before send)
-[ ] Twilio/A2P messaging consent ops note (link consent URL in outbound SMS if required)
-Missing: DPA, MSA, BAA, full privacy/ToS
+[x] Privacy policy + Terms of Service (company site or /legal/*) — `/legal/privacy`, `/legal/terms`
+[x] MSA + DPA drafts under docs/legal/ (lawyer review before send)
+[x] Twilio/A2P messaging consent ops note (link consent URL in outbound SMS if required)
+Still need counsel review before customer signature; BAA/HIPAA later if medical
 
 B5. Backup / restore drill
 [ ] Document Railway Postgres backup + restore in docs/RUNBOOK_BACKUP.md
@@ -260,7 +260,7 @@ P1 — blocks “company-safe” sale
 [x] 5. Tenant isolation tests in CI
 [x] 6. Unified audit_events + admin CSV export
 [x] 7. MFA required for pilot tenant admins
-[ ] 8. Privacy / ToS / MSA / DPA drafts under docs/legal/
+[x] 8. Privacy / ToS / MSA / DPA drafts under docs/legal/
 [ ] 9. Guard CSV import
 
 P2 — accelerates second deal

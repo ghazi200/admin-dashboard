@@ -340,10 +340,20 @@ app.use((req, res, next) => {
 // ✅ Static file serving for uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Public legal / Twilio compliance pages (no auth)
-app.use("/legal", express.static(path.join(__dirname, "public", "legal")));
+// Public legal / Twilio compliance pages (no auth) — B4
+const legalDir = path.join(__dirname, "public", "legal");
+app.use("/legal", express.static(legalDir));
+app.get("/legal", (req, res) => {
+  res.sendFile(path.join(legalDir, "index.html"));
+});
+app.get(["/legal/privacy", "/legal/privacy.html"], (req, res) => {
+  res.sendFile(path.join(legalDir, "privacy.html"));
+});
+app.get(["/legal/terms", "/legal/terms.html"], (req, res) => {
+  res.sendFile(path.join(legalDir, "terms.html"));
+});
 app.get("/legal/messaging-consent", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "legal", "messaging-consent.html"));
+  res.sendFile(path.join(legalDir, "messaging-consent.html"));
 });
 app.get("/consent/sms", (req, res) => {
   res.redirect(302, "/legal/messaging-consent");

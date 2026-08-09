@@ -68,14 +68,28 @@ function buildSmsBody({ shift, rank, calloutId }) {
   const date = String(shift.shift_date || "")
     .slice(0, 10)
     .replace(/T.*/, "");
-  const a = String(shift.shift_start || "").slice(0, 8);
-  const b = String(shift.shift_end || "").slice(0, 8);
-  const place = String(shift.location || "shift").slice(0, 24);
-  const ref = calloutId ? String(calloutId).replace(/-/g, "").slice(0, 8) : "";
+  const a = String(shift.shift_start || "").slice(0, 5);
+  const b = String(shift.shift_end || "").slice(0, 5);
+  const place = String(shift.location || "shift").slice(0, 20);
+  const ref = calloutId ? String(calloutId).replace(/-/g, "").slice(0, 6) : "";
   let s = `ABE callout ${place} ${date} ${a}-${b}. Open Guard app.`;
   if (rank != null) s += ` #${rank}`;
   if (ref) s += ` Ref:${ref}`;
-  return s.length > 160 ? `${s.slice(0, 157)}...` : s;
+  s += " Reply STOP to opt out.";
+  // Optional A2P: append public consent page (keep SMS short — enable only if needed)
+  const includeLink =
+    String(process.env.CALLOUT_SMS_INCLUDE_CONSENT_LINK || "")
+      .toLowerCase()
+      .trim() === "true";
+  if (includeLink) {
+    const base = String(process.env.PUBLIC_BASE_URL || process.env.BASE_URL || "")
+      .trim()
+      .replace(/\/+$/, "");
+    if (base.startsWith("http")) {
+      s += ` Info:${base}/consent/sms`;
+    }
+  }
+  return s.length > 320 ? `${s.slice(0, 317)}...` : s;
 }
 
 async function sendSms(to, body) {
