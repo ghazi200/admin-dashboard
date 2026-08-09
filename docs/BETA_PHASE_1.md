@@ -141,47 +141,54 @@ Tell testers: uninstall any old Guard UI first, then install `app-debug.apk`.
 
 ---
 
-### Option B — Signed release APK / AAB (Play Internal track)
+### Option B — Signed release AAB (Play Internal track)
 
 Use when you want Play Store install flow or more than ~10 testers.
+
+**Repo is wired for this:** release signing via `android/keystore.properties` + `./scripts/build-play-bundle.sh`  
+Current package version: **1.0.4** (`versionCode` **5**).
 
 **1. Create a keystore (once)**
 
 ```bash
-keytool -genkey -v -keystore ~/guard-ui-beta.keystore -alias guardui \
+keytool -genkey -v -keystore "$HOME/guard-ui-upload.keystore" -alias guardui \
   -keyalg RSA -keysize 2048 -validity 10000
 ```
 
 Store the keystore password somewhere safe (1Password, etc.). **Do not commit the keystore.**
 
-**2. Add signing config**
-
-In Android Studio: **Build → Generate Signed Bundle / APK → APK**
-
-- Key store path: `~/guard-ui-beta.keystore`
-- Build variant: **release**
-- Finish
-
-Or from terminal after `npm run build:mobile`:
+**2. Configure signing (once)**
 
 ```bash
-cd frontend-guard-ui/android
-./gradlew assembleRelease
-# Requires signing config in android/app/build.gradle or keystore.properties
+cd frontend-guard-ui
+cp android/keystore.properties.example android/keystore.properties
+# Edit android/keystore.properties — passwords + storeFile path to your keystore
 ```
 
-Release output (when signed):
+**3. Build signed AAB**
+
+```bash
+cd frontend-guard-ui
+./scripts/build-play-bundle.sh
+```
+
+Output:
 
 ```
-android/app/build/outputs/apk/release/app-release.apk
+android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-**3. Play Console Internal testing**
+**4. Play Console Internal testing**
 
-- Create app listing (draft is fine for internal)
-- Upload **AAB** (preferred) or APK to **Internal testing**
-- Add tester Google accounts by email
-- Testers install via Play Store link
+- [play.google.com/console](https://play.google.com/console) → create app (or open existing) `com.abe.guardui`
+- Complete required draft listing fields (name, short description, screenshots can be minimal for internal)
+- **Testing → Internal testing → Create release** → upload the `.aab`
+- Add tester Gmail addresses on the testers tab
+- Copy the join link → send to Android testers (they accept, then install from Play)
+
+Bump `versionCode` in `android/app/build.gradle` before every new Play upload.
+
+Keep `./scripts/build-beta-apk.sh` for emergency sideloads.
 
 See `frontend-guard-ui/BUILD_MOBILE.md` for icon/splash and store checklist.
 

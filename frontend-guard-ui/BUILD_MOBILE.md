@@ -256,7 +256,26 @@ Use this after login and core flows work in the app.
 - Android: replace icons in `android/app/src/main/res/mipmap-*`.
 - iOS: replace in `ios/App/App/Assets.xcassets/`. Adjust splash in native projects if needed.
 
-### 4. (Optional) Android release / Play Store
+### 4. Android release / Play Internal (Option B)
 
-- Android Studio: **Build → Generate Signed Bundle / APK**; create or use a keystore.
-- For Play Store: upload the AAB and complete store listing and policy steps.
+1. Create upload keystore once (save passwords in 1Password — never commit):
+
+```bash
+keytool -genkey -v -keystore "$HOME/guard-ui-upload.keystore" -alias guardui \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
+
+2. Copy `android/keystore.properties.example` → `android/keystore.properties` and set passwords + `storeFile` path.
+
+3. Build signed AAB:
+
+```bash
+cd frontend-guard-ui
+./scripts/build-play-bundle.sh
+```
+
+Upload `android/app/build/outputs/bundle/release/app-release.aab` to Play Console → **Internal testing**.  
+Bump `versionCode` / `versionName` in `android/app/build.gradle` before each new upload.
+
+Debug sideload APK remains: `./scripts/build-beta-apk.sh`
+
