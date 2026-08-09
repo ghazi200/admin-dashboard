@@ -121,11 +121,12 @@ async function main() {
     process.exit(1);
   }
 
-  // Soft-open for test metadata only — restore after if we changed it
+  // Soft-open so voice press-1 can record pending accept; restore after window unless --keep-open
+  const keepOpen = process.argv.includes("--keep-open");
   const prevStatus = shift.status;
   const prevGuard = shift.guard_id;
   await sequelize.query(
-    `UPDATE shifts SET status = 'OPEN', guard_id = NULL WHERE id = $1`,
+    `UPDATE shifts SET status = 'OPEN', guard_id = NULL, pending_guard_id = NULL, accept_pending_until = NULL WHERE id = $1`,
     { bind: [shift.id] }
   );
 
@@ -134,6 +135,23 @@ async function main() {
 
   const fakeApp = { locals: { models: { sequelize } } };
   const calloutId = require("crypto").randomUUID();
+
+  // Persist callout row — /twilio/voice/gather looks this up on press 1/2
+  await sequelize.query(
+    `INSERT INTO callouts (id, tenant_id, shift_id, guard_id, reason, created_at)
+     VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid, $5, NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    {
+      bind: [
+        calloutId,
+        guard.tenant_id,
+        shift.id,
+        guard.id,
+        "TEST_OUTBOUND_CHANNELS",
+      ],
+    }
+  );
+  console.log(`Callout row: ${calloutId}`);
 
   const result = await notifyRankedGuardsOutbound(fakeApp, {
     shiftId: shift.id,
@@ -149,12 +167,33 @@ async function main() {
     ],
   });
 
-  // Restore shift assignment so we don't leave production schedule open
-  await sequelize.query(
-    `UPDATE shifts SET status = $1, guard_id = $2 WHERE id = $3`,
-    { bind: [prevStatus, prevGuard, shift.id] }
-  );
-  console.log(`Restored shift status=${prevStatus} guard_id=${prevGuard || "null"}`);
+  if (keepOpen) {
+    console.log(
+      "Shift left OPEN for voice accept test. Press 1 on the call, then check pending_guard_id."
+    );
+    console.log(`Restore later: status=${prevStatus} guard_id=${prevGuard || "null"}`);
+  } else {
+    // Delay restore so gather after press-1 can still see OPEN during a short call
+    const restoreMs = Number(process.env.TEST_CALLOUT_RESTORE_MS || 90000);
+    console.log(`Waiting ${restoreMs}ms before restoring shift (or use --keep-open)...`);
+    await new Promise((r) => setTimeout(r, restoreMs));
+    const [cur] = await sequelize.query(
+      `SELECT status, pending_guard_id::text AS pending_guard_id, guard_id::text AS guard_id
+       FROM shifts WHERE id = $1`,
+      { bind: [shift.id] }
+    );
+    if (cur[0]?.pending_guard_id) {
+      console.log(
+        `Accept recorded pending_guard_id=${cur[0].pending_guard_id} — leaving shift as-is (not restoring).`
+      );
+    } else {
+      await sequelize.query(
+        `UPDATE shifts SET status = $1, guard_id = $2 WHERE id = $3`,
+        { bind: [prevStatus, prevGuard, shift.id] }
+      );
+      console.log(`Restored shift status=${prevStatus} guard_id=${prevGuard || "null"}`);
+    }
+  }
 
   console.log("\n=== RESULT ===");
   console.log(

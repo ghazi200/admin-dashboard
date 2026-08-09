@@ -74,9 +74,28 @@ function speakableWhen(shift) {
 }
 
 /**
+ * Normalize keypad Digits or spoken SpeechResult to "1" | "2" | "".
+ */
+function normalizeVoiceChoice({ digits, speech } = {}) {
+  const d = String(digits || "").trim();
+  if (d === "1" || d === "2") return d;
+
+  const s = String(speech || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!s) return "";
+
+  if (/\b(accept|yes|one|won|number one)\b/.test(s) || s === "1") return "1";
+  if (/\b(decline|no|two|number two)\b/.test(s) || s === "2") return "2";
+  return "";
+}
+
+/**
  * Build offer TwiML.
- * Say the full shift details FIRST (outside Gather) so the message always plays
- * after Twilio trial "press any key", then collect 1/2.
+ * Entire script lives inside <Gather> so keypad/speech during the message still counts.
+ * Supports DTMF and speech ("one"/"two", "accept"/"decline").
  */
 function buildCalloutOfferTwiml({
   location = "an open post",
@@ -87,21 +106,26 @@ function buildCalloutOfferTwiml({
   const whenSafe = xmlEscape(String(when || "soon").replace(/[^\x20-\x7E]/g, " "));
   const action = xmlEscape(actionUrl || "");
 
-  const details =
+  const script =
     `Hello. This is Abe Guard. ` +
     `An open shift needs coverage. ` +
     `Location: ${place}. ` +
     `When: ${whenSafe}. ` +
-    `Again: ${place}, ${whenSafe}.`;
+    `Again: ${place}, ${whenSafe}. ` +
+    `Press 1 or say accept to take this shift. ` +
+    `Press 2 or say decline to pass.`;
 
-  const prompt = `Press 1 to accept this open shift. Press 2 to decline.`;
+  const retry =
+    `I did not catch that. Press 1 or say accept. Press 2 or say decline.`;
 
+  // input=dtmf speech: keypad OR voice. Nested Say is barge-in capable.
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Joanna">${details}</Say>
-  <Pause length="1"/>
-  <Gather numDigits="1" timeout="12" action="${action}" method="POST">
-    <Say voice="Polly.Joanna">${prompt}</Say>
+  <Gather input="dtmf speech" language="en-US" numDigits="1" timeout="6" speechTimeout="auto" hints="one, two, accept, decline, yes, no" action="${action}" method="POST">
+    <Say voice="Polly.Joanna">${script}</Say>
+  </Gather>
+  <Gather input="dtmf speech" language="en-US" numDigits="1" timeout="6" speechTimeout="auto" hints="one, two, accept, decline, yes, no" action="${action}" method="POST">
+    <Say voice="Polly.Joanna">${retry}</Say>
   </Gather>
   <Say voice="Polly.Joanna">We did not receive a response. Please open the Abe Guard app to accept or decline this open shift. Goodbye.</Say>
 </Response>`;
@@ -125,6 +149,7 @@ module.exports = {
   speakableWhen,
   speakableDate,
   speakableTime,
+  normalizeVoiceChoice,
   buildCalloutOfferTwiml,
   buildGatherActionUrl,
 };

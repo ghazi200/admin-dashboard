@@ -7,6 +7,7 @@ const express = require("express");
 const {
   xmlEscape,
   speakableWhen,
+  normalizeVoiceChoice,
   buildCalloutOfferTwiml,
   buildGatherActionUrl,
 } = require("../utils/calloutVoiceTwiml");
@@ -48,7 +49,10 @@ router.all("/voice", async (req, res) => {
 });
 
 router.all("/voice/gather", async (req, res) => {
-  const digit = String(req.body?.Digits || req.query.Digits || "").trim();
+  const digit = normalizeVoiceChoice({
+    digits: req.body?.Digits || req.query.Digits,
+    speech: req.body?.SpeechResult || req.query.SpeechResult,
+  });
   const calloutId = String(req.query.calloutId || req.body?.calloutId || "").trim();
   const guardId = String(req.query.guardId || req.body?.guardId || "").trim();
   const shiftId = String(req.query.shiftId || req.body?.shiftId || "").trim();
@@ -60,7 +64,9 @@ router.all("/voice/gather", async (req, res) => {
 
   try {
     if (digit !== "1" && digit !== "2") {
-      return say("Invalid choice. Please use the Guard app. Goodbye.");
+      const heard = String(req.body?.SpeechResult || req.body?.Digits || "").trim();
+      console.log("twilio /voice/gather unrecognized", { heard, calloutId, guardId });
+      return say("Invalid choice. Press 1 or say accept, or press 2 or say decline. Or use the Guard app. Goodbye.");
     }
 
     if (!calloutId) {
