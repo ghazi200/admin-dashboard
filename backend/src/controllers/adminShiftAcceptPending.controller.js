@@ -7,6 +7,7 @@ const {
   finalizePendingAccepts,
   overrideWindowMinutes,
 } = require("../services/shiftAcceptPending.service");
+const { getTenantFilter } = require("../utils/tenantFilter");
 
 function requireAdminOrSupervisor(req, res, next) {
   const role = String(req.admin?.role || "").toLowerCase();
@@ -21,9 +22,8 @@ exports.requireAdminOrSupervisor = requireAdminOrSupervisor;
 exports.listPendingAccepts = async (req, res) => {
   try {
     const sequelize = req.app.locals.models?.sequelize;
-    const role = String(req.admin?.role || "").toLowerCase();
-    const tenantId =
-      role === "super_admin" ? null : req.admin?.tenant_id || null;
+    // Super admin → null (all tenants); others → their tenant only
+    const tenantId = getTenantFilter(req.admin);
     const rows = await listPendingAccepts(sequelize, { tenantId });
     return res.json({
       data: rows,
@@ -42,6 +42,7 @@ exports.overridePendingAccept = async (req, res) => {
     const result = await overridePendingAccept(req.app, {
       shiftId,
       adminId: req.admin?.id || null,
+      admin: req.admin || null,
       action: action || "reassign",
       guardId: guardId || null,
       reason: reason || null,

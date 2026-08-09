@@ -91,14 +91,22 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
   shift.guard_id = null;
   await shift.save();
 
-  // 2) Eligible guards: active + callout allowlist, excluding caller
-  const allActive = await Guard.findAll({
-    where: { is_active: true, callout_eligible: true },
+  // 2) Eligible guards: active + callout allowlist, same tenant only, excluding caller
+  const { buildCalloutEligibleWhere, excludeCallerGuard } = require("../utils/calloutTenantScope");
+  const effectiveTenant = (tenantId || shift.tenant_id || "").toString().trim() || null;
+  const { where: eligibleWhere, refuseCrossTenant } = buildCalloutEligibleWhere({
+    tenantId: effectiveTenant,
   });
+  let allActive = [];
+  if (refuseCrossTenant || !eligibleWhere) {
+    console.warn(
+      `[CALL_OUT] shift=${shift.id} missing tenant_id — refusing cross-tenant ranking (0 eligible)`
+    );
+  } else {
+    allActive = await Guard.findAll({ where: eligibleWhere });
+  }
 
-  const eligibleGuards = callerGuardId
-    ? allActive.filter((g) => String(g.id) !== callerGuardId)
-    : allActive;
+  const eligibleGuards = excludeCallerGuard(allActive, callerGuardId);
 
   // 4) Rank guards (enhanced ranking with reliability decay and site success rates)
   const source = process.env.OPENAI_API_KEY ? "openai" : "simple";

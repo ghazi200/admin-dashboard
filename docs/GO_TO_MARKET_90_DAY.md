@@ -95,9 +95,9 @@ B1. Tenant isolation CI
 Exists: backend/src/utils/tenantFilter.js, backend/src/scripts/testTenantIsolation.js
 
 Build:
-[ ] Promote isolation scripts into automated tests (CI on PR)
-[ ] Cover: shift swaps, pending accepts, contact prefs, callout rankings, messages
-[ ] Fail CI on cross-tenant read/write
+[x] Promote isolation scripts into automated tests (CI on PR) — `.github/workflows/tenant-isolation.yml`
+[x] Cover: shift swaps, pending accepts, contact prefs, callout rankings, messages
+[x] Fail CI on cross-tenant read/write — `npm run test:tenant-isolation`
 
 Hot paths:
 - adminShiftSwap.controller.js
@@ -256,8 +256,8 @@ P0 — blocks pilot ops
 [ ] 4. Verify prod deploy: contact prefs + callout outbound + pending accept + swaps (post-a635590)
 
 P1 — blocks “company-safe” sale
-[ ] 5. Tenant isolation tests in CI
-[ ] 6. Unified audit_events + admin CSV export
+[x] 5. Tenant isolation tests in CI
+[x] 6. Unified audit_events + admin CSV export
 [ ] 7. MFA required for pilot tenant admins
 [ ] 8. Privacy / ToS / MSA / DPA drafts under docs/legal/
 [ ] 9. Guard CSV import

@@ -1,0 +1,48 @@
+name: Tenant isolation (B1)
+
+# Fail PRs / pushes when cross-tenant access checks regress.
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "abe-guard-ai/backend/src/controllers/callouts.controller.js"
+      - "abe-guard-ai/backend/src/utils/calloutTenantScope.js"
+      - "abe-guard-ai/backend/src/test/calloutTenantScope.test.js"
+      - ".github/workflows/tenant-isolation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "abe-guard-ai/backend/src/controllers/callouts.controller.js"
+      - "abe-guard-ai/backend/src/utils/calloutTenantScope.js"
+      - "abe-guard-ai/backend/src/test/calloutTenantScope.test.js"
+      - ".github/workflows/tenant-isolation.yml"
+  workflow_dispatch:
+
+jobs:
+  tenant-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install admin backend deps
+        run: npm ci
+
+      - name: Run tenant isolation Jest suite
+        run: npm run test:tenant-isolation
+
+      - name: Run callout tenant scope (abe-guard-ai)
+        working-directory: abe-guard-ai/backend
+        run: node --test src/test/calloutTenantScope.test.js

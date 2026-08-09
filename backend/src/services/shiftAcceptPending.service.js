@@ -349,6 +349,7 @@ async function finalizePendingAccepts(app, { shiftId = null, force = false } = {
 async function overridePendingAccept(app, {
   shiftId,
   adminId,
+  admin = null,
   action = "reassign",
   guardId = null,
   reason = null,
@@ -376,6 +377,17 @@ async function overridePendingAccept(app, {
     err.status = 404;
     throw err;
   }
+
+  // Tenant isolation: non–super-admins cannot override another tenant's shift
+  if (admin && shift.tenant_id) {
+    const { canAccessTenant } = require("../utils/tenantFilter");
+    if (!canAccessTenant(admin, shift.tenant_id)) {
+      const err = new Error("You don't have access to this shift");
+      err.status = 403;
+      throw err;
+    }
+  }
+
   if (!shift.pending_guard_id) {
     const err = new Error("No pending accept on this shift");
     err.status = 409;

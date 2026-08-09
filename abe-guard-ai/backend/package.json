@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "prune-guards": "node src/maintenance/pruneTestGuards.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test src/test/calloutTenantScope.test.js",
+    "test:tenant-isolation": "node --test src/test/calloutTenantScope.test.js"
   },
   "keywords": [],
   "author": "",
