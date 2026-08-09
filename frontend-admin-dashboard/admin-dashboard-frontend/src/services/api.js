@@ -176,6 +176,10 @@ export const deleteGuard = (id) => axiosClient.delete(`/guards/${id}`);
 
 export const unlockGuard = (id) => axiosClient.post(`/guards/${id}/unlock`);
 
+/** Set or generate a Guard app login password. Body: { password } or { generate: true } */
+export const setGuardPassword = (id, data) =>
+  axiosClient.post(`/guards/${id}/set-password`, data);
+
 // ✅ PATCH (this is your availability update call)
 export const updateGuardAvailability = (id, data) =>
   axiosClient.patch(`/guards/${id}`, data);

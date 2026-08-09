@@ -10,6 +10,7 @@ const {
   updateGuard,
   deleteGuard,
   unlockGuard,
+  setGuardPassword,
   updateGuardAvailability,
   getAvailabilityLogs,
   getRecentAvailabilityLogs, // ✅ EXACT name
@@ -63,6 +64,13 @@ router.patch(
 router.delete("/:id", authAdmin, requireAccess("guards:delete"), deleteGuard);
 
 router.post("/:id/unlock", authAdmin, requireAccess("guards:write"), unlockGuard);
+
+router.post(
+  "/:id/set-password",
+  authAdmin,
+  requireAccess("guards:write"),
+  setGuardPassword
+);
 
 // =====================
 // ✅ Logs endpoint

@@ -9,6 +9,7 @@ import {
   updateGuard,
   deleteGuard,
   unlockGuard,
+  setGuardPassword,
   updateGuardAvailability,
   getGuardAvailabilityLogs,
   getGuardHistory,
@@ -191,6 +192,54 @@ export default function Guards() {
   const [emailPrefsErr, setEmailPrefsErr] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [unlockingGuardId, setUnlockingGuardId] = useState(null);
+
+  // Set password modal
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwGuard, setPwGuard] = useState(null);
+  const [pwValue, setPwValue] = useState("");
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwErr, setPwErr] = useState("");
+  const [pwResult, setPwResult] = useState(null); // { password?, message }
+
+  function openSetPassword(g) {
+    setPwGuard(g);
+    setPwValue("");
+    setPwErr("");
+    setPwResult(null);
+    setPwOpen(true);
+  }
+
+  function closeSetPassword() {
+    setPwOpen(false);
+    setPwGuard(null);
+    setPwValue("");
+    setPwErr("");
+    setPwResult(null);
+    setPwBusy(false);
+  }
+
+  async function submitSetPassword({ generate = false } = {}) {
+    if (!pwGuard?.id || !canEdit) return;
+    setPwBusy(true);
+    setPwErr("");
+    setPwResult(null);
+    try {
+      const body = generate ? { generate: true } : { password: pwValue };
+      const res = await setGuardPassword(pwGuard.id, body);
+      const data = res.data || {};
+      setPwResult({
+        message: data.message || "Password updated.",
+        password: data.password || (!generate ? pwValue : undefined),
+        generated: Boolean(data.generated),
+      });
+      setPwValue("");
+      await load();
+    } catch (err) {
+      setPwErr(err?.response?.data?.message || "Failed to set password");
+    } finally {
+      setPwBusy(false);
+    }
+  }
 
   // =====================
   // Data loading
@@ -1150,6 +1199,22 @@ export default function Guards() {
                           >
                             Edit
                           </button>
+                          <button
+                            className="btn"
+                            onClick={() => openSetPassword(g)}
+                            disabled={!canEdit}
+                            style={{
+                              opacity: canEdit ? 1 : 0.5,
+                              cursor: canEdit ? "pointer" : "not-allowed",
+                              whiteSpace: "nowrap",
+                              background: "rgba(234,179,8,0.12)",
+                              border: "1px solid rgba(234,179,8,0.35)",
+                              color: "#a16207",
+                            }}
+                            title="Set Guard app login password"
+                          >
+                            Password
+                          </button>
                           <button 
                             className="btn" 
                             onClick={() => openLogs(g)}
@@ -1191,6 +1256,114 @@ export default function Guards() {
           )}
         </Card>
       </div>
+
+      {pwOpen && pwGuard && (
+        <Modal title={`Set password — ${pwGuard.name || pwGuard.email}`} onClose={closeSetPassword}>
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ fontSize: 13, opacity: 0.8 }}>
+              Sets the Guard app login for <b>{pwGuard.email || "(no email)"}</b>. Also unlocks the
+              account if it was locked.
+            </div>
+
+            {pwErr && (
+              <div style={{ color: "#b91c1c", fontSize: 13 }}>{pwErr}</div>
+            )}
+
+            {pwResult ? (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 8,
+                  background: "rgba(34,197,94,0.1)",
+                  border: "1px solid rgba(34,197,94,0.3)",
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>{pwResult.message}</div>
+                {pwResult.password && (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <code
+                      style={{
+                        padding: "8px 10px",
+                        background: "rgba(0,0,0,0.06)",
+                        borderRadius: 6,
+                        fontSize: 14,
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {pwResult.password}
+                    </code>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(pwResult.password);
+                          alert("Copied to clipboard");
+                        } catch {
+                          alert("Copy failed — select the password and copy manually");
+                        }
+                      }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                )}
+                {pwResult.generated && (
+                  <div style={{ marginTop: 8, fontSize: 12, opacity: 0.75 }}>
+                    Share this password with the guard once. It will not be shown again after you close.
+                  </div>
+                )}
+                <div style={{ marginTop: 12 }}>
+                  <button type="button" className="btn btnPrimary" onClick={closeSetPassword}>
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <label className="label">
+                  New password
+                  <input
+                    className="input"
+                    type="text"
+                    autoComplete="new-password"
+                    value={pwValue}
+                    onChange={(e) => setPwValue(e.target.value)}
+                    placeholder="At least 8 characters"
+                    disabled={pwBusy || !pwGuard.email}
+                  />
+                </label>
+                {!pwGuard.email && (
+                  <div style={{ color: "#b91c1c", fontSize: 13 }}>
+                    Add an email on this guard before setting a password.
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="btn btnPrimary"
+                    disabled={pwBusy || !pwGuard.email || pwValue.length < 8}
+                    onClick={() => submitSetPassword({ generate: false })}
+                  >
+                    {pwBusy ? "Saving…" : "Save password"}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    disabled={pwBusy || !pwGuard.email}
+                    onClick={() => submitSetPassword({ generate: true })}
+                  >
+                    Generate temporary password
+                  </button>
+                  <button type="button" className="btn" disabled={pwBusy} onClick={closeSetPassword}>
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {emailPrefsOpen && emailPrefsGuard ? (
         <Modal title={`📧 Schedule Email Preferences — ${emailPrefsGuard.name}`} onClose={closeEmailPrefs}>

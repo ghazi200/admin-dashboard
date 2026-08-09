@@ -889,6 +889,79 @@ exports.unlockGuard = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/admin/guards/:id/set-password
+ * Body: { password: "..." } OR { generate: true }
+ * Sets bcrypt password_hash, clears lockout. Generated password returned once in response.
+ */
+exports.setGuardPassword = async (req, res) => {
+  try {
+    const bcrypt = require("bcryptjs");
+    const crypto = require("crypto");
+    const { Guard } = req.app.locals.models;
+    const id = req.params.id;
+
+    const guard = await Guard.findByPk(id);
+    if (!guard) return res.status(404).json({ message: "Guard not found" });
+
+    if (guard.tenant_id && !canAccessTenant(req.admin, guard.tenant_id)) {
+      return res.status(403).json({ message: "You don't have access to this guard" });
+    }
+
+    if (!guard.email) {
+      return res.status(400).json({
+        message: "Guard needs an email before a login password can be set",
+      });
+    }
+
+    const generate = Boolean(req.body?.generate);
+    let password = String(req.body?.password || "");
+
+    if (generate) {
+      // Readable temp password: no ambiguous chars (0/O, 1/l/I)
+      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$%";
+      const bytes = crypto.randomBytes(12);
+      password = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+    }
+
+    if (password.length < 8 || password.length > 128) {
+      return res.status(400).json({
+        message: "Password must be between 8 and 128 characters (or use generate: true)",
+      });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    await Guard.update(
+      {
+        password_hash: hash,
+        failed_login_attempts: 0,
+        locked_until: null,
+      },
+      { where: { id } }
+    );
+
+    console.log(
+      `🔑 setGuardPassword: admin=${req.admin?.email || req.admin?.id} set password for guard=${guard.email}`
+    );
+
+    return res.json({
+      message: generate
+        ? "Temporary password generated. Copy it now — it will not be shown again."
+        : "Password updated. Guard can sign in with the new password.",
+      generated: generate,
+      password: generate ? password : undefined,
+      guard: {
+        id: guard.id,
+        email: guard.email,
+        name: guard.name,
+      },
+    });
+  } catch (e) {
+    console.error("setGuardPassword error:", e);
+    return res.status(500).json({ message: "Failed to set password", error: e.message });
+  }
+};
+
 exports.getAvailabilityLogs = async (req, res) => {
   try {
     const { AvailabilityLog } = req.app.locals.models;
