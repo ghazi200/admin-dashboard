@@ -263,10 +263,24 @@ exports.generateBriefing = async (req, res) => {
       whatChanged,
       stats,
       generatedAt: new Date().toISOString(),
-      aiGenerated: !!process.env.OPENAI_API_KEY, // Indicate if AI was used
+      aiGenerated: aiAnalysis.aiGenerated === true,
+      provider: aiAnalysis.provider || (aiAnalysis.aiGenerated ? null : "template"),
     });
   } catch (e) {
     console.error("❌ Error generating briefing:", e);
+    return res.status(500).json({ message: e.message });
+  }
+};
+
+/**
+ * GET /api/admin/command-center/ai-status
+ * Diagnose AI provider config (no secrets) — keys set?, preferred provider, last error
+ */
+exports.getAiStatus = async (req, res) => {
+  try {
+    const status = commandCenterAI.getAiStatus();
+    return res.json({ ok: true, ...status });
+  } catch (e) {
     return res.status(500).json({ message: e.message });
   }
 };

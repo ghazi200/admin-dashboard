@@ -1686,9 +1686,18 @@ export default function CommandCenter() {
                     {weeklyReportData.generatedAt
                       ? new Date(weeklyReportData.generatedAt).toLocaleString()
                       : "—"}
-                    {weeklyReportData.summary?.generatedByAI && (
-                      <span style={{ marginLeft: 8, color: "#a78bfa" }}>🤖 AI-Generated</span>
-                    )}
+                    {weeklyReportData.summary?.generatedByAI ? (
+                      <span style={{ marginLeft: 8, color: "#a78bfa" }}>
+                        🤖 AI-Generated
+                        {weeklyReportData.summary?.provider
+                          ? ` (${weeklyReportData.summary.provider})`
+                          : ""}
+                      </span>
+                    ) : weeklyReportData.summary ? (
+                      <span style={{ marginLeft: 8, color: "#fbbf24" }}>
+                        📋 Template (AI unavailable — check billing /ai-status)
+                      </span>
+                    ) : null}
                   </div>
                 </div>
 

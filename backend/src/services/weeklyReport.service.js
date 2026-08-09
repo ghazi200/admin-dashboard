@@ -32,15 +32,20 @@ async function generateWeeklyReport(tenantId, models, options = {}) {
     // Aggregate operational data
     const aggregatedData = await aggregateOperationalData(tenantId, models, start, end);
     
-    // Generate AI summary
+    // Generate AI summary (null / throw → template so UI never gets summary: null)
     let aiSummary = null;
     try {
-      aiSummary = await commandCenterAI.generateWeeklySummary(aggregatedData, { startDate: start, endDate: end });
+      aiSummary = await commandCenterAI.generateWeeklySummary(aggregatedData, {
+        startDate: start,
+        endDate: end,
+      });
     } catch (error) {
       console.warn("⚠️ AI summary generation failed, using template:", error.message);
+    }
+    if (!aiSummary || !aiSummary.overview) {
       aiSummary = generateTemplateSummary(aggregatedData, start, end);
     }
-    
+
     return {
       reportId: `weekly-${start.toISOString().split("T")[0]}-${end.toISOString().split("T")[0]}`,
       period: {
@@ -266,20 +271,23 @@ Performance:
 - Callout Rate: ${metrics.calloutRate}%
 - Coverage Status: ${insights.coverage}
 - Reliability Status: ${insights.reliability}`,
-    
+
     highlights: [
       metrics.highSeverityEvents > 0 ? `${metrics.highSeverityEvents} high-severity events require attention` : null,
       metrics.openShifts > 0 ? `${metrics.openShifts} open shifts need assignment` : null,
       metrics.openIncidents > 0 ? `${metrics.openIncidents} incidents remain unresolved` : null,
       insights.coverage === "EXCELLENT" ? "Excellent coverage maintained this week" : null,
     ].filter(Boolean),
-    
+
     recommendations: [
       insights.coverage === "POOR" ? "Consider increasing guard availability for better coverage" : null,
       insights.reliability === "POOR" ? "Review guard reliability patterns and provide additional support" : null,
       metrics.openShifts > 0 ? "Address open shifts to maintain coverage" : null,
       metrics.openIncidents > 0 ? "Prioritize resolving open incidents" : null,
     ].filter(Boolean),
+
+    generatedByAI: false,
+    provider: "template",
   };
 }
 

@@ -23,6 +23,12 @@ router.use(requireAccess("dashboard:read"));
 router.get("/feed", commandCenterController.getFeed);
 
 /**
+ * GET /api/admin/command-center/ai-status
+ * Show which AI keys are set and last provider error (no secret values)
+ */
+router.get("/ai-status", commandCenterController.getAiStatus);
+
+/**
  * GET /api/admin/command-center/at-risk-shifts
  * Get shifts ranked by risk score
  * Query params: tenantId (optional for super admin), limit, minRiskScore

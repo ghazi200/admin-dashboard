@@ -8,16 +8,42 @@
  * - Context-aware insights
  */
 
-const { createChatClient, isChatAvailable, getChatModel } = require("../utils/aiClient");
+const {
+  isChatAvailable,
+  chatCompletionsCreate,
+  getProviderInfo,
+  isBillingOrQuotaError,
+} = require("../utils/aiClient");
 
-// Initialize AI client (DeepSeek preferred, OpenAI fallback)
-const aiConfig = isChatAvailable() ? createChatClient() : null;
-const CHAT_MODEL = getChatModel();
-
-// Track quota status to avoid repeated API calls when quota is exceeded
+// Track last failure for /ai-status (no secrets)
+let lastAiError = null;
 let quotaExceeded = false;
 let quotaExceededUntil = null;
 const QUOTA_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour cooldown after quota error
+
+function recordAiError(error, provider) {
+  lastAiError = {
+    at: new Date().toISOString(),
+    provider: provider || null,
+    status: error?.status || error?.response?.status || null,
+    message: String(error?.message || "unknown").slice(0, 300),
+    billingOrQuota: isBillingOrQuotaError(error),
+  };
+  if (lastAiError.billingOrQuota) {
+    quotaExceeded = true;
+    quotaExceededUntil = Date.now() + QUOTA_COOLDOWN_MS;
+  }
+}
+
+function getAiStatus() {
+  const info = getProviderInfo();
+  return {
+    ...info,
+    quotaCooldownActive: !!(quotaExceeded && quotaExceededUntil && Date.now() < quotaExceededUntil),
+    quotaCooldownUntil: quotaExceededUntil ? new Date(quotaExceededUntil).toISOString() : null,
+    lastError: lastAiError,
+  };
+}
 
 /**
  * Generate AI analysis for operational briefing
@@ -26,14 +52,14 @@ const QUOTA_COOLDOWN_MS = 60 * 60 * 1000; // 1 hour cooldown after quota error
  * @returns {Promise<Object>} AI analysis with summary, insights, and recommendations
  */
 async function generateOperationalBriefing(data, context = {}) {
-  if (!aiConfig || !aiConfig.client) {
+  if (!isChatAvailable()) {
     console.warn("⚠️  AI API key not configured - using template-based briefing");
     return generateTemplateBriefing(data, context);
   }
 
-  // Check if quota was recently exceeded
+  // Check if quota was recently exceeded on ALL providers
   if (quotaExceeded && quotaExceededUntil && Date.now() < quotaExceededUntil) {
-    console.warn(`⚠️  ${aiConfig.provider.toUpperCase()} quota exceeded - using template-based briefing`);
+    console.warn("⚠️  AI quota/billing cooldown active - using template-based briefing");
     return generateTemplateBriefing(data, context);
   }
 
@@ -111,8 +137,7 @@ Provide your analysis as JSON with this EXACT structure:
 - Provide clear reasoning for recommendations
 - Return ONLY valid JSON, no markdown formatting`;
 
-    const completion = await aiConfig.client.chat.completions.create({
-      model: aiConfig.model,
+    const { completion, provider } = await chatCompletionsCreate({
       messages: [
         {
           role: "system",
@@ -149,21 +174,14 @@ Provide your analysis as JSON with this EXACT structure:
       insights: Array.isArray(aiResponse.insights) ? aiResponse.insights : [],
       recommendedActions: Array.isArray(aiResponse.recommendedActions) ? aiResponse.recommendedActions : [],
       trends: aiResponse.trends || {},
+      aiGenerated: true,
+      provider,
     };
   } catch (error) {
-    // Handle quota exceeded errors
-    if (error.status === 429 || error.message?.includes('quota') || error.message?.includes('billing')) {
-      quotaExceeded = true;
-      quotaExceededUntil = Date.now() + QUOTA_COOLDOWN_MS;
-      console.warn(`⚠️  ${aiConfig?.provider?.toUpperCase() || 'AI'} API quota exceeded - using template briefing`);
-      console.warn("💡 Check your AI provider billing/plan. AI features disabled for 1 hour.");
-    } else {
-      // Log other errors (but only once per minute)
-      const errorKey = `briefing_error_${error.status || 'unknown'}`;
-      if (!global[errorKey] || Date.now() - global[errorKey] > 60000) {
-        console.warn(`⚠️  ${aiConfig?.provider?.toUpperCase() || 'AI'} API error in generateOperationalBriefing: ${error.message}`);
-        global[errorKey] = Date.now();
-      }
+    recordAiError(error);
+    console.warn(`⚠️  AI API error in generateOperationalBriefing: ${error.message}`);
+    if (isBillingOrQuotaError(error)) {
+      console.warn("💡 Check OpenAI/DeepSeek billing. AI features on cooldown for 1 hour.");
     }
     return generateTemplateBriefing(data, context);
   }
@@ -176,7 +194,7 @@ Provide your analysis as JSON with this EXACT structure:
  * @returns {Promise<Object>} AI analysis of shift risk
  */
 async function generateShiftRiskAnalysis(shift, context = {}) {
-  if (!aiConfig || !aiConfig.client) {
+  if (!isChatAvailable()) {
     return {
       reasoning: "AI analysis not available (AI key not configured)",
       confidence: 0.5,
@@ -205,8 +223,7 @@ Provide a brief risk analysis in JSON format:
   "keyFactors": ["factor1", "factor2"]
 }`;
 
-    const completion = await aiConfig.client.chat.completions.create({
-      model: aiConfig.model,
+    const { completion } = await chatCompletionsCreate({
       messages: [
         {
           role: "system",
@@ -227,19 +244,7 @@ Provide a brief risk analysis in JSON format:
     const jsonText = jsonMatch ? jsonMatch[1] : responseText.trim();
     return JSON.parse(jsonText);
   } catch (error) {
-    // Handle quota exceeded errors
-    if (error.status === 429 || error.message?.includes('quota') || error.message?.includes('billing')) {
-      quotaExceeded = true;
-      quotaExceededUntil = Date.now() + QUOTA_COOLDOWN_MS;
-      // Don't log - quota already logged by other functions
-    } else {
-      // Log other errors (but only once per minute)
-      const errorKey = `risk_analysis_error_${error.status || 'unknown'}`;
-      if (!global[errorKey] || Date.now() - global[errorKey] > 60000) {
-        console.warn(`⚠️  Error generating shift risk analysis: ${error.message}`);
-        global[errorKey] = Date.now();
-      }
-    }
+    recordAiError(error);
     return {
       reasoning: "Unable to generate AI analysis",
       confidence: 0.5,
@@ -253,8 +258,7 @@ Provide a brief risk analysis in JSON format:
  * @returns {Promise<Object>} AI tags { risk_level, category, auto_summary }
  */
 async function tagEventWithAI(event) {
-  if (!aiConfig || !aiConfig.client) {
-    // Return basic tags without AI
+  if (!isChatAvailable()) {
     return {
       risk_level: event.severity,
       category: getEventCategory(event.type),
@@ -263,9 +267,7 @@ async function tagEventWithAI(event) {
     };
   }
 
-  // Check if quota was recently exceeded
   if (quotaExceeded && quotaExceededUntil && Date.now() < quotaExceededUntil) {
-    // Silently return fallback tags (don't log - quota already logged)
     return {
       risk_level: event.severity,
       category: getEventCategory(event.type),
@@ -274,7 +276,6 @@ async function tagEventWithAI(event) {
     };
   }
 
-  // Reset quota flag if cooldown period has passed
   if (quotaExceededUntil && Date.now() >= quotaExceededUntil) {
     quotaExceeded = false;
     quotaExceededUntil = null;
@@ -297,8 +298,7 @@ Return JSON:
   "confidence": 0.85
 }`;
 
-    const completion = await aiConfig.client.chat.completions.create({
-      model: aiConfig.model,
+    const { completion } = await chatCompletionsCreate({
       messages: [
         {
           role: "system",
@@ -317,33 +317,17 @@ Return JSON:
     const responseText = completion.choices[0]?.message?.content || "{}";
     const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || responseText.match(/```\s*([\s\S]*?)\s*```/);
     const jsonText = jsonMatch ? jsonMatch[1] : responseText.trim();
-    
-    // Reset quota flag on successful call
+
     quotaExceeded = false;
     quotaExceededUntil = null;
-    
+
     return JSON.parse(jsonText);
   } catch (error) {
-    // Handle quota exceeded errors specifically
-    if (error.status === 429 || error.message?.includes('quota') || error.message?.includes('billing')) {
-      quotaExceeded = true;
-      quotaExceededUntil = Date.now() + QUOTA_COOLDOWN_MS;
-      
-      // Only log once per cooldown period
-      if (!quotaExceededUntil || Date.now() >= (quotaExceededUntil - QUOTA_COOLDOWN_MS + 60000)) {
-        console.warn(`⚠️  ${aiConfig?.provider?.toUpperCase() || 'AI'} API quota exceeded - AI tagging disabled for 1 hour`);
-        console.warn("💡 Events will use fallback tags. Check your AI provider billing/plan.");
-      }
-    } else {
-      // Log other errors (but only once per minute to avoid spam)
-      const errorKey = `ai_error_${error.status || 'unknown'}`;
-      if (!global[errorKey] || Date.now() - global[errorKey] > 60000) {
-        console.warn(`⚠️  AI tagging error (${error.status || 'unknown'}): ${error.message}`);
-        global[errorKey] = Date.now();
-      }
+    recordAiError(error);
+    if (isBillingOrQuotaError(error)) {
+      console.warn("⚠️  AI quota/billing exceeded - tagging uses fallback for 1 hour");
     }
-    
-    // Return fallback tags
+
     return {
       risk_level: event.severity,
       category: getEventCategory(event.type),
@@ -407,6 +391,8 @@ function generateTemplateBriefing(data, context) {
     insights: [],
     recommendedActions: [],
     trends: {},
+    aiGenerated: false,
+    provider: "template",
   };
 }
 
@@ -417,16 +403,21 @@ function generateTemplateBriefing(data, context) {
  * @returns {Promise<Object>} AI-generated weekly summary
  */
 async function generateWeeklySummary(aggregatedData, options = {}) {
-  if (!aiConfig || !aiConfig.client) {
-    console.warn("⚠️  AI API key not configured - using template-based weekly summary");
-    return null; // Will use template in weeklyReport.service.js
+  if (!isChatAvailable()) {
+    console.warn("⚠️  AI API key not configured - weekly report will use template summary");
+    return null;
+  }
+
+  if (quotaExceeded && quotaExceededUntil && Date.now() < quotaExceededUntil) {
+    console.warn("⚠️  AI quota/billing cooldown active - weekly report will use template summary");
+    return null;
   }
 
   try {
     const { metrics, insights, trends } = aggregatedData;
     const { startDate, endDate } = options;
     const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
-    
+
     const prompt = `You are an expert operations analyst creating a weekly operational summary report for a security guard scheduling platform.
 
 **Report Period:** ${days} days (${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()})
@@ -476,8 +467,7 @@ Create a comprehensive weekly summary report. Provide your analysis as JSON with
 - Provide clear recommendations
 - Use professional but accessible language`;
 
-    const completion = await aiConfig.client.chat.completions.create({
-      model: aiConfig.model,
+    const { completion, provider } = await chatCompletionsCreate({
       messages: [
         {
           role: "system",
@@ -492,29 +482,23 @@ Create a comprehensive weekly summary report. Provide your analysis as JSON with
     const responseText = completion.choices[0]?.message?.content || "{}";
     const aiAnalysis = JSON.parse(responseText);
 
+    quotaExceeded = false;
+    quotaExceededUntil = null;
+
     return {
       overview: aiAnalysis.overview || "Weekly operational summary generated.",
       highlights: Array.isArray(aiAnalysis.highlights) ? aiAnalysis.highlights : [],
       recommendations: Array.isArray(aiAnalysis.recommendations) ? aiAnalysis.recommendations : [],
       keyMetrics: aiAnalysis.keyMetrics || {},
       generatedByAI: true,
+      provider,
     };
   } catch (error) {
-    // Handle quota exceeded errors
-    if (error.status === 429 || error.message?.includes('quota') || error.message?.includes('billing')) {
-      quotaExceeded = true;
-      quotaExceededUntil = Date.now() + QUOTA_COOLDOWN_MS;
-      console.warn(`⚠️  ${aiConfig?.provider?.toUpperCase() || 'AI'} API quota exceeded - using template summary`);
-      console.warn("💡 Check your AI provider billing/plan. AI features disabled for 1 hour.");
-    } else {
-      // Log other errors (but only once per minute)
-      const errorKey = `weekly_summary_error_${error.status || 'unknown'}`;
-      if (!global[errorKey] || Date.now() - global[errorKey] > 60000) {
-        console.warn(`⚠️  ${aiConfig?.provider?.toUpperCase() || 'AI'} API error in generateWeeklySummary: ${error.message}`);
-        global[errorKey] = Date.now();
-      }
+    recordAiError(error);
+    console.warn(`⚠️  AI weekly summary failed: ${error.message}`);
+    if (isBillingOrQuotaError(error)) {
+      console.warn("💡 Add credits on OpenAI and/or DeepSeek. Falling back to template summary.");
     }
-    // Return null to trigger template fallback
     return null;
   }
 }
@@ -524,4 +508,5 @@ module.exports = {
   generateShiftRiskAnalysis,
   tagEventWithAI,
   generateWeeklySummary,
+  getAiStatus,
 };
