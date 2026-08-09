@@ -61,7 +61,6 @@ import FairnessRebalancing from "./pages/FairnessRebalancing";
 import ShiftSwaps from "./pages/ShiftSwaps";
 import Announcements from "./pages/Announcements";
 import Messages from "./pages/Messages";
-import MessagesGuard from "./pages/MessagesGuard";
 import GeographicDashboard from "./pages/GeographicDashboard";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import Staff from "./pages/Staff";
@@ -115,7 +114,6 @@ export default function App() {
           <Route path="/fairness-rebalancing" element={<FairnessRebalancing />} />
           <Route path="/shift-swaps" element={<ShiftSwaps />} />
           <Route path="/messages" element={<Messages />} />
-          <Route path="/messages/guard" element={<MessagesGuard />} />
           <Route path="/announcements" element={<Announcements />} />
           <Route path="/super-admin" element={<SuperAdminDashboard />} />
           <Route path="/super-admin/manage" element={<SuperAdmin />} />

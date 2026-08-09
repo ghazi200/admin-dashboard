@@ -228,12 +228,6 @@ export default function Layout() {
         >
           💬 Messages
         </NavLink>
-        <NavLink
-          to="/messages/guard"
-          className={({ isActive }) => (isActive ? "navLink navLinkActive" : "navLink")}
-        >
-          💬 Guard view
-        </NavLink>
 
         <NavLink
           to="/guards"

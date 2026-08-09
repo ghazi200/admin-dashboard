@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
-import { Link } from "react-router-dom";
 import {
   listConversations,
   getConversation,
@@ -484,7 +483,6 @@ export default function Messages() {
         <h1 className="messagesPageHeading" style={{ margin: 0, fontWeight: 800 }}>
           Messages
         </h1>
-        <Link to="/messages/guard" style={{ fontSize: 14, color: "var(--muted)" }}>Guard view (test)</Link>
       </div>
       {error && (
         <div style={{ marginBottom: 12, padding: "10px 14px", borderRadius: 12, background: "rgba(239,68,68,0.12)", color: "#fecaca" }}>

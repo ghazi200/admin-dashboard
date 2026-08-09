@@ -190,10 +190,6 @@ export const getGuardAvailabilityLogs = (guardId) =>
 export const getGuardHistory = (guardId) =>
   axiosClient.get(`/guards/${guardId}/history`);
 
-/** Get a short-lived JWT to view messages as a guard (for /messages/guard). */
-export const getGuardViewToken = (guardId) =>
-  axiosClient.post("/guards/guard-view-token", { guardId });
-
 // ===== SHIFTS =====
 export const listShifts = () => axiosClient.get("/shifts");
 
