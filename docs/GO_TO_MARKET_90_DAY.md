@@ -134,8 +134,8 @@ Exists: backend/public/legal/messaging-consent.html + consent on Guards form
 Still need counsel review before customer signature; BAA/HIPAA later if medical
 
 B5. Backup / restore drill
-[ ] Document Railway Postgres backup + restore in docs/RUNBOOK_BACKUP.md
-[ ] Run one restore to a scratch DB; record RPO/RTO targets
+[x] Document Railway Postgres backup + restore in docs/RUNBOOK_BACKUP.md
+[x] Run one restore to a scratch DB; record RPO/RTO targets — drill 2026-08-09 (RPO ≤24h, RTO ≤4h)
 
 ------------------------------------------------------------
 PHASE C — WEEKS 3–6: LAND AND RUN ONE SECURITY PILOT
@@ -253,7 +253,7 @@ REPO GAP BACKLOG (CHECK OFF WHEN MERGED)
 P0 — blocks pilot ops
 [ ] 1. Admin set/reset guard password UI + API (adminGuards.*, Guards.jsx; retire day-to-day setGuardPassword.js)
 [ ] 2. Play Internal (or MDM) distribution + one published track build
-[ ] 3. Pilot runbook docs/RUNBOOK_P0.md + backup docs/RUNBOOK_BACKUP.md
+[ ] 3. Pilot runbook docs/RUNBOOK_P0.md (+ backup done: docs/RUNBOOK_BACKUP.md)
 [ ] 4. Verify prod deploy: contact prefs + callout outbound + pending accept + swaps (post-a635590)
 
 P1 — blocks “company-safe” sale

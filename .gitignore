@@ -29,3 +29,7 @@ npm-debug.log*
 # Optional: uncomment if you don't want to commit native app builds
 # ios/
 # android/
+
+# DB dumps (B5 restore drills — never commit)
+*.dump
+*.sql.gz
