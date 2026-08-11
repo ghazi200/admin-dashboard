@@ -671,6 +671,16 @@ const adminScheduleController = require("./src/controllers/adminSchedule.control
 app.get("/api/guard/dashboard", authGuard, getGuardDashboard);
 // Weekly building schedule (same payload as GET /api/admin/schedule; guard JWT + tenant)
 app.get("/api/guard/schedule", authGuard, adminScheduleController.getSchedule);
+app.get(
+  "/api/guard/schedule/acknowledgment",
+  authGuard,
+  require("./src/controllers/scheduleAcknowledgment.controller").getMyScheduleAcknowledgment
+);
+app.post(
+  "/api/guard/schedule/acknowledge",
+  authGuard,
+  require("./src/controllers/scheduleAcknowledgment.controller").acknowledgeMySchedule
+);
 // Legacy guard-ui builds: GET {GUARD_API_URL}/schedule (no /api/guard prefix)
 app.get("/schedule", authGuard, adminScheduleController.getSchedule);
 // Guard Home: shifts + state (never use GET /shifts — that is admin JWT only on this server)

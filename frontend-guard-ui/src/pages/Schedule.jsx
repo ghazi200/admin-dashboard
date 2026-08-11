@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from "react";
 import NavBar from "../components/NavBar";
-import { getGuardSchedule } from "../services/guardApi";
+import { getGuardSchedule, acknowledgeGuardSchedule } from "../services/guardApi";
 import "./shifts.css";
 
 export default function Schedule() {
   const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [ackNote, setAckNote] = useState("");
+  const [ackBusy, setAckBusy] = useState(false);
+  const [ackMsg, setAckMsg] = useState("");
+  const [ackErr, setAckErr] = useState("");
 
   useEffect(() => {
     loadSchedule();
@@ -31,6 +35,9 @@ export default function Schedule() {
         }
       }
       setSchedule(res.data);
+      if (res.data?.acknowledgment?.note) {
+        setAckNote(res.data.acknowledgment.note);
+      }
     } catch (e) {
       console.error("❌ Schedule error:", e);
       console.error("Response:", e?.response?.data);
@@ -47,6 +54,36 @@ export default function Schedule() {
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function onAcknowledge() {
+    setAckBusy(true);
+    setAckErr("");
+    setAckMsg("");
+    try {
+      const period_start = schedule?.weekRange?.start;
+      const period_end = schedule?.weekRange?.end;
+      const res = await acknowledgeGuardSchedule({
+        note: ackNote,
+        period_start,
+        period_end,
+      });
+      const acknowledgment = res.data?.acknowledgment || null;
+      setSchedule((prev) =>
+        prev
+          ? {
+              ...prev,
+              acknowledged: true,
+              acknowledgment: acknowledgment || prev.acknowledgment,
+            }
+          : prev
+      );
+      setAckMsg("Thanks — your receipt of this week's schedule is recorded.");
+    } catch (e) {
+      setAckErr(e?.response?.data?.message || e?.message || "Could not save acknowledgment");
+    } finally {
+      setAckBusy(false);
     }
   }
 
@@ -107,6 +144,9 @@ export default function Schedule() {
   const scheduleData = Array.isArray(schedule?.schedule) ? schedule.schedule : [];
   const guardHours = schedule?.guardHours || {};
   const summary = schedule?.summary || {};
+  const weekRange = schedule?.weekRange || {};
+  const acknowledged = Boolean(schedule?.acknowledged);
+  const acknowledgment = schedule?.acknowledgment || null;
 
   return (
     <div>
@@ -118,7 +158,79 @@ export default function Schedule() {
           </h1>
           <div style={{ opacity: 0.7, fontSize: 14 }}>
             Weekly guard schedule and building information
+            {weekRange.start && weekRange.end
+              ? ` · ${weekRange.start} – ${weekRange.end}`
+              : ""}
           </div>
+        </div>
+
+        {/* Confirm receipt */}
+        <div
+          style={{
+            background: acknowledged ? "rgba(34,197,94,0.08)" : "rgba(59,130,246,0.08)",
+            borderRadius: 14,
+            padding: 20,
+            marginBottom: 24,
+            border: acknowledged
+              ? "1px solid rgba(34,197,94,0.35)"
+              : "1px solid rgba(59,130,246,0.3)",
+          }}
+        >
+          <div style={{ fontWeight: 800, marginBottom: 8, fontSize: 16, color: "#1e293b" }}>
+            {acknowledged ? "Schedule received" : "Confirm you've seen this schedule"}
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 12, lineHeight: 1.45 }}>
+            {acknowledged
+              ? `Recorded${
+                  acknowledgment?.acknowledged_at
+                    ? ` ${new Date(acknowledgment.acknowledged_at).toLocaleString()}`
+                    : ""
+                }. You can update your note and confirm again if needed.`
+              : "This only confirms you received the schedule — it does not accept or decline shifts."}
+          </div>
+          <label style={{ display: "grid", gap: 6, fontSize: 13, marginBottom: 12 }}>
+            Optional note
+            <textarea
+              value={ackNote}
+              onChange={(e) => setAckNote(e.target.value.slice(0, 500))}
+              rows={2}
+              placeholder="e.g. Got it — traveling Thursday, will message supervisor"
+              style={{
+                width: "100%",
+                padding: 10,
+                borderRadius: 8,
+                border: "1px solid rgba(0,0,0,0.12)",
+                fontFamily: "inherit",
+                resize: "vertical",
+              }}
+            />
+          </label>
+          {ackErr ? (
+            <div style={{ color: "#b91c1c", fontSize: 13, marginBottom: 8 }}>{ackErr}</div>
+          ) : null}
+          {ackMsg ? (
+            <div style={{ color: "#15803d", fontSize: 13, marginBottom: 8 }}>{ackMsg}</div>
+          ) : null}
+          <button
+            type="button"
+            onClick={onAcknowledge}
+            disabled={ackBusy}
+            style={{
+              padding: "10px 18px",
+              cursor: ackBusy ? "wait" : "pointer",
+              background: acknowledged ? "#16a34a" : "#2563eb",
+              color: "white",
+              border: "none",
+              borderRadius: 8,
+              fontWeight: 700,
+            }}
+          >
+            {ackBusy
+              ? "Saving…"
+              : acknowledged
+                ? "Update confirmation"
+                : "I've seen this schedule"}
+          </button>
         </div>
 
         {/* Building Information */}

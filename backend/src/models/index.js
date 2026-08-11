@@ -100,6 +100,7 @@ const ReportShare = require("./ReportShare")(sequelize, DataTypes);
 const ScheduleEmailPreference = require("./ScheduleEmailPreference")(sequelize, DataTypes);
 const ScheduleEmailLog = require("./ScheduleEmailLog")(sequelize, DataTypes);
 const ScheduleConfig = require("./ScheduleConfig")(sequelize, DataTypes);
+const ScheduleAcknowledgment = require("./ScheduleAcknowledgment")(sequelize, DataTypes);
 const EmailSchedulerSettings = require("./EmailSchedulerSettings")(sequelize, DataTypes);
 
 // ✅ Shift Management
@@ -158,6 +159,9 @@ ScheduleEmailPreference.belongsTo(Tenant, { foreignKey: "tenant_id" });
 Guard.hasMany(ScheduleEmailLog, { foreignKey: "guard_id", as: "scheduleEmailLogs" });
 ScheduleEmailLog.belongsTo(Guard, { foreignKey: "guard_id" });
 ScheduleEmailLog.belongsTo(Tenant, { foreignKey: "tenant_id" });
+Guard.hasMany(ScheduleAcknowledgment, { foreignKey: "guard_id", as: "scheduleAcknowledgments" });
+ScheduleAcknowledgment.belongsTo(Guard, { foreignKey: "guard_id" });
+ScheduleAcknowledgment.belongsTo(Tenant, { foreignKey: "tenant_id" });
 
 // ✅ Incident associations
 Incident.belongsTo(Tenant, { foreignKey: "tenant_id" });
@@ -231,6 +235,7 @@ module.exports = {
   // ✅ Schedule Email
   ScheduleEmailPreference,
   ScheduleEmailLog,
+  ScheduleAcknowledgment,
   
   // ✅ Schedule Config
   ScheduleConfig,

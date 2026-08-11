@@ -453,6 +453,24 @@ exports.getSchedule = async (req, res) => {
     console.log(`📅 Schedule response: ${schedule.length} days, week ${weekDates[0]} to ${weekDates[6]}`);
     console.log(`📊 Total shifts mapped: ${shiftMap.size}`);
     console.log(`📞 Callout shifts: ${calloutShifts.length}`);
+
+    // Guard JWT: include whether this guard has acknowledged the current week
+    if (req.guard?.id) {
+      try {
+        const { getAckForGuard } = require("../services/scheduleAcknowledgment.service");
+        const ack = await getAckForGuard(req.app.locals.models, {
+          guardId: req.guard.id,
+          periodStart: weekDates[0],
+          periodEnd: weekDates[6],
+        });
+        response.acknowledgment = ack.acknowledgment;
+        response.acknowledged = ack.acknowledged;
+      } catch (ackErr) {
+        console.warn("schedule acknowledgment attach failed:", ackErr?.message || ackErr);
+        response.acknowledged = false;
+        response.acknowledgment = null;
+      }
+    }
     
     return res.json(response);
   } catch (e) {

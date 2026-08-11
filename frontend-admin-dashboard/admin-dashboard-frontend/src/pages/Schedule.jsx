@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { connectSocket } from "../realtime/socket";
-import { getSchedule, updateSchedule, listGuards } from "../services/api";
+import { getSchedule, updateSchedule, listGuards, listScheduleAcknowledgments } from "../services/api";
 
 export default function Schedule() {
   const queryClient = useQueryClient();
@@ -9,6 +9,8 @@ export default function Schedule() {
   const [editedBuilding, setEditedBuilding] = useState({ name: "", location: "" });
   const [editedSchedule, setEditedSchedule] = useState([]);
   const [guards, setGuards] = useState([]);
+  const [acks, setAcks] = useState(null);
+  const [acksErr, setAcksErr] = useState("");
 
   // Fetch guards for dropdown
   const { data: guardsData } = useQuery({
@@ -41,6 +43,32 @@ export default function Schedule() {
     refetchOnWindowFocus: !isEditing,
     staleTime: 15000, // Consider data stale after 15 seconds
   });
+
+  const weekStart = schedule?.weekRange?.start;
+  const weekEnd = schedule?.weekRange?.end;
+
+  useEffect(() => {
+    if (!weekStart || !weekEnd) return;
+    let cancelled = false;
+    (async () => {
+      setAcksErr("");
+      try {
+        const res = await listScheduleAcknowledgments({
+          period_start: weekStart,
+          period_end: weekEnd,
+        });
+        if (!cancelled) setAcks(res.data);
+      } catch (e) {
+        if (!cancelled) {
+          setAcks(null);
+          setAcksErr(e?.response?.data?.message || e?.message || "Could not load acknowledgments");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [weekStart, weekEnd]);
 
   // Initialize edited state when schedule loads
   useEffect(() => {
@@ -452,6 +480,48 @@ export default function Schedule() {
               {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </button>
           </div>
+        )}
+      </div>
+
+      {/* Guard schedule acknowledgments (current week) */}
+      <div
+        style={{
+          background: "rgba(255,255,255,0.95)",
+          borderRadius: 14,
+          padding: 20,
+          marginBottom: 24,
+          border: "1px solid rgba(0,0,0,0.08)",
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 8, fontSize: 16, color: "#1e293b" }}>
+          Schedule acknowledgments
+          {weekStart && weekEnd ? (
+            <span style={{ fontWeight: 500, opacity: 0.65, fontSize: 13, marginLeft: 8 }}>
+              {weekStart} – {weekEnd}
+            </span>
+          ) : null}
+        </div>
+        <div style={{ fontSize: 13, opacity: 0.75, marginBottom: 12 }}>
+          Guards who confirmed they received this week's schedule (optional notes).
+        </div>
+        {acksErr ? (
+          <div style={{ color: "#b91c1c", fontSize: 13 }}>{acksErr}</div>
+        ) : !acks ? (
+          <div style={{ opacity: 0.6, fontSize: 13 }}>Loading…</div>
+        ) : acks.count === 0 ? (
+          <div style={{ opacity: 0.65, fontSize: 13 }}>No acknowledgments yet this week.</div>
+        ) : (
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>
+            {acks.acknowledgments.map((a) => (
+              <li key={a.id}>
+                <b>{a.guard_name || a.guard_email || a.guard_id}</b>
+                {a.acknowledged_at
+                  ? ` · ${new Date(a.acknowledged_at).toLocaleString()}`
+                  : ""}
+                {a.note ? ` — “${a.note}”` : ""}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 

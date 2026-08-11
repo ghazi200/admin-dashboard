@@ -585,6 +585,43 @@ export async function getGuardSchedule() {
   throw lastErr;
 }
 
+/**
+ * Confirm receipt of the current weekly schedule (optional note).
+ * POST /api/guard/schedule/acknowledge
+ */
+export async function acknowledgeGuardSchedule({ note, period_start, period_end } = {}) {
+  const headers = guardAuthHeaders();
+  const body = {};
+  if (note != null && String(note).trim()) body.note = String(note).trim();
+  if (period_start) body.period_start = period_start;
+  if (period_end) body.period_end = period_end;
+
+  const bases = scheduleBackendBases();
+  let lastErr;
+  for (const base of bases) {
+    try {
+      const path = "/api/guard/schedule/acknowledge";
+      const url = `${base.replace(/\/+$/, "")}${path}`;
+      if (isNativeCapable()) {
+        const res = await nativePostJson(url, body, headers);
+        if (!res.ok) {
+          const err = new Error(res.data?.message || res.data?.error || res.error || "Acknowledge failed");
+          err.response = { status: res.status, data: res.data || {} };
+          throw err;
+        }
+        return { data: res.data };
+      }
+      const axios = (await import("axios")).default;
+      return await axios.post(url, body, { headers, timeout: 30000 });
+    } catch (e) {
+      lastErr = e;
+      if (e?.response?.status === 404) continue;
+      throw e;
+    }
+  }
+  throw lastErr;
+}
+
 /* ================= DASHBOARD ================= */
 
 /**

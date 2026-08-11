@@ -249,6 +249,8 @@ export const deleteUser = (id) => axiosClient.delete(`/users/${id}`);
 // ===== SCHEDULE =====
 export const getSchedule = () => axiosClient.get("/schedule");
 export const updateSchedule = (data) => axiosClient.put("/schedule", data);
+export const listScheduleAcknowledgments = (params = {}) =>
+  axiosClient.get("/schedule/acknowledgments", { params });
 
 // ===== CALLOUT RISK PREDICTION =====
 export const getShiftRisk = (shiftId) =>
