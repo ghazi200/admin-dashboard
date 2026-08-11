@@ -432,7 +432,19 @@ export default function CommandCenter() {
             Why It's Happening
           </div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
-            {criticalRisks.length > 0 ? (
+            {highSeverityEvents.length > 0 ? (
+              <div>
+                {highSeverityEvents.slice(0, 2).map((event, idx) => (
+                  <div key={event.id || idx} style={{ marginBottom: 8 }}>
+                    • {event.title}
+                    {event.entity_refs?.site_address
+                      ? ` at ${event.entity_refs.site_address}`
+                      : ""}
+                    {event.summary ? ` — ${String(event.summary).slice(0, 80)}` : ""}
+                  </div>
+                ))}
+              </div>
+            ) : criticalRisks.length > 0 ? (
               <div>
                 {criticalRisks[0].risk.factors && (
                   <div>
