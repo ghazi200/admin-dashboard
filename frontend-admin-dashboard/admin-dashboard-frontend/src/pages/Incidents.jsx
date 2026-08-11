@@ -433,7 +433,7 @@ export default function Incidents() {
                     ) : site ? (
                       <div style={{ marginBottom: 8, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
                         📍 {site.name}
-                        {site.city && `, ${site.city}`}
+                        {site.address_2 && `, ${site.address_2}`}
                       </div>
                     ) : null}
                     <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 1.5 }}>

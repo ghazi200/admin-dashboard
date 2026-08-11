@@ -73,7 +73,7 @@ router.get(
           if (siteIds.length) {
             const sites = await Site.findAll({
               where: { id: { [Op.in]: siteIds } },
-              attributes: ["id", "name", "address_1", "city"],
+              attributes: ["id", "name", "address_1", "address_2"],
             });
             sitesById = Object.fromEntries(sites.map((s) => [s.id, s]));
           }
@@ -86,7 +86,7 @@ router.get(
           const site = siteId ? sitesById[siteId] : null;
           const siteAddress =
             site &&
-            [site.address_1, site.city].filter(Boolean).join(", ");
+            [site.address_1, site.address_2].filter(Boolean).join(", ");
           return {
             ...j,
             guard_id: j.guardId || j.guard_id,
@@ -103,7 +103,7 @@ router.get(
                   id: site.id,
                   name: site.name,
                   address_1: site.address_1,
-                  city: site.city,
+                  address_2: site.address_2,
                 }
               : null,
           };
