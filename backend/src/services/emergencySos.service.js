@@ -43,7 +43,8 @@ async function generateSosAiSuggestions({ guardName, lat, lng, tenantId }) {
 
   try {
     if (!isChatAvailable()) return fallback;
-    const { completion } = await chatCompletionsCreate({
+
+    const aiPromise = chatCompletionsCreate({
       messages: [
         { role: "system", content: "Return valid JSON only." },
         {
@@ -60,8 +61,15 @@ async function generateSosAiSuggestions({ guardName, lat, lng, tenantId }) {
         },
       ],
       temperature: 0.2,
-      max_tokens: 400,
+      max_tokens: 350,
     });
+
+    const { completion } = await Promise.race([
+      aiPromise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("AI_TIMEOUT")), 10000)
+      ),
+    ]);
     const text = completion?.choices?.[0]?.message?.content;
     if (!text) return fallback;
     const cleaned = String(text).replace(/```json\n?/g, "").replace(/```/g, "").trim();
@@ -191,12 +199,18 @@ async function triggerEmergencySos(app, { guardId, lat, lng, accuracy, notifyPho
   const tenantId = guard.tenant_id || null;
   const guardName = guard.name || guard.email || "Guard";
   const supervisor = await findOnCallSupervisor(sequelize, tenantId);
-  const ai = await generateSosAiSuggestions({
+
+  // Prefer fast path: DB + call first; AI can use fallback if slow
+  let ai = defaultAiSuggestions({
     guardName,
-    lat,
-    lng,
-    tenantId,
+    locationText:
+      lat != null && lng != null ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}` : null,
   });
+  try {
+    ai = await generateSosAiSuggestions({ guardName, lat, lng, tenantId });
+  } catch (_) {
+    /* keep fallback */
+  }
 
   const emergencyId = randomUUID();
   const notes = [
