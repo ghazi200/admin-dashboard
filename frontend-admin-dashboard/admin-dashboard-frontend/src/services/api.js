@@ -413,15 +413,16 @@ export const listGuardsWithReputation = () =>
   axiosClient.get("/reputation/guards");
 
 // ===== INCIDENTS =====
-// Note: Incident routes are on abe-guard-ai backend (port 4000)
+// Unified admin API (same DB as SOS-created incidents)
 export const listIncidents = (params = {}) => {
   const queryString = new URLSearchParams(params).toString();
-  return abeGuardAiClient.get(`/api/admin/incidents${queryString ? `?${queryString}` : ""}`);
+  return axiosClient.get(`/incidents${queryString ? `?${queryString}` : ""}`);
 };
 
 export const updateIncident = (id, data) =>
-  abeGuardAiClient.patch(`/api/admin/incidents/${id}`, data);
+  axiosClient.patch(`/incidents/${id}`, data);
 
+/** Optional AI summarize — still on Guard AI when configured */
 export const summarizeIncident = (id) =>
   abeGuardAiClient.post(`/api/admin/incidents/${id}/summarize`);
 
