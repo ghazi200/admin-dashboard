@@ -425,6 +425,44 @@ exports.listGuards = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/admin/guards/import/template — sample CSV
+ * POST /api/admin/guards/import — multipart file field "file" OR JSON { csv: "..." }
+ */
+exports.downloadGuardImportTemplate = async (req, res) => {
+  const { TEMPLATE_CSV } = require("../services/guardCsvImport.service");
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", 'attachment; filename="guards-import-template.csv"');
+  return res.status(200).send(TEMPLATE_CSV);
+};
+
+exports.importGuardsCsv = async (req, res) => {
+  try {
+    const { importGuards } = require("../services/guardCsvImport.service");
+    let csvText = "";
+    if (req.file?.buffer) {
+      csvText = req.file.buffer.toString("utf8");
+    } else if (typeof req.body?.csv === "string") {
+      csvText = req.body.csv;
+    } else if (Buffer.isBuffer(req.body) || typeof req.body === "string") {
+      csvText = String(req.body);
+    }
+
+    if (!String(csvText || "").trim()) {
+      return res.status(400).json({
+        message: 'CSV required: multipart field "file" or JSON body { csv: "..." }',
+      });
+    }
+
+    const result = await importGuards(req, csvText);
+    const status = result.summary.created > 0 ? 201 : result.summary.parsed === 0 ? 400 : 200;
+    return res.status(status).json(result);
+  } catch (e) {
+    const status = e.status || 500;
+    return res.status(status).json({ message: e.message || "Import failed" });
+  }
+};
+
 exports.createGuard = async (req, res) => {
   console.log("🚀 createGuard - FUNCTION CALLED");
   console.log("🚀 createGuard - req.body:", req.body);

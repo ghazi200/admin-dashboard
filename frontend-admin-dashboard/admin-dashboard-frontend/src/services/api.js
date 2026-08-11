@@ -175,6 +175,27 @@ export const listGuards = () => axiosClient.get("/guards");
 
 export const createGuard = (data) => axiosClient.post("/guards", data);
 
+/** Download CSV template for bulk guard import */
+export const downloadGuardImportTemplate = () =>
+  axiosClient.get("/guards/import/template", { responseType: "blob" });
+
+/** Import guards from CSV file (multipart field name: file) or { csv, tenant_id? } */
+export const importGuardsCsv = (fileOrPayload, tenantId) => {
+  if (typeof File !== "undefined" && fileOrPayload instanceof File) {
+    const fd = new FormData();
+    fd.append("file", fileOrPayload);
+    if (tenantId) fd.append("tenant_id", tenantId);
+    return axiosClient.post("/guards/import", fd, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  }
+  const body =
+    typeof fileOrPayload === "string"
+      ? { csv: fileOrPayload, ...(tenantId ? { tenant_id: tenantId } : {}) }
+      : fileOrPayload;
+  return axiosClient.post("/guards/import", body);
+};
+
 export const updateGuard = (id, data) =>
   axiosClient.put(`/guards/${id}`, data);
 

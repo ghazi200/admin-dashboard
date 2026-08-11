@@ -7,6 +7,8 @@ const {requireAccess} = require("../middleware/requireAccess"); // ✅ correct
 const {
   listGuards,
   createGuard,
+  importGuardsCsv,
+  downloadGuardImportTemplate,
   updateGuard,
   deleteGuard,
   unlockGuard,
@@ -17,6 +19,21 @@ const {
   getGuardHistory,
   getGuardViewToken,
 } = require("../controllers/adminGuards.controller");
+
+const multer = require("multer");
+const uploadCsv = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const name = String(file.originalname || "").toLowerCase();
+    const ok =
+      name.endsWith(".csv") ||
+      String(file.mimetype || "").includes("csv") ||
+      String(file.mimetype || "") === "text/plain" ||
+      String(file.mimetype || "") === "application/vnd.ms-excel";
+    cb(ok ? null : new Error("Only .csv files are allowed"), ok);
+  },
+});
 console.log("controller keys:", Object.keys(require("../controllers/adminGuards.controller")));
 
 console.log("authAdmin:", typeof authAdmin);
@@ -39,6 +56,26 @@ router.get("/", authAdmin, requireAccess("guards:read"), listGuards);
 
 // Guard view token (for /messages/guard) — must be before /:id
 router.post("/guard-view-token", authAdmin, requireAccess("guards:read"), getGuardViewToken);
+
+// Bulk CSV import — must be before /:id
+router.get(
+  "/import/template",
+  authAdmin,
+  requireAccess("guards:write"),
+  downloadGuardImportTemplate
+);
+router.post(
+  "/import",
+  authAdmin,
+  requireAccess("guards:write"),
+  (req, res, next) => {
+    uploadCsv.single("file")(req, res, (err) => {
+      if (err) return res.status(400).json({ message: err.message || "Upload failed" });
+      return next();
+    });
+  },
+  importGuardsCsv
+);
 
 router.post("/", authAdmin, requireAccess("guards:write"), createGuard);
 

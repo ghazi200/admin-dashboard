@@ -16,6 +16,8 @@ import {
   getGuardScheduleEmailPreference,
   updateGuardScheduleEmailPreference,
   sendScheduleEmailNow,
+  downloadGuardImportTemplate,
+  importGuardsCsv,
 } from "../services/api";
 import { hasAccess, getAdminInfo } from "../utils/access";
 
@@ -152,6 +154,12 @@ export default function Guards() {
   const [updateTrigger, setUpdateTrigger] = useState(0); // Force re-render trigger
   const [updatingGuardId, setUpdatingGuardId] = useState(null); // Track which guard is being updated
   const [selectedGuards, setSelectedGuards] = useState(new Set()); // Multi-select state
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [importErr, setImportErr] = useState("");
+  const [importTenantId, setImportTenantId] = useState("");
 
   const defaultContactPrefs = {
     email: true,
@@ -705,6 +713,51 @@ export default function Guards() {
     }
   }
 
+  async function onDownloadImportTemplate() {
+    try {
+      const res = await downloadGuardImportTemplate();
+      const blob = new Blob([res.data], { type: "text/csv;charset=utf-8" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "guards-import-template.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr(e?.response?.data?.message || e?.message || "Failed to download template");
+    }
+  }
+
+  async function onImportCsv() {
+    if (!canEdit) {
+      setImportErr("You don't have permission to import guards.");
+      return;
+    }
+    if (!importFile) {
+      setImportErr("Choose a .csv file first.");
+      return;
+    }
+    setImportBusy(true);
+    setImportErr("");
+    setImportResult(null);
+    try {
+      const tenantId =
+        me?.role === "super_admin" && importTenantId.trim()
+          ? importTenantId.trim()
+          : undefined;
+      const res = await importGuardsCsv(importFile, tenantId);
+      setImportResult(res.data);
+      await load();
+    } catch (e) {
+      setImportErr(e?.response?.data?.message || e?.message || "Import failed");
+      if (e?.response?.data?.summary) setImportResult(e.response.data);
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
   // =====================
   // Email Preferences
   // =====================
@@ -799,7 +852,7 @@ export default function Guards() {
           <div style={s.hint}>Create, edit, and manage guard availability.</div>
         </div>
 
-        <div style={{ display: "flex", gap: 10 }} className="guardsToolbar">
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }} className="guardsToolbar">
           <input
             className="input guardsSearchInput"
             style={{ width: 280 }}
@@ -807,6 +860,20 @@ export default function Guards() {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search guards…"
           />
+          {canEdit ? (
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setImportOpen(true);
+                setImportErr("");
+                setImportResult(null);
+                setImportFile(null);
+              }}
+            >
+              Import CSV
+            </button>
+          ) : null}
           <button type="button" className="btn btnPrimary" onClick={load}>
             Refresh
           </button>
@@ -1692,6 +1759,115 @@ export default function Guards() {
               })}
             </div>
           )}
+        </Modal>
+      ) : null}
+
+      {importOpen ? (
+        <Modal
+          title="Import guards from CSV"
+          onClose={() => {
+            if (importBusy) return;
+            setImportOpen(false);
+          }}
+        >
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.45 }}>
+              Upload a CSV with a header row. Required column: <code>name</code>. Optional:{" "}
+              <code>email</code>, <code>phone</code>, <code>communications_consent</code>, channel
+              prefs, <code>callout_eligible</code>, <code>active</code>. Max 500 rows; duplicate emails
+              are skipped.
+            </div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" className="btn" onClick={onDownloadImportTemplate}>
+                Download template
+              </button>
+            </div>
+
+            {me?.role === "super_admin" ? (
+              <label className="label">
+                Tenant ID (optional for super admin)
+                <input
+                  className="input"
+                  value={importTenantId}
+                  onChange={(e) => setImportTenantId(e.target.value)}
+                  placeholder="Leave blank to use your tenant"
+                />
+              </label>
+            ) : null}
+
+            <label className="label">
+              CSV file
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => {
+                  setImportFile(e.target.files?.[0] || null);
+                  setImportErr("");
+                  setImportResult(null);
+                }}
+              />
+            </label>
+
+            {importErr ? <div className="notice">{importErr}</div> : null}
+
+            {importResult?.summary ? (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 8,
+                  background: "rgba(0,0,0,0.04)",
+                  fontSize: 13,
+                  display: "grid",
+                  gap: 4,
+                }}
+              >
+                <div>
+                  Parsed {importResult.summary.parsed}, created{" "}
+                  <b>{importResult.summary.created}</b>, skipped{" "}
+                  {importResult.summary.skipped}, failed {importResult.summary.failed}
+                </div>
+                {Array.isArray(importResult.failed) && importResult.failed.length > 0 ? (
+                  <ul style={{ margin: "8px 0 0", paddingLeft: 18, maxHeight: 160, overflow: "auto" }}>
+                    {importResult.failed.slice(0, 25).map((row, i) => (
+                      <li key={i}>
+                        Line {row.line}: {row.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {Array.isArray(importResult.skipped) && importResult.skipped.length > 0 ? (
+                  <ul style={{ margin: "8px 0 0", paddingLeft: 18, maxHeight: 120, overflow: "auto", opacity: 0.85 }}>
+                    {importResult.skipped.slice(0, 15).map((row, i) => (
+                      <li key={i}>
+                        Line {row.line}: {row.reason || "skipped"}
+                        {row.email ? ` (${row.email})` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="btn"
+                disabled={importBusy}
+                onClick={() => setImportOpen(false)}
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn btnPrimary"
+                disabled={importBusy || !importFile}
+                onClick={onImportCsv}
+              >
+                {importBusy ? "Importing…" : "Import"}
+              </button>
+            </div>
+          </div>
         </Modal>
       ) : null}
     </div>

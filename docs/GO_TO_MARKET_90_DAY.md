@@ -146,7 +146,7 @@ Goal: White-glove one logo; measure outcomes.
 C1. Onboarding productization
 - Create tenant — EXISTS (SuperAdmin.jsx, superAdmin.controller.js)
 - Create tenant admin — EXISTS (password at create); GAP = invite email + magic link
-- Create guards — EXISTS (Guards UI + contact prefs); GAP = bulk CSV import
+- Create guards — EXISTS (Guards UI + contact prefs + bulk CSV import)
 - Set passwords — GAP (script only → build A2 admin UI)
 - Sites — PARTIAL; bulk site import if multi-site pilot
 - Week-1 shifts — EXISTS (Schedule UI); optional onboarding wizard later
@@ -261,7 +261,7 @@ P1 — blocks “company-safe” sale
 [x] 6. Unified audit_events + admin CSV export
 [x] 7. MFA required for pilot tenant admins
 [x] 8. Privacy / ToS / MSA / DPA drafts under docs/legal/
-[ ] 9. Guard CSV import
+[x] 9. Guard CSV import
 
 P2 — accelerates second deal
 [ ] 10. Demo tenant reset script + docs/DEMO_TENANT.md
