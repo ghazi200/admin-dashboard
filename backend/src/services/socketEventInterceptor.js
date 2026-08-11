@@ -80,6 +80,9 @@ function initSocketEventInterceptor(io, models) {
  */
 async function handleEvent(eventName, payload, models) {
   try {
+    // SOS (and similar) create OpEvents themselves to avoid Redis/AI delays & duplicates
+    if (payload?.skipOpEvent) return;
+
     // Standardize event
     const standardizedEvent = opsEventService.standardizeEvent(
       {

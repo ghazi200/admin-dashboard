@@ -25,15 +25,56 @@ function standardizeEvent(event, context = {}) {
   let entityRefs = {};
 
   // Handle different event types
-  if (event.type === "incidents:new" || event.type === "incidents:updated") {
+  if (event.type === "emergency:sos") {
     type = "INCIDENT";
-    severity = event.incident?.severity || "MEDIUM";
-    if (event.incident?.severity === "HIGH" || event.incident?.severity === "CRITICAL") {
-      severity = event.incident.severity;
+    severity = "CRITICAL";
+    title =
+      event.title ||
+      `EMERGENCY SOS — ${event.guardName || event.guard_name || "Guard"}`;
+    const loc =
+      event.locationLabel ||
+      event.site?.address ||
+      event.site?.name ||
+      null;
+    summary = [
+      loc ? `Location: ${loc}` : null,
+      event.ai?.summary || event.message || "Emergency SOS activated",
+    ]
+      .filter(Boolean)
+      .join(" | ");
+    entityRefs = {
+      incident_id: event.incidentId || event.incident_id || null,
+      emergency_event_id: event.emergencyEventId || event.emergency_event_id || null,
+      guard_id: event.guardId || event.guard_id || null,
+      site_id: event.site?.id || event.siteId || event.site_id || null,
+    };
+  } else if (event.type === "incidents:new" || event.type === "incidents:updated") {
+    type = "INCIDENT";
+    // Support nested incident object OR flat SOS/admin payload
+    severity =
+      event.incident?.severity ||
+      event.severity ||
+      "MEDIUM";
+    if (severity !== "HIGH" && severity !== "CRITICAL") {
+      severity = event.incident?.severity || event.severity || "MEDIUM";
     }
-    title = `Incident: ${event.incident?.type || "Unknown"}`;
-    summary = event.incident?.description || "";
-    entityRefs = { incident_id: event.incident?.id };
+    title =
+      event.title ||
+      `Incident: ${event.incident?.type || event.type || "Unknown"}`;
+    const loc =
+      event.locationLabel ||
+      event.location_text ||
+      event.incident?.location_text ||
+      event.site?.address ||
+      null;
+    summary =
+      (loc ? `Location: ${loc}. ` : "") +
+      (event.incident?.description || event.description || event.summary || "");
+    entityRefs = {
+      incident_id: event.incident?.id || event.id || event.incidentId || null,
+      site_id: event.siteId || event.site_id || event.incident?.site_id || null,
+      guard_id: event.guardId || event.guard_id || null,
+    };
   } else if (event.type === "callout_started" || event.type === "callout:new") {
     type = "CALLOUT";
     severity = "MEDIUM"; // Callouts are typically medium priority
@@ -84,8 +125,14 @@ function standardizeEvent(event, context = {}) {
   }
 
   return {
-    tenant_id: tenantId || event.tenant_id || null,
-    site_id: siteId || event.site_id || null,
+    tenant_id: tenantId || event.tenant_id || event.tenantId || null,
+    site_id:
+      siteId ||
+      event.site_id ||
+      event.siteId ||
+      event.site?.id ||
+      entityRefs.site_id ||
+      null,
     type,
     severity,
     title,
@@ -128,8 +175,8 @@ async function createOpEvent(standardizedEvent, models, enableAI = true) {
           confidence: 0.7,
         };
       }
-    } else {
-      // Fallback: Basic tags without AI
+    } else if (!standardizedEvent.ai_tags) {
+      // Fallback: Basic tags without AI (preserve pre-set tags from SOS etc.)
       standardizedEvent.ai_enhanced = false;
       standardizedEvent.ai_tags = {
         risk_level: standardizedEvent.severity,
@@ -137,6 +184,8 @@ async function createOpEvent(standardizedEvent, models, enableAI = true) {
         auto_summary: standardizedEvent.summary || standardizedEvent.title,
         confidence: 0.7,
       };
+    } else if (standardizedEvent.ai_enhanced == null) {
+      standardizedEvent.ai_enhanced = false;
     }
 
     return await OpEvent.create(standardizedEvent);

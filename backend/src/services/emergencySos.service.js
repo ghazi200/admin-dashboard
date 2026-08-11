@@ -36,9 +36,10 @@ function defaultAiSuggestions({ guardName, locationText }) {
   };
 }
 
-async function generateSosAiSuggestions({ guardName, lat, lng, tenantId }) {
+async function generateSosAiSuggestions({ guardName, lat, lng, tenantId, locationLabel }) {
   const locationText =
-    lat != null && lng != null ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}` : null;
+    locationLabel ||
+    (lat != null && lng != null ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}` : null);
   const fallback = defaultAiSuggestions({ guardName, locationText });
 
   try {
@@ -86,7 +87,7 @@ async function generateSosAiSuggestions({ guardName, lat, lng, tenantId }) {
   }
 }
 
-async function placeSosVoiceCall({ toPhone, guardName, lat, lng }) {
+async function placeSosVoiceCall({ toPhone, guardName, lat, lng, locationLabel }) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_FROM_NUMBER;
@@ -95,10 +96,14 @@ async function placeSosVoiceCall({ toPhone, guardName, lat, lng }) {
   if (!from) return { placed: false, reason: "missing_from_number" };
   if (!to) return { placed: false, reason: "no_phone" };
 
-  const loc =
-    lat != null && lng != null
-      ? `Location approximately latitude ${Number(lat).toFixed(4)}, longitude ${Number(lng).toFixed(4)}.`
-      : "Location was not available.";
+  let loc;
+  if (locationLabel) {
+    loc = `Location: ${locationLabel}.`;
+  } else if (lat != null && lng != null) {
+    loc = `Location approximately latitude ${Number(lat).toFixed(4)}, longitude ${Number(lng).toFixed(4)}.`;
+  } else {
+    loc = "Location was not available.";
+  }
   const say = [
     "Alert from Abe Guard.",
     `Emergency S O S activated by ${guardName || "a guard"}.`,
@@ -110,7 +115,7 @@ async function placeSosVoiceCall({ toPhone, guardName, lat, lng }) {
 <Response>
   <Say voice="alice">${say.replace(/&/g, "and").replace(/</g, " ")}</Say>
   <Pause length="1"/>
-  <Say voice="alice">Repeat. Emergency S O S. Check the admin dashboard now.</Say>
+  <Say voice="alice">Repeat. Emergency S O S${locationLabel ? ` at ${String(locationLabel).replace(/&/g, "and")}` : ""}. Check the admin dashboard now.</Say>
 </Response>`;
 
   try {
@@ -118,7 +123,7 @@ async function placeSosVoiceCall({ toPhone, guardName, lat, lng }) {
     const client = twilio(accountSid, authToken);
     const call = await client.calls.create({ to, from, twiml });
     console.log(`📞 SOS voice started sid=${call.sid} to=${to}`);
-    return { placed: true, to, sid: call.sid, status: call.status };
+    return { placed: true, to, sid: call.sid, status: call.status, locationLabel: locationLabel || null };
   } catch (e) {
     console.error("SOS voice call failed:", e?.message || e);
     return { placed: false, error: e?.message || String(e), code: e?.code, to };
@@ -167,6 +172,76 @@ async function findOnCallSupervisor(sequelize, tenantId) {
   }
 }
 
+function haversineMiles(lat1, lon1, lat2, lon2) {
+  const toRad = (d) => (Number(d) * Math.PI) / 180;
+  const R = 3958.8;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/**
+ * Match GPS to nearest site address (handles longitudes stored without minus sign).
+ */
+async function resolveNearestSite(sequelize, { tenantId, lat, lng }) {
+  if (lat == null || lng == null || !sequelize) return null;
+  try {
+    const params = [];
+    let sql = `SELECT id, name, address_1, address_2, latitude, longitude, tenant_id FROM sites WHERE latitude IS NOT NULL AND longitude IS NOT NULL`;
+    if (tenantId) {
+      params.push(tenantId);
+      sql += ` AND (tenant_id = $1 OR tenant_id IS NULL)`;
+    }
+    sql += ` LIMIT 200`;
+    const [rows] = await sequelize.query(sql, { bind: params });
+    if (!rows?.length) return null;
+
+    let best = null;
+    let bestMiles = Infinity;
+    const gLat = Number(lat);
+    const gLng = Number(lng);
+
+    for (const s of rows) {
+      const sLat = Number(s.latitude);
+      let sLng = Number(s.longitude);
+      if (!Number.isFinite(sLat) || !Number.isFinite(sLng)) continue;
+      // NYC-ish longitudes in DB sometimes lack the minus sign
+      const candidates = [sLng];
+      if (sLng > 0 && gLng < 0) candidates.push(-sLng);
+      if (sLng < 0 && gLng > 0) candidates.push(Math.abs(sLng));
+
+      for (const lon of candidates) {
+        const miles = haversineMiles(gLat, gLng, sLat, lon);
+        if (miles < bestMiles) {
+          bestMiles = miles;
+          best = s;
+        }
+      }
+    }
+
+    // Accept within ~5 miles for city posts; otherwise still prefer nearest site name if < 25 mi
+    if (!best || bestMiles > 25) return null;
+
+    const address =
+      [best.address_1, best.address_2].filter(Boolean).join(", ") ||
+      best.name ||
+      null;
+
+    return {
+      siteId: best.id,
+      siteName: best.name || null,
+      address,
+      miles: Math.round(bestMiles * 100) / 100,
+    };
+  } catch (e) {
+    console.warn("resolveNearestSite failed:", e?.message || e);
+    return null;
+  }
+}
+
 async function ensureEmergencyContactsTable(sequelize) {
   await sequelize.query(`
     CREATE TABLE IF NOT EXISTS emergency_contacts (
@@ -200,14 +275,28 @@ async function triggerEmergencySos(app, { guardId, lat, lng, accuracy, notifyPho
   const guardName = guard.name || guard.email || "Guard";
   const supervisor = await findOnCallSupervisor(sequelize, tenantId);
 
+  const nearest = await resolveNearestSite(sequelize, { tenantId, lat, lng });
+  const locationLabel =
+    nearest?.address ||
+    nearest?.siteName ||
+    (lat != null && lng != null
+      ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`
+      : null);
+
   // Prefer fast path: DB + call first; AI can use fallback if slow
   let ai = defaultAiSuggestions({
     guardName,
-    locationText:
-      lat != null && lng != null ? `${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}` : null,
+    locationText: locationLabel,
   });
   try {
-    ai = await generateSosAiSuggestions({ guardName, lat, lng, tenantId });
+    ai = await generateSosAiSuggestions({
+      guardName,
+      lat,
+      lng,
+      tenantId,
+      locationLabel,
+    });
+    if (locationLabel) ai.locationText = locationLabel;
   } catch (_) {
     /* keep fallback */
   }
@@ -254,32 +343,93 @@ async function triggerEmergencySos(app, { guardId, lat, lng, accuracy, notifyPho
       incident = await Incident.create({
         tenantId,
         guardId: guard.id,
+        siteId: nearest?.siteId || null,
         title: `EMERGENCY SOS — ${guardName}`,
         type: "EMERGENCY_SOS",
         description: [
           `Guard ${guardName} activated Emergency SOS.`,
-          ai.locationText ? `GPS: ${ai.locationText}` : "GPS unavailable.",
+          locationLabel ? `Location: ${locationLabel}` : "Location unavailable.",
+          nearest?.miles != null ? `(~${nearest.miles} mi from matched site)` : "",
+          lat != null && lng != null
+            ? `GPS: ${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)}`
+            : "",
           "",
           ai.summary,
           "",
           "Suggested actions:",
           ...(ai.suggestedActions || []).map((a, i) => `${i + 1}. ${a}`),
-        ].join("\n"),
+        ]
+          .filter(Boolean)
+          .join("\n"),
         status: "OPEN",
         severity: "CRITICAL",
         occurredAt: new Date(),
         reportedAt: new Date(),
-        locationText: ai.locationText,
+        locationText: locationLabel,
         aiSummary: ai.summary,
         aiTagsJson: {
           source: "emergency_sos",
           emergencyEventId: emergencyId,
           suggestedActions: ai.suggestedActions,
+          siteId: nearest?.siteId || null,
+          siteName: nearest?.siteName || null,
+          siteAddress: nearest?.address || null,
         },
       });
     }
   } catch (e) {
     console.warn("SOS incident create failed (non-fatal):", e?.message || e);
+  }
+
+  // Command Center feed: write OpEvent directly (don't rely on Redis realtime path)
+  try {
+    const opsEventService = require("./opsEvent.service");
+    const models = app.locals.models;
+    await opsEventService.createOpEvent(
+      {
+        tenant_id: tenantId,
+        site_id: nearest?.siteId || null,
+        type: "INCIDENT",
+        severity: "CRITICAL",
+        title: `EMERGENCY SOS — ${guardName}`,
+        summary: [
+          locationLabel ? `Location: ${locationLabel}` : null,
+          ai.summary,
+          (ai.suggestedActions || []).slice(0, 3).map((a, i) => `${i + 1}. ${a}`).join(" "),
+        ]
+          .filter(Boolean)
+          .join(" | "),
+        entity_refs: {
+          incident_id: incident?.id || null,
+          emergency_event_id: emergencyId,
+          guard_id: guard.id,
+          site_id: nearest?.siteId || null,
+          site_address: nearest?.address || locationLabel || null,
+          site_name: nearest?.siteName || null,
+        },
+        raw_event: {
+          type: "emergency:sos",
+          emergencyEventId: emergencyId,
+          guardId: guard.id,
+          guardName,
+          locationLabel,
+          incidentId: incident?.id || null,
+        },
+        created_at: new Date(),
+        ai_enhanced: false,
+        ai_tags: {
+          risk_level: "CRITICAL",
+          category: "Incident",
+          auto_summary: ai.summary,
+          confidence: 0.85,
+          suggested_actions: ai.suggestedActions || [],
+        },
+      },
+      models,
+      false // skip slow AI tagging so SOS stays fast
+    );
+  } catch (e) {
+    console.warn("SOS OpEvent create failed:", e?.message || e);
   }
 
   const notifyPhone =
@@ -292,6 +442,7 @@ async function triggerEmergencySos(app, { guardId, lat, lng, accuracy, notifyPho
     guardName,
     lat,
     lng,
+    locationLabel,
   });
 
   const payload = {
@@ -312,6 +463,10 @@ async function triggerEmergencySos(app, { guardId, lat, lng, accuracy, notifyPho
       lat != null && lng != null
         ? { lat: Number(lat), lng: Number(lng), accuracy: accuracy != null ? Number(accuracy) : null }
         : null,
+    locationLabel,
+    site: nearest
+      ? { id: nearest.siteId, name: nearest.siteName, address: nearest.address }
+      : null,
     incidentId: incident?.id || null,
     ai,
     dialStatus: callResult.placed ? "initiated" : callResult.reason || callResult.error || "failed",
@@ -333,6 +488,19 @@ async function triggerEmergencySos(app, { guardId, lat, lng, accuracy, notifyPho
           severity: incident.severity,
           type: incident.type,
           tenantId,
+          siteId: nearest?.siteId || null,
+          locationLabel,
+          location_text: locationLabel,
+          description: incident.description,
+          skipOpEvent: true, // OpEvent already written in triggerEmergencySos
+          incident: {
+            id: incident.id,
+            type: incident.type,
+            severity: incident.severity,
+            description: incident.description,
+            location_text: locationLabel,
+            site_id: nearest?.siteId || null,
+          },
         });
       }
     }
@@ -351,6 +519,8 @@ async function triggerEmergencySos(app, { guardId, lat, lng, accuracy, notifyPho
       dialStatus: payload.dialStatus,
       call: callResult,
       location: payload.location,
+      locationLabel,
+      site: payload.site,
       activatedAt: payload.timestamp,
       incidentId: incident?.id || null,
       ai,
@@ -364,4 +534,5 @@ module.exports = {
   ensureEmergencyContactsTable,
   placeSosVoiceCall,
   generateSosAiSuggestions,
+  resolveNearestSite,
 };

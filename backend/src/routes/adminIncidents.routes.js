@@ -56,6 +56,7 @@ router.get(
         });
 
         let guardsById = {};
+        let sitesById = {};
         if (Guard) {
           const ids = [...new Set(rows.map((r) => r.guardId).filter(Boolean))];
           if (ids.length) {
@@ -66,20 +67,45 @@ router.get(
             guardsById = Object.fromEntries(guards.map((g) => [g.id, g]));
           }
         }
+        const { Site } = req.app.locals.models || {};
+        if (Site) {
+          const siteIds = [...new Set(rows.map((r) => r.siteId || r.site_id).filter(Boolean))];
+          if (siteIds.length) {
+            const sites = await Site.findAll({
+              where: { id: { [Op.in]: siteIds } },
+              attributes: ["id", "name", "address_1", "city"],
+            });
+            sitesById = Object.fromEntries(sites.map((s) => [s.id, s]));
+          }
+        }
 
         const out = rows.map((r) => {
           const j = typeof r.toJSON === "function" ? r.toJSON() : r;
           const g = guardsById[j.guardId || j.guard_id];
+          const siteId = j.siteId || j.site_id;
+          const site = siteId ? sitesById[siteId] : null;
+          const siteAddress =
+            site &&
+            [site.address_1, site.city].filter(Boolean).join(", ");
           return {
             ...j,
             guard_id: j.guardId || j.guard_id,
+            site_id: siteId || null,
             tenant_id: j.tenantId || j.tenant_id,
             ai_summary: j.aiSummary || j.ai_summary,
             ai_tags_json: j.aiTagsJson || j.ai_tags_json,
-            location_text: j.locationText || j.location_text,
+            location_text: j.locationText || j.location_text || siteAddress || null,
             reported_at: j.reportedAt || j.reported_at,
             occurred_at: j.occurredAt || j.occurred_at,
             guard_name: g?.name || g?.email || null,
+            site: site
+              ? {
+                  id: site.id,
+                  name: site.name,
+                  address_1: site.address_1,
+                  city: site.city,
+                }
+              : null,
           };
         });
         return res.json(out);

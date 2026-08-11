@@ -425,18 +425,17 @@ export default function Incidents() {
                       {incident.description?.substring(0, 100)}
                       {incident.description?.length > 100 ? "..." : ""}
                     </h3>
-                    {site && (
+                    {incident.location_text || site?.address_1 ? (
+                      <div style={{ marginBottom: 8, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
+                        📍 {incident.location_text || site?.address_1}
+                        {site?.name && incident.location_text !== site.name ? ` (${site.name})` : ""}
+                      </div>
+                    ) : site ? (
                       <div style={{ marginBottom: 8, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
                         📍 {site.name}
-                        {site.address_1 && ` - ${site.address_1}`}
                         {site.city && `, ${site.city}`}
                       </div>
-                    )}
-                    {incident.location_text && !site && (
-                      <div style={{ marginBottom: 8, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
-                        📍 {incident.location_text}
-                      </div>
-                    )}
+                    ) : null}
                     <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 1.5 }}>
                       {incident.description}
                     </p>

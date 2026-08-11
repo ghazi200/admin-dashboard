@@ -1808,7 +1808,10 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div className="muted">
-                      {incident.site?.name || incident.location_text || "No location"}
+                      {incident.location_text ||
+                        incident.site?.address_1 ||
+                        incident.site?.name ||
+                        "No location"}
                       {incident.description && ` • ${incident.description.substring(0, 40)}${incident.description.length > 40 ? "..." : ""}`}
                     </div>
                     <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>

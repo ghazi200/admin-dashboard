@@ -2020,6 +2020,11 @@ export default function CommandCenter() {
                       {event.summary && (
                         <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)" }}>{event.summary}</div>
                       )}
+                      {(event.entity_refs?.site_address || event.raw_event?.locationLabel) && (
+                        <div style={{ fontSize: 12, color: "rgba(148,163,184,0.95)", marginTop: 6 }}>
+                          📍 {event.entity_refs?.site_address || event.raw_event?.locationLabel}
+                        </div>
+                      )}
                       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginTop: 8 }}>
                         {new Date(event.created_at).toLocaleString()}
                       </div>
