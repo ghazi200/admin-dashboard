@@ -49,7 +49,9 @@ router.get(
 
         const rows = await Incident.findAll({
           where,
-          order: [["reportedAt", "DESC"], ["createdAt", "DESC"]],
+          order: [
+            [sequelize.literal("COALESCE(reported_at, created_at)"), "DESC"],
+          ],
           limit,
         });
 
