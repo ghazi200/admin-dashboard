@@ -150,7 +150,11 @@ export default function CommandCenter() {
     refetch: refetchFeed,
   } = useQuery({
     queryKey: ["commandCenterFeed"],
-    queryFn: () => getCommandCenterFeed({ limit: 50 }),
+    queryFn: async () => {
+      const response = await getCommandCenterFeed({ limit: 50 });
+      // axios body: { data: [...events], count, filters }
+      return response?.data ?? { data: [], count: 0 };
+    },
     refetchInterval: 30000, // Refresh every 30 seconds
     retry: 1,
   });
@@ -163,7 +167,10 @@ export default function CommandCenter() {
     refetch: refetchAtRisk,
   } = useQuery({
     queryKey: ["atRiskShifts"],
-    queryFn: () => getAtRiskShifts({ limit: 20, minRiskScore: 40 }),
+    queryFn: async () => {
+      const response = await getAtRiskShifts({ limit: 20, minRiskScore: 40 });
+      return response?.data ?? { data: [], count: 0 };
+    },
     refetchInterval: 60000, // Refresh every minute
     retry: 1,
   });
@@ -317,16 +324,25 @@ export default function CommandCenter() {
     setQueryAnswer(null);
   };
 
-  const feedEvents = Array.isArray(feedData?.data) ? feedData.data : [];
-  const atRiskShifts = Array.isArray(atRiskData?.data) ? atRiskData.data : [];
+  const feedEvents = Array.isArray(feedData?.data)
+    ? feedData.data
+    : Array.isArray(feedData)
+      ? feedData
+      : [];
+  const atRiskShifts = Array.isArray(atRiskData?.data)
+    ? atRiskData.data
+    : Array.isArray(atRiskData)
+      ? atRiskData
+      : [];
 
   // Extract top risks for AI tiles (with safety checks)
   const criticalRisks = Array.isArray(atRiskShifts)
     ? atRiskShifts.filter((item) => item?.risk?.riskScore >= 70).slice(0, 3)
     : [];
   const highSeverityEvents = Array.isArray(feedEvents)
-    ? feedEvents.filter((e) => e?.severity === "HIGH" || e?.severity === "CRITICAL").slice(0, 3)
+    ? feedEvents.filter((e) => e?.severity === "HIGH" || e?.severity === "CRITICAL").slice(0, 5)
     : [];
+  const needsAttention = criticalRisks.length > 0 || highSeverityEvents.length > 0;
 
   return (
     <div style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
@@ -357,30 +373,45 @@ export default function CommandCenter() {
             What Needs Attention
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {criticalRisks.length > 0 ? (
-              criticalRisks.map((item, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: 10,
-                    background: "rgba(239,68,68,0.1)",
-                    borderRadius: 6,
-                    border: "1px solid rgba(239,68,68,0.3)",
-                    fontSize: 13,
-                    color: "#ffffff",
-                  }}
-                >
-                  ⚠️ {item.shift.shift_date} {item.shift.shift_start} - Risk: {item.risk.riskScore.toFixed(0)}
-                </div>
-              ))
-            ) : (
+            {highSeverityEvents.map((event, idx) => (
+              <div
+                key={event.id || `sev-${idx}`}
+                style={{
+                  padding: 10,
+                  background: "rgba(239,68,68,0.1)",
+                  borderRadius: 6,
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  fontSize: 13,
+                  color: "#ffffff",
+                }}
+              >
+                🚨 {event.title || "Critical event"}
+                {(event.entity_refs?.site_address || event.raw_event?.locationLabel) && (
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>
+                    📍 {event.entity_refs?.site_address || event.raw_event?.locationLabel}
+                  </div>
+                )}
+              </div>
+            ))}
+            {criticalRisks.map((item, idx) => (
+              <div
+                key={`risk-${idx}`}
+                style={{
+                  padding: 10,
+                  background: "rgba(239,68,68,0.1)",
+                  borderRadius: 6,
+                  border: "1px solid rgba(239,68,68,0.3)",
+                  fontSize: 13,
+                  color: "#ffffff",
+                }}
+              >
+                ⚠️ {item.shift?.shift_date} {item.shift?.shift_start} - Risk:{" "}
+                {item.risk?.riskScore?.toFixed?.(0) ?? item.risk?.riskScore}
+              </div>
+            ))}
+            {!needsAttention && (
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
                 ✅ No critical issues at this time
-              </div>
-            )}
-            {highSeverityEvents.length > 0 && (
-              <div style={{ fontSize: 13, color: "#ffffff", marginTop: 8 }}>
-                🚨 {highSeverityEvents.length} high-severity event{highSeverityEvents.length > 1 ? "s" : ""}
               </div>
             )}
           </div>
