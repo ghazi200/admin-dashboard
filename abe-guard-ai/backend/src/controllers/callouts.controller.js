@@ -108,24 +108,82 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
 
   const eligibleGuards = excludeCallerGuard(allActive, callerGuardId);
 
-  // 4) Rank guards (enhanced ranking with reliability decay and site success rates)
-  const source = process.env.OPENAI_API_KEY ? "openai" : "simple";
+  // 3) Straight-time (Pool A) vs OT (Pool B); exclude conflicts / unavailable
+  const { buildCalloutPools } = require("../services/calloutOtPools.service");
+  const sequelize = Shift?.sequelize || Guard?.sequelize || null;
+  const pools = await buildCalloutPools({
+    guards: eligibleGuards,
+    shift,
+    Shift,
+    sequelize,
+    opts: {
+      allowOt: opts?.allowOt === true,
+      alwaysIncludeOt: opts?.alwaysIncludeOt === true,
+    },
+  });
+
   console.log(
-    `[CALL_OUT] ranking source=${source} shift=${shift.id} eligibleGuards=${eligibleGuards.length}`
+    `[CALL_OUT] pools shift=${shift.id} straight=${pools.meta.straightTimeCount} ot=${pools.meta.overtimeCount} excluded=${pools.meta.excludedCount} notifyPolicy=${pools.notifyPolicy} otNecessary=${pools.otNecessary}`
   );
 
-  // Get models for enhanced ranking
+  // 4) Rank within each pool, then notify order = Pool A then Pool B (per policy)
+  const source = process.env.OPENAI_API_KEY ? "openai" : "simple";
+  console.log(
+    `[CALL_OUT] ranking source=${source} shift=${shift.id} eligibleGuards=${eligibleGuards.length} notifyCandidates=${pools.notifyGuards.length}`
+  );
+
   const models = { Shift, Guard };
-  const rankedGuards = await rankGuards(eligibleGuards, shift, models);
+  const rankedA = await rankGuards(pools.poolA, shift, models);
+  const rankedB = await rankGuards(pools.poolB, shift, models);
+
+  // Preserve pool metadata after ranking (rankGuards returns plain rows with scores)
+  const byId = new Map(
+    [...pools.poolA, ...pools.poolB].map((g) => [String(g.id), g])
+  );
+  const attachPoolMeta = (ranked) =>
+    (ranked || []).map((g) => {
+      const base = byId.get(String(g.id)) || {};
+      return {
+        ...g,
+        _pool: base._pool || g._pool,
+        _poolReason: base._poolReason || g._poolReason,
+        _currentHours: base._currentHours,
+        _projectedHours: base._projectedHours,
+        _shiftHours: base._shiftHours,
+        _weeklyCap: base._weeklyCap,
+      };
+    });
+
+  const rankedPoolA = attachPoolMeta(rankedA);
+  const rankedPoolB = attachPoolMeta(rankedB);
+
+  let rankedForNotify;
+  if (pools.notifyPolicy === "straight_time_only") {
+    rankedForNotify = rankedPoolA;
+  } else if (pools.notifyPolicy === "ot_necessary_no_straight_time") {
+    rankedForNotify = rankedPoolB;
+  } else {
+    // include_ot_after_straight_time | admin_allow_ot
+    rankedForNotify = [...rankedPoolA, ...rankedPoolB];
+  }
 
   // IMPORTANT: rankings[] is what the UI uses.
   // We will attach calloutId onto each ranking entry after Callout.create().
-  const rankings = rankedGuards.map((g, idx) => {
+  const rankings = rankedForNotify.map((g, idx) => {
     // Build enhanced explanation from ranking factors
     const factors = g._rankFactors || {};
     const guardSiteStats = g._siteStats || { successRate: 0.5, shiftCount: 0, onTimeRate: 0.5 };
-    
-    let reasonParts = [];
+    const poolLabel =
+      g._pool === "overtime"
+        ? "OT pool"
+        : g._pool === "straight_time"
+          ? "straight-time pool"
+          : "pool";
+
+    let reasonParts = [`${poolLabel}`];
+    if (g._projectedHours != null && g._weeklyCap != null) {
+      reasonParts.push(`projected ${g._projectedHours}h/wk (cap ${g._weeklyCap})`);
+    }
     if (factors.reliabilityScore !== undefined) {
       reasonParts.push(`${Math.round(factors.reliabilityScore * 100)}% reliability${factors.reliabilityDecayed ? " (decayed)" : ""}`);
     }
@@ -146,17 +204,19 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
       }
     }
 
-    const reason = reasonParts.length > 0
-      ? `Ranked #${idx + 1}: ${reasonParts.join(", ")}`
-      : `Ranked #${idx + 1} by enhanced scoring algorithm`;
+    const reason = `Ranked #${idx + 1}: ${reasonParts.join(", ")}`;
 
     return {
       guardId: g.id,
       rank: idx + 1,
-      reason: reason,
+      reason,
       calloutId: null, // <-- will be set below
-      factors: factors, // Include detailed factors for explainability
-      siteStats: guardSiteStats, // Include site stats
+      pool: g._pool || null,
+      poolReason: g._poolReason || null,
+      projectedHours: g._projectedHours ?? null,
+      currentHours: g._currentHours ?? null,
+      factors,
+      siteStats: guardSiteStats,
     };
   });
 
@@ -167,13 +227,33 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
       shiftId: shift.id,
       reason: cleanReason,
       callerGuardId: callerGuardId || null,
-      excluded: callerGuardId
-        ? [{ guardId: callerGuardId, why: "Caller excluded" }]
-        : [],
-      eligibilityNote: "Only is_active=true AND callout_eligible=true guards are ranked",
-      rankings, // contains calloutId:null at this point; fine for audit
+      excluded: [
+        ...(callerGuardId
+          ? [{ guardId: callerGuardId, why: "Caller excluded" }]
+          : []),
+        ...pools.excluded.map((g) => ({
+          guardId: g.id,
+          why: g._poolReason || "excluded",
+          currentHours: g._currentHours,
+          projectedHours: g._projectedHours,
+        })),
+      ],
+      eligibilityNote:
+        "Active + callout_eligible + tenant; prefer straight-time (projected <= weekly cap); OT pool only when necessary or allowOt",
+      otPolicy: {
+        weeklyCap: pools.meta.weeklyCap,
+        shiftHours: pools.meta.shiftHours,
+        straightTimeCount: pools.meta.straightTimeCount,
+        overtimeCount: pools.meta.overtimeCount,
+        excludedCount: pools.meta.excludedCount,
+        notifyPolicy: pools.notifyPolicy,
+        otNecessary: pools.otNecessary,
+      },
+      poolA: rankedPoolA.map((g) => g.id),
+      poolB: rankedPoolB.map((g) => g.id),
+      rankings,
       createdAt: new Date().toISOString(),
-      model: "simple-ranking-v1",
+      model: "ot-pools-ranking-v1",
       feedback: [],
     },
   });
@@ -186,6 +266,10 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
     console.warn("[CALL_OUT] rankings empty — no Callout rows will be created", {
       shiftId: shift.id,
       eligibleCount: eligibleGuards.length,
+      straightTimeCount: pools.meta.straightTimeCount,
+      overtimeCount: pools.meta.overtimeCount,
+      excludedCount: pools.meta.excludedCount,
+      notifyPolicy: pools.notifyPolicy,
     });
   }
 
@@ -201,7 +285,7 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
     }
     const guard =
       eligibleGuards.find((g) => String(g.id) === String(r.guardId)) ||
-      rankedGuards.find((g) => String(g.id) === String(r.guardId));
+      rankedForNotify.find((g) => String(g.id) === String(r.guardId));
     if (!guard || !r.guardId) continue;
 
     let calloutRow = null;
@@ -273,6 +357,15 @@ async function handleCallout(io, shiftId, reason = "SICK", opts = {}) {
     reason: cleanReason,
     excludedCaller: Boolean(callerGuardId),
     callerGuardId: callerGuardId || null,
+    otNecessary: pools.otNecessary,
+    notifyPolicy: pools.notifyPolicy,
+    otPolicy: {
+      weeklyCap: pools.meta.weeklyCap,
+      shiftHours: pools.meta.shiftHours,
+      straightTimeCount: pools.meta.straightTimeCount,
+      overtimeCount: pools.meta.overtimeCount,
+      excludedCount: pools.meta.excludedCount,
+    },
     rankings, // <-- now contains calloutId
     callouts: createdCallouts.map((c) => ({
       calloutId: c.id,
@@ -289,7 +382,7 @@ async function triggerCallout(req, res) {
   try {
     const io = req.app.get("io");
     const emitAdmin = req.app.get("emitAdmin"); // ✅ only inside handler
-    const { shiftId, reason = "SICK", callerGuardId, tenantId } = req.body;
+    const { shiftId, reason = "SICK", callerGuardId, tenantId, allowOt, alwaysIncludeOt } = req.body;
 
     const cleanShiftId = String(shiftId || "").trim();
     if (!isUUID(cleanShiftId)) {
@@ -315,6 +408,8 @@ async function triggerCallout(req, res) {
     const result = await handleCallout(io, cleanShiftId, reason, {
       callerGuardId: cleanCaller,
       tenantId: cleanTenant,
+      allowOt: allowOt === true || allowOt === "true",
+      alwaysIncludeOt: alwaysIncludeOt === true || alwaysIncludeOt === "true",
       emitAdmin: typeof emitAdmin === "function" ? emitAdmin : null,
     });
 
