@@ -72,4 +72,12 @@ router.post(
   dashboardController.resolveEmergency
 );
 
+// ✅ Live SOS test / admin-triggered SOS (calls notifyPhone, creates incident)
+router.post(
+  "/trigger-test-sos",
+  authAdmin,
+  requireAccess("dashboard:write"),
+  dashboardController.triggerTestSos
+);
+
 module.exports = router;

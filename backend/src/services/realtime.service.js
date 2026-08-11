@@ -42,6 +42,7 @@ const EVENTS_FOR_OPEVENT = [
   "guard_lunch_ended",
   "shift_filled",
   "shift:created",
+  "emergency:sos",
 ];
 
 async function getPublisher() {

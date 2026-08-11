@@ -1034,3 +1034,42 @@ exports.resolveEmergency = async (req, res) => {
       });
   }
 };
+
+/**
+ * POST /api/admin/dashboard/trigger-test-sos
+ * Body: { guardId?, notifyPhone?, lat?, lng?, accuracy? }
+ * Creates a live SOS (emergency + incident + Twilio call + realtime).
+ */
+exports.triggerTestSos = async (req, res) => {
+  try {
+    const { Guard } = req.app.locals.models || {};
+    const { triggerEmergencySos } = require("../services/emergencySos.service");
+
+    let guardId = req.body?.guardId || req.body?.guard_id || null;
+    if (!guardId && Guard) {
+      const tenantId = req.admin?.tenant_id || null;
+      const where = { email: { [require("sequelize").Op.ne]: null } };
+      if (tenantId && String(req.admin?.role || "").toLowerCase() !== "super_admin") {
+        where.tenant_id = tenantId;
+      }
+      const g = await Guard.findOne({ where, order: [["created_at", "DESC"]] });
+      guardId = g?.id || null;
+    }
+    if (!guardId) {
+      return res.status(400).json({ message: "guardId required (no guard found)" });
+    }
+
+    const result = await triggerEmergencySos(req.app, {
+      guardId,
+      lat: req.body?.lat ?? 40.758,
+      lng: req.body?.lng ?? -73.9855,
+      accuracy: req.body?.accuracy ?? 12,
+      notifyPhoneOverride: req.body?.notifyPhone || req.body?.notify_phone || null,
+    });
+
+    return res.status(200).json(result);
+  } catch (e) {
+    console.error("triggerTestSos error:", e);
+    return res.status(e.status || 500).json({ message: e.message || "SOS test failed" });
+  }
+};

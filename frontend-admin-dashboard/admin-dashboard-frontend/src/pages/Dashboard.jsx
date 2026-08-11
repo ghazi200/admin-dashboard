@@ -718,14 +718,20 @@ export default function Dashboard() {
       const locationText = location 
         ? `Location: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`
         : "Location: Not available";
+      const aiSummary = payload?.ai?.summary || "";
+      const actions = Array.isArray(payload?.ai?.suggestedActions)
+        ? payload.ai.suggestedActions.map((a, i) => `${i + 1}. ${a}`).join("\n")
+        : "";
       
       // Show browser alert (critical - blocks UI)
       alert(
         `🚨 EMERGENCY SOS ALERT\n\n` +
         `Guard: ${guardName}\n` +
         `${locationText}\n\n` +
-        `On-call supervisor is being notified and called.\n\n` +
-        `Check dashboard for details.`
+        (aiSummary ? `AI: ${aiSummary}\n\n` : "") +
+        (actions ? `Suggested actions:\n${actions}\n\n` : "") +
+        `On-call supervisor is being notified and called.\n` +
+        `Check the SOS light and Incidents for details.`
       );
       
       // Refresh all dashboard data

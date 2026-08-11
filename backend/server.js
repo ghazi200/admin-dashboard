@@ -1006,6 +1006,11 @@ app.post("/api/guard/notifications/mark-all-read", authGuard, guardNotifications
 app.post("/api/guard/notifications/:id/read", authGuard, guardNotificationsCtrl.markGuardNotificationRead);
 app.get("/api/guard/alerts/combined/:shiftId", authGuard, guardUiStubs.getCombinedAlerts);
 
+// Emergency SOS (guard UI) — production path; lights admin dashboard SOS + incident + optional Twilio call
+const emergencySosRoutes = require("./src/routes/emergencySos.routes");
+app.use("/emergency", emergencySosRoutes);
+app.use("/api/guards/emergency", emergencySosRoutes);
+
 // Incident report: list sites for guard tenant (guard-ui GET /sites or /api/guard/sites)
 const guardSitesRoutes = require("./src/routes/guardSites.routes");
 app.use("/api/guard/sites", guardSitesRoutes);
