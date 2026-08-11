@@ -2,47 +2,48 @@ const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/db');
 const Tenant = require('./Tenant');
 
+/**
+ * Maps to public."Admins" (admin-dashboard schema): integer PK, password column, camelCase timestamps.
+ */
 const Admin = sequelize.define('Admin', {
   id: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
-    primaryKey: true
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
   },
   tenant_id: {
     type: DataTypes.UUID,
-    references: {
-      model: Tenant,
-      key: 'id'
-    }
+    allowNull: true,
   },
   name: {
-    type: DataTypes.TEXT,
-    allowNull: false
+    type: DataTypes.STRING,
+    allowNull: false,
   },
   email: {
-    type: DataTypes.TEXT,
+    type: DataTypes.STRING,
     allowNull: false,
-    unique: true
+    unique: true,
   },
   password_hash: {
-    type: DataTypes.TEXT,
-    allowNull: false
+    type: DataTypes.STRING,
+    allowNull: false,
+    field: 'password',
   },
   role: {
     type: DataTypes.STRING,
     allowNull: false,
-    defaultValue: "admin"
+    defaultValue: 'admin',
   },
   created_at: {
     type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
-  }
+    field: 'createdAt',
+  },
 }, {
-  tableName: 'admins',
-  timestamps: false
+  tableName: 'Admins',
+  freezeTableName: true,
+  timestamps: false,
 });
 
-// Association
 Admin.belongsTo(Tenant, { foreignKey: 'tenant_id' });
 
 module.exports = Admin;

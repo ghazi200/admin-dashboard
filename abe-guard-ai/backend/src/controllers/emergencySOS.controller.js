@@ -29,39 +29,46 @@ exports.triggerEmergencySOS = async (req, res) => {
 
     // Find on-call supervisor (admin or supervisor role in same tenant)
     let onCallSupervisor = null;
-    if (tenantId) {
-      onCallSupervisor = await Admin.findOne({
-        where: {
-          tenant_id: tenantId,
-          role: { [Op.in]: ["admin", "supervisor"] },
-          // TODO: Add on_call field to Admin model to track who's on call
-        },
-        order: [["created_at", "ASC"]], // Fallback to first admin/supervisor
-      });
-    }
+    try {
+      if (tenantId) {
+        onCallSupervisor = await Admin.findOne({
+          where: {
+            tenant_id: tenantId,
+            role: { [Op.in]: ["admin", "supervisor"] },
+          },
+          order: [["created_at", "ASC"]],
+        });
+      }
 
-    // If no tenant-specific supervisor, find any admin
-    if (!onCallSupervisor) {
-      onCallSupervisor = await Admin.findOne({
-        where: {
-          role: { [Op.in]: ["admin", "supervisor", "super_admin"] },
-        },
-        order: [["created_at", "ASC"]],
-      });
+      if (!onCallSupervisor) {
+        onCallSupervisor = await Admin.findOne({
+          where: {
+            role: { [Op.in]: ["admin", "supervisor", "super_admin"] },
+          },
+          order: [["created_at", "ASC"]],
+        });
+      }
+    } catch (supervisorErr) {
+      console.warn("⚠️ Supervisor lookup failed (continuing SOS):", supervisorErr.message);
+      onCallSupervisor = null;
     }
 
     // Create emergency event record (store in database)
+    // Note: Admins.id is integer; emergency_events.supervisor_id is UUID — store null for FK compatibility.
     let emergencyEvent;
     try {
       emergencyEvent = await EmergencyEvent.create({
         guard_id: guardId,
         tenant_id: tenantId,
-        supervisor_id: onCallSupervisor?.id || null,
+        supervisor_id: null,
         latitude: lat || null,
         longitude: lng || null,
         accuracy: accuracy || null,
         status: "active",
         activated_at: new Date(),
+        notes: onCallSupervisor
+          ? `Notified supervisor admin_id=${onCallSupervisor.id} (${onCallSupervisor.email || onCallSupervisor.name || ""})`
+          : null,
       });
     } catch (dbError) {
       console.error("❌ Failed to create emergency event:", dbError);
