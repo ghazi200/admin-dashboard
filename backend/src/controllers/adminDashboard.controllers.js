@@ -259,50 +259,89 @@ exports.getLiveCallouts = async (req, res) => {
 
 /**
  * ✅ GET /api/admin/dashboard/running-late
- * Returns shifts marked as running late with guard names and reasons
+ * Self-reported "I'm running late" PLUS automatic missed clock-in (no punch after grace).
+ * Hides anyone who has already clocked in.
  */
 exports.getRunningLate = async (req, res) => {
   try {
     const { sequelize } = req.app.locals.models;
+    const tz = process.env.LATE_CLOCKIN_TZ || "America/New_York";
 
-    // Query shifts that have running_late flag in ai_decision JSONB
-    // ✅ Tenant isolation: Filter by tenant
-    const params = [];
+    const params = [tz];
     const tenantId = getTenantFilter(req.admin);
-    // Fix: Build tenant filter with table alias
-    const tenantSql = tenantId ? `AND s.tenant_id = $1` : "";
-    if (tenantId) {
-      params.push(tenantId);
-    }
+    const tenantSql = tenantId ? `AND s.tenant_id = $2` : "";
+    if (tenantId) params.push(tenantId);
 
-    const [rows] = await sequelize.query(`
-      SELECT 
+    const [rows] = await sequelize.query(
+      `
+      SELECT
         s.id,
         s.guard_id,
         s.shift_date,
-        s.shift_start,
-        s.shift_end,
+        s.shift_start::text AS shift_start,
+        s.shift_end::text AS shift_end,
         s.status,
+        s.location,
         s.created_at,
-        s.ai_decision
+        s.ai_decision,
+        g.name AS guard_name,
+        g.email AS guard_email,
+        ROUND(
+          EXTRACT(EPOCH FROM (
+            NOW() - ((s.shift_date + s.shift_start::time) AT TIME ZONE $1)
+          )) / 60
+        )::int AS mins_late
       FROM shifts s
-      WHERE s.ai_decision->>'running_late' = 'true'
+      LEFT JOIN guards g ON g.id = s.guard_id
+      WHERE s.guard_id IS NOT NULL
+        AND (
+          s.ai_decision->>'running_late' = 'true'
+          OR s.ai_decision->>'late_clockin_alerted' = 'true'
+        )
+        AND UPPER(TRIM(COALESCE(s.status, ''))) NOT IN (
+          'CLOSED', 'CANCELLED', 'CANCELED', 'COMPLETED'
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM time_entries te
+          WHERE te.shift_id = s.id
+            AND te.guard_id = s.guard_id
+            AND te.clock_in_at IS NOT NULL
+        )
         ${tenantSql}
-      ORDER BY (s.ai_decision->>'marked_late_at') DESC NULLS LAST, s.created_at DESC
+      ORDER BY
+        COALESCE(
+          (s.ai_decision->>'late_clockin_alerted_at')::timestamptz,
+          (s.ai_decision->>'marked_late_at')::timestamptz,
+          s.created_at
+        ) DESC
       LIMIT 50
-    `, { bind: params });
+      `,
+      { bind: params }
+    );
 
-    // Transform to include guard name and reason
-    const runningLate = rows.map((s) => {
-      const guardIdShort = s.guard_id ? String(s.guard_id).substring(0, 8) : 'Unassigned';
-      const lateReason = s.ai_decision?.late_reason || 'Running late';
-      const markedAt = s.ai_decision?.marked_late_at || s.created_at;
+    const runningLate = (rows || []).map((s) => {
+      const missed = s.ai_decision?.late_clockin_alerted === true ||
+        s.ai_decision?.late_clockin_alerted === "true";
+      const selfReported = s.ai_decision?.running_late === true ||
+        s.ai_decision?.running_late === "true";
+      const minsLate = Number(s.mins_late);
+      const location = s.location || null;
+      const reason = missed
+        ? `No clock-in${Number.isFinite(minsLate) && minsLate > 0 ? ` (${minsLate} min late)` : ""}`
+        : s.ai_decision?.late_reason || "Running late";
+      const markedAt =
+        s.ai_decision?.late_clockin_alerted_at ||
+        s.ai_decision?.marked_late_at ||
+        s.created_at;
 
       return {
         id: s.id,
         guardId: s.guard_id,
-        guardName: `Guard ${guardIdShort}`, // Will show guard_id prefix until we can join properly
-        reason: lateReason,
+        guardName: s.guard_name || s.guard_email || "Guard",
+        reason,
+        location,
+        minsLate: Number.isFinite(minsLate) ? minsLate : null,
+        source: missed ? "missed_clock_in" : selfReported ? "self_reported" : "unknown",
         shiftDate: s.shift_date,
         shiftStart: s.shift_start,
         shiftEnd: s.shift_end,

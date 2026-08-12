@@ -98,6 +98,23 @@ function standardizeEvent(event, context = {}) {
       inspection_id: event.inspectionId || event.inspection?.id,
       guard_id: event.guardId || event.guard_id,
     };
+  } else if (event.type === "late_clockin_alert" || event.type === "LATE_CLOCKIN") {
+    type = "CLOCKIN";
+    severity = "HIGH";
+    const loc = event.locationLabel || event.location || null;
+    title = event.title || `No clock-in: ${event.guardName || event.guard_name || "Guard"}`;
+    summary = [
+      loc ? `Location: ${loc}` : null,
+      event.minsLate != null ? `${event.minsLate} min late` : null,
+      "Guard has not clocked in",
+    ]
+      .filter(Boolean)
+      .join(" | ");
+    entityRefs = {
+      shift_id: event.shiftId || event.shift_id,
+      guard_id: event.guardId || event.guard_id,
+      site_address: loc,
+    };
   } else if (
     event.type === "guard_clocked_in" ||
     event.type === "guard_clocked_out" ||

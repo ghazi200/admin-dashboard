@@ -160,6 +160,41 @@ app.get("/api/cron/shift-reminders", async (req, res) => {
   }
 });
 
+// Late clock-in: assigned guard has not punched after grace period
+app.get("/api/cron/late-clock-in", async (req, res) => {
+  const cronHealth = require("./src/services/cronHealth.service");
+  const secret = req.query.secret || req.get("X-Cron-Secret") || "";
+  const want = process.env.CRON_SECRET;
+  if (isProduction && !want) {
+    cronHealth.touch("late-clock-in", {
+      ok: false,
+      error: "CRON_SECRET is required in production",
+    });
+    return res.status(503).json({ ok: false, error: "CRON_SECRET is required in production" });
+  }
+  if (want && secret !== want) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+  if (!app.locals.models) {
+    cronHealth.touch("late-clock-in", { ok: false, error: "Models not ready" });
+    return res.status(503).json({ ok: false, error: "Models not ready" });
+  }
+  try {
+    const { runLateClockInCheck } = require("./src/services/lateClockIn.service");
+    const result = await runLateClockInCheck(app);
+    cronHealth.touch("late-clock-in", { ok: true, meta: { source: "http", ...result } });
+    return res.json({ ok: true, ran: "late-clock-in", ...result });
+  } catch (err) {
+    cronHealth.touch("late-clock-in", {
+      ok: false,
+      error: err?.message || "Run failed",
+      meta: { source: "http" },
+    });
+    logger.warn({ err: err?.message }, "Cron late-clock-in error");
+    return res.status(500).json({ ok: false, error: err?.message || "Run failed" });
+  }
+});
+
 // Finalize pending shift accepts after admin override window expires
 app.get("/api/cron/finalize-pending-accepts", async (req, res) => {
   const cronHealth = require("./src/services/cronHealth.service");
@@ -1335,6 +1370,13 @@ function withTimeout(promise, ms, label) {
           logger.info("Shift reminders service initialized");
         } catch (e) {
           logger.warn({ err: e?.message }, "Shift reminders init failed");
+        }
+
+        try {
+          const { startLateClockInJob } = require("./src/services/lateClockIn.service");
+          startLateClockInJob(app);
+        } catch (e) {
+          logger.warn({ err: e?.message }, "Late clock-in checker init failed");
         }
 
         // Realtime: log Redis publisher status so operators know events will reach the WebSocket Gateway

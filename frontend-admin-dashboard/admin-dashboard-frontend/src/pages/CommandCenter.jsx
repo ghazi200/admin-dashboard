@@ -191,6 +191,8 @@ export default function CommandCenter() {
     socket.on("callout_started", handleNewEvent);
     socket.on("guard_clocked_in", handleNewEvent);
     socket.on("guard_clocked_out", handleNewEvent);
+    socket.on("late_clockin_alert", handleNewEvent);
+    socket.on("guard_running_late", handleNewEvent);
 
     return () => {
       socket.off("incidents:new", handleNewEvent);
@@ -198,6 +200,8 @@ export default function CommandCenter() {
       socket.off("callout_started", handleNewEvent);
       socket.off("guard_clocked_in", handleNewEvent);
       socket.off("guard_clocked_out", handleNewEvent);
+      socket.off("late_clockin_alert", handleNewEvent);
+      socket.off("guard_running_late", handleNewEvent);
     };
   }, [refetchFeed, refetchAtRisk]);
 

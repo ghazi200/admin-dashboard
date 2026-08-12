@@ -564,6 +564,19 @@ export default function Dashboard() {
       }
     };
 
+    const onLateClockInAlert = async (payload) => {
+      console.log("📡 late_clockin_alert", payload);
+      try {
+        const response = await getRunningLate();
+        qc.setQueryData(["runningLate"], response.data);
+        qc.invalidateQueries({ queryKey: ["clockStatus"] });
+        qc.invalidateQueries({ queryKey: ["openShifts"] });
+      } catch (err) {
+        console.error("❌ Error refreshing late clock-in:", err);
+        refreshAll();
+      }
+    };
+
     // ✅ Listen for clock in/out and break events
     const onGuardClockedIn = async (payload) => {
       console.log("📡 guard_clocked_in EVENT RECEIVED", payload);
@@ -820,7 +833,7 @@ export default function Dashboard() {
         qc.invalidateQueries({ queryKey: ["clockStatus"] });
       }
       // If it's callout-related, refresh
-      if (eventName.includes("callout") || eventName.includes("shift") || eventName.includes("running_late") || eventName.includes("clocked") || eventName.includes("lunch") || eventName.includes("emergency")) {
+      if (eventName.includes("callout") || eventName.includes("shift") || eventName.includes("running_late") || eventName.includes("late_clockin") || eventName.includes("clocked") || eventName.includes("lunch") || eventName.includes("emergency")) {
         console.log("🔄 Triggering refresh due to", eventName);
         refreshAll();
       }
@@ -840,6 +853,7 @@ export default function Dashboard() {
       s.off("callout_response", onCalloutResponse);
       s.off("callout_update", onCalloutUpdate);
       s.off("guard_running_late", onGuardRunningLate);
+      s.off("late_clockin_alert", onLateClockInAlert);
       s.off("guard_clocked_in", onGuardClockedIn);
       s.off("guard_clocked_out", onGuardClockedOut);
       s.off("guard_lunch_started", onGuardLunchStarted);
@@ -856,6 +870,7 @@ export default function Dashboard() {
       s.on("callout_response", onCalloutResponse);
       s.on("callout_update", onCalloutUpdate);
       s.on("guard_running_late", onGuardRunningLate);
+      s.on("late_clockin_alert", onLateClockInAlert);
       s.on("guard_clocked_in", onGuardClockedIn);
       s.on("guard_clocked_out", onGuardClockedOut);
       s.on("guard_lunch_started", onGuardLunchStarted);
@@ -997,6 +1012,7 @@ export default function Dashboard() {
       s.off("callout_response", onCalloutResponse);
       s.off("callout_update", onCalloutUpdate);
       s.off("guard_running_late", onGuardRunningLate);
+      s.off("late_clockin_alert", onLateClockInAlert);
       s.off("guard_clocked_in", onGuardClockedIn);
       s.off("guard_clocked_out", onGuardClockedOut);
       s.off("guard_lunch_started", onGuardLunchStarted);
@@ -1567,7 +1583,25 @@ export default function Dashboard() {
               {runningLate.slice(0, 6).map((r) => (
                 <li key={r.id}>
                   <b>{r.guardName || "Guard"}</b>
-                  <div className="muted">{r.reason || "Running late"}</div>
+                  {r.source === "missed_clock_in" && (
+                    <span
+                      style={{
+                        marginLeft: 8,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        borderRadius: 6,
+                        background: "rgba(239,68,68,0.2)",
+                        color: "#fca5a5",
+                      }}
+                    >
+                      NO CLOCK-IN
+                    </span>
+                  )}
+                  <div className="muted">
+                    {r.location ? `${r.location} • ` : ""}
+                    {r.reason || "Running late"}
+                  </div>
                 </li>
               ))}
             </ul>
