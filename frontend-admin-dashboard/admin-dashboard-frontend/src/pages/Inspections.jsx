@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { listInspectionRequests, updateInspectionRequest, listSites, listGuards, createInspectionRequest } from "../services/api";
-import { getGuardAiOrigin } from "../api/apiOrigin";
 import Card from "../components/Card";
 
 // No socket on this page — avoids failures when guard realtime disconnects. Refresh to see new inspections.
@@ -45,20 +44,15 @@ export default function Inspections() {
     };
   }, []);
 
-  // Guard AI origin: Inspections use abeGuardAiClient (sites, inspection requests). When empty in production, those calls would hit wrong host and can trigger 401 redirect — so skip them and show message.
-  const guardAiOrigin = getGuardAiOrigin();
+  useEffect(() => {
+    loadGuards();
+    loadSites();
+    loadRequests();
+  }, []);
 
   useEffect(() => {
-    loadGuards(); // always from admin backend (axiosClient)
-    if (guardAiOrigin) {
-      loadSites();
-      loadRequests();
-    }
-  }, [guardAiOrigin]);
-
-  useEffect(() => {
-    if (guardAiOrigin) loadRequests();
-  }, [filters, guardAiOrigin]);
+    loadRequests();
+  }, [filters]);
 
   async function loadSites() {
     try {
@@ -178,13 +172,6 @@ export default function Inspections() {
 
   return (
     <div className="inspectionsPage" style={pageShell}>
-      {!guardAiOrigin && (
-        <div style={{ marginBottom: 16, padding: 16, background: "rgba(245, 158, 11, 0.15)", borderRadius: 8, border: "1px solid rgba(245,158,11,0.4)" }}>
-          <p style={{ margin: 0, color: "#f59e0b" }}>
-            Inspections require the Guard AI service. Set <strong>REACT_APP_GUARD_AI_URL</strong> in Vercel (and redeploy) to load sites and inspection requests.
-          </p>
-        </div>
-      )}
       <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 8, color: "#ffffff" }}>
@@ -351,14 +338,16 @@ export default function Inspections() {
                         </span>
                       )}
                     </div>
-                    {site && (
+                    {(request.location_text || request.site?.address_1 || site) && (
                       <div style={{ marginBottom: 8, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
-                        📍 {site.name}
+                        📍 {request.location_text || request.site?.address_1 || site?.name}
+                        {site?.name && request.location_text ? ` (${site.name})` : ""}
                       </div>
                     )}
-                    {guard && (
+                    {(guard || request.guard_name) && (
                       <div style={{ marginBottom: 8, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
-                        👤 {guard.name} {guard.email ? `(${guard.email})` : ""}
+                        👤 {guard?.name || request.guard_name}{" "}
+                        {(guard?.email || request.guard_email) ? `(${guard?.email || request.guard_email})` : ""}
                       </div>
                     )}
                     {request.instructions && (

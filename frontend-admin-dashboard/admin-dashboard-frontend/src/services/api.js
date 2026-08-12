@@ -428,21 +428,18 @@ export const summarizeIncident = (id) =>
 
 export const listSites = (tenantId = null) => {
   const queryString = tenantId ? `?tenantId=${tenantId}` : "";
-  return abeGuardAiClient.get(`/api/admin/sites${queryString}`);
+  return axiosClient.get(`/inspections/sites${queryString}`);
 };
 
-// ===== INSPECTIONS =====
-// Note: Inspection routes are on abe-guard-ai backend (port 4000)
+// ===== INSPECTIONS (admin-dashboard API — same DB as SOS / Command Center) =====
 export const createInspectionRequest = (data) =>
-  abeGuardAiClient.post("/api/admin/inspections/requests", data);
+  axiosClient.post("/inspections/requests", data);
 
-export const listInspectionRequests = (params = {}) => {
-  const queryString = new URLSearchParams(params).toString();
-  return abeGuardAiClient.get(`/api/admin/inspections/requests${queryString ? `?${queryString}` : ""}`);
-};
+export const listInspectionRequests = (params = {}) =>
+  axiosClient.get("/inspections/requests", { params });
 
 export const updateInspectionRequest = (id, data) =>
-  abeGuardAiClient.patch(`/api/admin/inspections/requests/${id}`, data);
+  axiosClient.patch(`/inspections/requests/${id}`, data);
 
 // Note: Use listGuards from admin dashboard backend (port 5000) for guard selection
 // Guards from admin dashboard and abe-guard-ai should be in sync via shared database

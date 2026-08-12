@@ -637,6 +637,9 @@ app.use("/api/admin/dashboard", adminDashboardRoutes);
 const adminIncidentsRoutes = require("./src/routes/adminIncidents.routes");
 app.use("/api/admin/incidents", adminIncidentsRoutes);
 
+const adminInspectionsRoutes = require("./src/routes/adminInspections.routes");
+app.use("/api/admin/inspections", adminInspectionsRoutes);
+
 const adminAIRankingRoutes = require("./src/routes/adminAIRanking.routes");
 app.use("/api/admin/ai-ranking", adminAIRankingRoutes);
 
