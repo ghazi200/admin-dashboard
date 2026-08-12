@@ -15,6 +15,12 @@
 
 const logger = require("../../logger");
 const { notify } = require("../utils/notify");
+const {
+  getDefaultWeeklyTemplate,
+  dateInTimeZone,
+  weekdayInTimeZone,
+  findGuardByName,
+} = require("../utils/weeklySchedule");
 
 function envInt(name, fallback) {
   const n = parseInt(process.env[name] || "", 10);
@@ -85,6 +91,102 @@ async function sendLateClockInSms({ guardName, locationLabel, minsLate, shiftSta
 }
 
 /**
+ * Materialize today's weekly schedule (template or default) into OPEN shift rows
+ * so late clock-in and the dashboard have real assigned posts to check.
+ */
+async function ensureTodayShiftsFromSchedule(sequelize) {
+  if (!sequelize) return { created: 0, existing: 0 };
+  const timeZone = tz();
+  const today = dateInTimeZone(timeZone);
+  const weekday = weekdayInTimeZone(timeZone);
+
+  const [configs] = await sequelize.query(
+    `SELECT tenant_id, building_location, schedule_template
+     FROM schedule_config
+     ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST`
+  );
+
+  const [guards] = await sequelize.query(
+    `SELECT id, name, email, tenant_id FROM guards WHERE name IS NOT NULL`
+  );
+
+  let location = "248 DUFFIELD STREET";
+  try {
+    const [sites] = await sequelize.query(
+      `SELECT address_1, name FROM sites
+       WHERE address_1 ILIKE '%duffield%' OR name ILIKE '%duffield%' OR name ILIKE '%offerman%'
+       LIMIT 1`
+    );
+    if (sites?.[0]?.address_1) location = sites[0].address_1;
+  } catch (_) {
+    /* sites table optional */
+  }
+
+  let created = 0;
+  let existing = 0;
+  const groups = configs?.length
+    ? configs
+    : [{ tenant_id: guards?.[0]?.tenant_id || null, building_location: location, schedule_template: [] }];
+
+  for (const cfg of groups) {
+    let template = cfg.schedule_template;
+    if (!Array.isArray(template) || template.length === 0) {
+      template = getDefaultWeeklyTemplate();
+    }
+    const day = template.find((d) => String(d.day || "").toLowerCase() === weekday.toLowerCase());
+    if (!day?.shifts?.length) continue;
+
+    const loc =
+      cfg.building_location &&
+      !/123 Main Street/i.test(String(cfg.building_location))
+        ? cfg.building_location
+        : location;
+
+    for (const slot of day.shifts) {
+      const guard = findGuardByName(guards || [], slot.scheduledGuard);
+      if (!guard) continue;
+      const start = String(slot.start || "").slice(0, 5);
+      const end = String(slot.end || "").slice(0, 5);
+      if (!start) continue;
+      const tenantId = cfg.tenant_id || guard.tenant_id || null;
+
+      const [found] = await sequelize.query(
+        `
+        SELECT id FROM shifts
+        WHERE shift_date = $1::date
+          AND shift_start::time = $2::time
+          AND guard_id = $3::uuid
+          AND UPPER(TRIM(COALESCE(status, ''))) NOT IN ('CANCELLED', 'CANCELED')
+        LIMIT 1
+        `,
+        { bind: [today, start, guard.id] }
+      );
+      if (found?.length) {
+        existing += 1;
+        continue;
+      }
+
+      await sequelize.query(
+        `
+        INSERT INTO shifts (
+          id, tenant_id, guard_id, shift_date, shift_start, shift_end, status, location, created_at
+        ) VALUES (
+          gen_random_uuid(), $1, $2::uuid, $3::date, $4::time, $5::time, 'OPEN', $6, NOW()
+        )
+        `,
+        { bind: [tenantId, guard.id, today, start, end || null, loc] }
+      );
+      created += 1;
+    }
+  }
+
+  if (created) {
+    logger.info({ created, existing, today, weekday }, "lateClockIn materialized today's schedule shifts");
+  }
+  return { created, existing, today, weekday };
+}
+
+/**
  * Find assigned shifts past grace with no clock-in, alert once.
  * @returns {Promise<{ checked: number, alerted: number, errors: number }>}
  */
@@ -96,6 +198,13 @@ async function runLateClockInCheck(app) {
   const grace = graceMinutes();
   const maxH = maxHours();
   const timeZone = tz();
+
+  let synced = { created: 0, existing: 0 };
+  try {
+    synced = await ensureTodayShiftsFromSchedule(sequelize);
+  } catch (e) {
+    logger.warn({ err: e?.message }, "lateClockIn schedule sync failed");
+  }
 
   let rows = [];
   try {
@@ -304,7 +413,14 @@ async function runLateClockInCheck(app) {
     }
   }
 
-  return { checked: rows.length, alerted, errors, graceMinutes: grace, tz: timeZone };
+  return {
+    checked: rows.length,
+    alerted,
+    errors,
+    graceMinutes: grace,
+    tz: timeZone,
+    synced,
+  };
 }
 
 function startLateClockInJob(app) {
@@ -337,5 +453,6 @@ function startLateClockInJob(app) {
 module.exports = {
   runLateClockInCheck,
   startLateClockInJob,
+  ensureTodayShiftsFromSchedule,
   graceMinutes,
 };

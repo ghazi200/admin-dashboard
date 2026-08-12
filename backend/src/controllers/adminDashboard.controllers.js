@@ -266,10 +266,19 @@ exports.getRunningLate = async (req, res) => {
   try {
     const { sequelize } = req.app.locals.models;
     const tz = process.env.LATE_CLOCKIN_TZ || "America/New_York";
+    const grace = Math.max(1, parseInt(process.env.LATE_CLOCKIN_GRACE_MINUTES || "15", 10) || 15);
+    const maxH = Math.max(1, parseInt(process.env.LATE_CLOCKIN_MAX_HOURS || "12", 10) || 12);
 
-    const params = [tz];
+    try {
+      const { ensureTodayShiftsFromSchedule } = require("../services/lateClockIn.service");
+      await ensureTodayShiftsFromSchedule(sequelize);
+    } catch (syncErr) {
+      console.warn("getRunningLate schedule sync:", syncErr?.message || syncErr);
+    }
+
+    const params = [tz, grace, maxH];
     const tenantId = getTenantFilter(req.admin);
-    const tenantSql = tenantId ? `AND s.tenant_id = $2` : "";
+    const tenantSql = tenantId ? `AND s.tenant_id = $4` : "";
     if (tenantId) params.push(tenantId);
 
     const [rows] = await sequelize.query(
@@ -294,10 +303,8 @@ exports.getRunningLate = async (req, res) => {
       FROM shifts s
       LEFT JOIN guards g ON g.id = s.guard_id
       WHERE s.guard_id IS NOT NULL
-        AND (
-          s.ai_decision->>'running_late' = 'true'
-          OR s.ai_decision->>'late_clockin_alerted' = 'true'
-        )
+        AND s.shift_date IS NOT NULL
+        AND s.shift_start IS NOT NULL
         AND UPPER(TRIM(COALESCE(s.status, ''))) NOT IN (
           'CLOSED', 'CANCELLED', 'CANCELED', 'COMPLETED'
         )
@@ -307,24 +314,31 @@ exports.getRunningLate = async (req, res) => {
             AND te.guard_id = s.guard_id
             AND te.clock_in_at IS NOT NULL
         )
+        AND (
+          s.ai_decision->>'running_late' = 'true'
+          OR s.ai_decision->>'late_clockin_alerted' = 'true'
+          OR (
+            ((s.shift_date + s.shift_start::time) AT TIME ZONE $1)
+              <= NOW() - ($2::int * INTERVAL '1 minute')
+            AND ((s.shift_date + s.shift_start::time) AT TIME ZONE $1)
+              >= NOW() - ($3::int * INTERVAL '1 hour')
+          )
+        )
         ${tenantSql}
-      ORDER BY
-        COALESCE(
-          (s.ai_decision->>'late_clockin_alerted_at')::timestamptz,
-          (s.ai_decision->>'marked_late_at')::timestamptz,
-          s.created_at
-        ) DESC
+      ORDER BY mins_late DESC NULLS LAST
       LIMIT 50
       `,
       { bind: params }
     );
 
     const runningLate = (rows || []).map((s) => {
-      const missed = s.ai_decision?.late_clockin_alerted === true ||
-        s.ai_decision?.late_clockin_alerted === "true";
       const selfReported = s.ai_decision?.running_late === true ||
         s.ai_decision?.running_late === "true";
       const minsLate = Number(s.mins_late);
+      const pastGrace = Number.isFinite(minsLate) && minsLate >= grace;
+      const missed = pastGrace ||
+        s.ai_decision?.late_clockin_alerted === true ||
+        s.ai_decision?.late_clockin_alerted === "true";
       const location = s.location || null;
       const reason = missed
         ? `No clock-in${Number.isFinite(minsLate) && minsLate > 0 ? ` (${minsLate} min late)` : ""}`
@@ -341,7 +355,7 @@ exports.getRunningLate = async (req, res) => {
         reason,
         location,
         minsLate: Number.isFinite(minsLate) ? minsLate : null,
-        source: missed ? "missed_clock_in" : selfReported ? "self_reported" : "unknown",
+        source: missed && !selfReported ? "missed_clock_in" : selfReported ? "self_reported" : "missed_clock_in",
         shiftDate: s.shift_date,
         shiftStart: s.shift_start,
         shiftEnd: s.shift_end,
