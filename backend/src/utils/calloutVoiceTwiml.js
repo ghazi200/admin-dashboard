@@ -87,15 +87,16 @@ function normalizeVoiceChoice({ digits, speech } = {}) {
     .trim();
   if (!s) return "";
 
-  if (/\b(accept|yes|one|won|number one)\b/.test(s) || s === "1") return "1";
-  if (/\b(decline|no|two|number two)\b/.test(s) || s === "2") return "2";
+  if (/\b(accept|one|won|number one)\b/.test(s) || s === "1") return "1";
+  if (/\b(decline|two|number two)\b/.test(s) || s === "2") return "2";
   return "";
 }
 
 /**
  * Build offer TwiML.
- * Entire script lives inside <Gather> so keypad/speech during the message still counts.
- * Supports DTMF and speech ("one"/"two", "accept"/"decline").
+ * The shift details play in a <Say> outside <Gather> so speech or noise on answer
+ * cannot barge in and register an accept before the guard has heard the offer.
+ * Only the prompt that follows collects keypad/speech input.
  */
 function buildCalloutOfferTwiml({
   location = "an open post",
@@ -106,25 +107,27 @@ function buildCalloutOfferTwiml({
   const whenSafe = xmlEscape(String(when || "soon").replace(/[^\x20-\x7E]/g, " "));
   const action = xmlEscape(actionUrl || "");
 
-  const script =
+  const offer =
     `Hello. I am Agent 24 from Abe Guard. ` +
     `An open shift needs coverage. ` +
     `Location: ${place}. ` +
     `When: ${whenSafe}. ` +
-    `Again: ${place}, ${whenSafe}. ` +
+    `Again: ${place}, ${whenSafe}.`;
+
+  const prompt =
     `Press 1 or say accept to take this shift. ` +
     `Press 2 or say decline to pass.`;
 
   const retry =
     `I did not catch that. Press 1 or say accept. Press 2 or say decline.`;
 
-  // input=dtmf speech: keypad OR voice. Nested Say is barge-in capable.
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Gather input="dtmf speech" language="en-US" numDigits="1" timeout="6" speechTimeout="auto" hints="one, two, accept, decline, yes, no" action="${action}" method="POST">
-    <Say voice="Polly.Joanna">${script}</Say>
+  <Say voice="Polly.Joanna">${offer}</Say>
+  <Gather input="dtmf speech" language="en-US" numDigits="1" timeout="8" speechTimeout="auto" hints="one, two, accept, decline" action="${action}" method="POST">
+    <Say voice="Polly.Joanna">${prompt}</Say>
   </Gather>
-  <Gather input="dtmf speech" language="en-US" numDigits="1" timeout="6" speechTimeout="auto" hints="one, two, accept, decline, yes, no" action="${action}" method="POST">
+  <Gather input="dtmf speech" language="en-US" numDigits="1" timeout="8" speechTimeout="auto" hints="one, two, accept, decline" action="${action}" method="POST">
     <Say voice="Polly.Joanna">${retry}</Say>
   </Gather>
   <Say voice="Polly.Joanna">We did not receive a response. Please open the Abe Guard app to accept or decline this open shift. Goodbye.</Say>

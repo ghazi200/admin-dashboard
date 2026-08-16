@@ -31,16 +31,19 @@ router.all("/voice", (req, res) => {
   const action = base ? `${base}/twilio/voice/gather?${q}` : `/twilio/voice/gather?${q}`;
 
   const short = shiftId ? String(shiftId).slice(0, 8) : "";
-  const msg = xmlEscape(
+  const offer = xmlEscape(
     short
-      ? `I am Agent 24 from A B E Security. A shift needs coverage. Reference ${short}. Press 1 to accept, or 2 to decline.`
-      : "I am Agent 24 from A B E Security. A shift needs coverage. Press 1 to accept, or 2 to decline."
+      ? `I am Agent 24 from A B E Security. A shift needs coverage. Reference ${short}.`
+      : "I am Agent 24 from A B E Security. A shift needs coverage."
   );
+  const prompt = xmlEscape("Press 1 to accept, or 2 to decline.");
 
+  // Offer plays outside <Gather> so the guard hears it fully before input is collected.
   res.type("text/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
+  <Say voice="alice">${offer}</Say>
   <Gather numDigits="1" timeout="8" action="${xmlEscape(action)}" method="POST">
-    <Say voice="alice">${msg}</Say>
+    <Say voice="alice">${prompt}</Say>
   </Gather>
   <Say voice="alice">Please check the A B E Guard mobile app to accept or decline. Goodbye.</Say>
 </Response>`);
