@@ -72,7 +72,7 @@ async function sendCalloutSms(guard, shift, meta = {}) {
       const a = String(shift.shift_start || "").slice(0, 8);
       const b = String(shift.shift_end || "").slice(0, 8);
       const ref = meta.calloutId ? String(meta.calloutId).replace(/-/g, "").slice(0, 8) : "";
-      let s = `ABE callout ${date} ${a}-${b}. Open Guard app.`;
+      let s = `I am Agent 24. ABE callout ${date} ${a}-${b}. Open Guard app.`;
       if (ref) s += ` Ref:${ref}`;
       return s.length > 160 ? `${s.slice(0, 157)}...` : s;
     })();

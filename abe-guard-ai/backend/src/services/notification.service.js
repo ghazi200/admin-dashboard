@@ -10,6 +10,7 @@ const {
 
 function buildCalloutCopy(shift, meta = {}) {
   const lines = [
+    "I am Agent 24.",
     "🚨 ABE Security — shift callout",
     `Date: ${shift.shift_date}`,
     `Time: ${shift.shift_start} - ${shift.shift_end}`,
@@ -32,7 +33,7 @@ function buildCalloutSmsBody(shift, meta = {}) {
   const start = String(shift.shift_start || "").slice(0, 8);
   const end = String(shift.shift_end || "").slice(0, 8);
   const ref = meta.calloutId ? String(meta.calloutId).replace(/-/g, "").slice(0, 8) : "";
-  let s = `ABE callout ${date} ${start}-${end}. Open Guard app.`;
+  let s = `I am Agent 24. ABE callout ${date} ${start}-${end}. Open Guard app.`;
   if (ref) s += ` Ref:${ref}`;
   if (meta.rank != null) s += ` #${meta.rank}`;
   if (s.length > 160) s = `${s.slice(0, 157)}...`;

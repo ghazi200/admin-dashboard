@@ -44,7 +44,7 @@ router.all("/voice", async (req, res) => {
   } catch (e) {
     console.error("twilio /voice error:", e?.message || e);
     res.type("text/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?>
-<Response><Say voice="Polly.Joanna">This is Abe Guard. A shift callout is available. Please open the Guard app. Goodbye.</Say></Response>`);
+<Response><Say voice="Polly.Joanna">I am Agent 24 from Abe Guard. A shift callout is available. Please open the Guard app. Goodbye.</Say></Response>`);
   }
 });
 

@@ -107,7 +107,7 @@ function buildCalloutOfferTwiml({
   const action = xmlEscape(actionUrl || "");
 
   const script =
-    `Hello. This is Abe Guard. ` +
+    `Hello. I am Agent 24 from Abe Guard. ` +
     `An open shift needs coverage. ` +
     `Location: ${place}. ` +
     `When: ${whenSafe}. ` +

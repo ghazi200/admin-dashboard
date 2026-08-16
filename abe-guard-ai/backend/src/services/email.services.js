@@ -37,7 +37,9 @@ async function sendCalloutEmail(guard, shift, meta = {}) {
 
   const text =
     meta.emailBody ||
-    `Callout — shift needs coverage
+    `I am Agent 24.
+
+Callout — shift needs coverage
 
 Date: ${shift.shift_date}
 Time: ${shift.shift_start} - ${shift.shift_end}

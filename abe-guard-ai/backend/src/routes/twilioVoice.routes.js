@@ -33,8 +33,8 @@ router.all("/voice", (req, res) => {
   const short = shiftId ? String(shiftId).slice(0, 8) : "";
   const msg = xmlEscape(
     short
-      ? `This is A B E Security. A shift needs coverage. Reference ${short}. Press 1 to accept, or 2 to decline.`
-      : "This is A B E Security. A shift needs coverage. Press 1 to accept, or 2 to decline."
+      ? `I am Agent 24 from A B E Security. A shift needs coverage. Reference ${short}. Press 1 to accept, or 2 to decline.`
+      : "I am Agent 24 from A B E Security. A shift needs coverage. Press 1 to accept, or 2 to decline."
   );
 
   res.type("text/xml; charset=utf-8").send(`<?xml version="1.0" encoding="UTF-8"?>

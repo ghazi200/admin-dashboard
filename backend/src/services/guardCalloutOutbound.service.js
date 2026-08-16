@@ -47,6 +47,7 @@ function buildEmailBody({ guardName, shift, reason, rank, aiReason, calloutId })
   return [
     `Hi ${guardName || "Guard"},`,
     "",
+    "I am Agent 24.",
     "ABE Security — a shift needs coverage and you were ranked by AI as a replacement.",
     "",
     `Location: ${place}`,
@@ -72,7 +73,7 @@ function buildSmsBody({ shift, rank, calloutId }) {
   const b = String(shift.shift_end || "").slice(0, 5);
   const place = String(shift.location || "shift").slice(0, 20);
   const ref = calloutId ? String(calloutId).replace(/-/g, "").slice(0, 6) : "";
-  let s = `ABE callout ${place} ${date} ${a}-${b}. Open Guard app.`;
+  let s = `I am Agent 24. ABE callout ${place} ${date} ${a}-${b}. Open Guard app.`;
   if (rank != null) s += ` #${rank}`;
   if (ref) s += ` Ref:${ref}`;
   s += " Reply STOP to opt out.";
